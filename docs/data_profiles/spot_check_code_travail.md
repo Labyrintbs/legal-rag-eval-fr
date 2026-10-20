@@ -2,7 +2,7 @@
 
 20 articles drawn with a fixed seed, plus edge cases. Open each URL on legifrance.gouv.fr and compare number, in-force date, text and place in the code with the data. The site shows today's version, the data is the 2025-07-13 snapshot.
 
-## Checked (9 of 20)
+## Checked (14 of 20)
 
 | Article | URL | Result |
 |---|---|---|
@@ -15,16 +15,16 @@
 | R4451-6 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037024991 | OK: number, date (2018-07-01) and text match. Data path 12 levels, site 7: each of Titre V, Chapitre Ier, Section 3, Sous-section 1 appears 2-3 times with different titles; the site shows the last one of each. |
 | D6331-71 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038023456 | OK: number, date (2019-01-01) and text start match. Data path 8 levels, site 7: "Section 4" appears twice, the site shows the second (longer) one. Livre III is "...formation professionnelle continue" on the site too (regulatory part). |
 | D4626-5 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045677256 | OK: number, date (2022-04-28) and text match. Data path 9 levels, site 6: "Titre II" appears 3 times, the site shows the last ("Services de prévention et de santé au travail"). |
+| R7524-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037563341 | OK: number, date (2018-11-07), text and path (6 levels, 5 after collapsing) match. Quotes are curly with inner spaces in the data, straight on the site. |
+| R4641-15 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044804685 | OK: date (2022-03-31) and path match (data 12 levels, site 8). Text not visible in the screenshot. |
+| L7342-11 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000039678041 | OK: number, date (2019-12-27), text and path (data 8 levels, site 6) match. |
+| R5132-21 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018526800 | OK: date (2008-05-01) and path match (7 levels). Text not visible in the screenshot. |
+| D1441-24-2 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037481360 | OK: date (2018-10-10) and path match (data 10 levels, site 7). Text not visible in the screenshot. |
 
-## Still to check (11 of 20)
+## Still to check (6 of 20)
 
 | Article | URL | Section path (last level) | Body start | Result |
 |---|---|---|---|---|
-| R7524-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037563341 | Chapitre IV :  Concierges et employés d'immeubles à usage d'habitation, employés de maison et services à la personne | Pour l'application à Mayotte de l'article R. 7213-7, les mots : “ mois de mai à  | |
-| R4641-15 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044804685 | Paragraphe 1 : Missions | Placé auprès du préfet de région, le comité régional d'orientation des condition | |
-| L7342-11 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000039678041 | Section 2 : Dispositions particulières | Les modalités d'application de la présente section sont déterminées par voie rég | |
-| R5132-21 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018526800 | Sous-section 2 : Convention de coopération et mise à disposition | Les travaux particulièrement dangereux figurant sur la liste prévue à l'article  | |
-| D1441-24-2 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037481360 | Sous-section 4 : Recevabilité des listes de candidats et des candidatures individuelles | Les destinataires des données à caractère personnel mentionnées aux articles D.  | |
 | L2363-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018050413 | Section 3 : Dispositions applicables aux sociétés coopératives européennes non soumises initialement à la constitution du groupe spécial de négociation | Dans le cas de la société coopérative européenne mentionnée à l'article L. 2363- | |
 | D5132-10-2 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029775713 | Sous-section 3 : Périodes de mise en situation en milieu professionnel. | Chaque période de mise en situation en milieu professionnel prescrite, en accord | |
 | L2362-9 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018050480 | Sous-section 3 : Fonctionnement | Les dispositions des articles L. 2352-14 et L. 2352-15 relatives à la protection | |
