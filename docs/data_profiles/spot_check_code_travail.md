@@ -31,11 +31,11 @@
 
 | Article | URL | What to look at | Result |
 |---|---|---|---|
-| L1237-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901174 | Resignation notice; the path used in our example header | |
-| L1232-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901001 | Same body as L1233-12 | |
-| L1233-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901024 | Same body as L1232-3; its path says dismissal (licenciement) | |
-| R*3231-4 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018552958 | Number with a star | |
-| L1251-33-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600683 | Number had a leading space in the source | |
-| L2152-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033023399 | Path contains a carriage return in the source | |
-| L6123-5 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048700924 | Long article, split into several chunks | |
-| Annexe I | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000040477365 | Annex whose text is only a link to a PDF | |
+| L1237-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901174 | Resignation notice; the path used in our example header | OK: path matches (7 levels). Page shows 'en vigueur au 20 octobre 2026' without a start date; text not visible. |
+| L1232-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901001 | Same body as L1233-12 | OK: date (2008-05-01) and path (6 levels) match. Text not visible. |
+| L1233-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901024 | Same body as L1232-3; its path says dismissal (licenciement) | OK: date (2008-05-01) and path (8 levels) match; the path says economic dismissal, as intended. Text not visible. |
+| R*3231-4 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018552958 | Number with a star | OK: the star number is real; date (2008-05-01) and path (7 levels) match. |
+| L1251-33-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600683 | Number had a leading space in the source | OK: date (2024-01-01) and path match (data 9 levels, site 8). Number lies in the range L1251-29 to L1251-34 shown for its paragraph. |
+| L2152-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033023399 | Path contains a carriage return in the source | OK: date (2016-08-10) and path (6 levels) match. The carriage return in the data path is not visible on the site. |
+| L6123-5 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048700924 | Long article, split into several chunks | Path matches (data 10 levels, site 6). DATE DIFFERS: data 2024-01-01, site 2026-02-21. The article was changed after the 2025-07-13 snapshot, so the data holds an outdated version. |
+| Annexe I | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000040477365 | Annex whose text is only a link to a PDF | OK: date (2020-01-01) and path match (data 8 levels, site 6). Annex body not visible. |
