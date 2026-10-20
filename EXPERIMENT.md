@@ -83,3 +83,12 @@ Entry template:
 - Measured effect: the collapse rule reproduces the Légifrance path in 28 of 28 articles. In-force dates match in 27 of 27 where a start date was visible (L1237-1 shows only "en vigueur au 20 octobre 2026"). Star number (R*3231-4), padded number (L1251-33-1) and the path with a carriage return (L2152-1) are confirmed as handled correctly.
 - Difference: L6123-5 is in force since 2026-02-21 on the site, but 2024-01-01 in the data. The article changed after the 2025-07-13 snapshot, so the stored text may be outdated. This is the freshness gap that stage 6 would measure; the README and answers state the corpus date.
 - Not verified: article texts of the 8 edge cases and of most seeded cases were not visible in the screenshots; only numbers, dates and paths were compared there.
+
+## 2026-10-20: GDPR reader and chunker (Loop 2)
+- Change: `sources/gdpr.py` (parser and profile), GDPR branches in `ingest.py` (header inputs, split order), `split.pack` fallback chain, `verify_gdpr`, CLI `profile|verify legi|gdpr`, fixture `tests/fixtures/gdpr_fr_excerpt.xhtml` (6 real units), `tests/test_gdpr.py` (11 tests; 59 tests in total).
+  - Body: numbered paragraphs separated by a blank line, points and definition sub-points one per line, each definition row of Article 4 one group. Footnote markers dropped (their texts sit outside the articles). Recital label "(4)" removed.
+  - Header: `RGPD (règlement (UE) 2016/679), article 5 : <title>. <chapter> > <section>.`; recital `RGPD, considérant 4.` (EN: GDPR / recital). Style last_k, k=3 as for the Code du travail.
+  - Split rule above 1,024 tokens: pack whole paragraphs; a paragraph over the limit goes to points; a point over the limit goes to sentences. Paragraph or definition range stored in `extra["paragraphs"]`.
+- Measured effect (FR): 99 articles, 173 recitals, 11 chapters, 15 sections (sections now verified), 58 articles under a section, 17 articles without numbered-paragraph blocks, one article (4) with nested definition tables. Article body tokens: median 345, p90 1,160, 15 over 1,024 (max 2,226); recitals median 175, max 842. 272 units give 292 chunks; 15 articles split; no chunk over 1,024 (max 1,023); no word-window fallback needed. EN: 281 chunks, 8 articles split, max 1,013.
+- Difference from the spec's earlier measurement: token percentiles are slightly lower (max 2,226 vs 2,230) because footnote markers are removed.
+- All checks pass (`make verify SOURCE=gdpr`), including FR and EN having the same ids and Article 5 having points a) to f) then paragraph 2.

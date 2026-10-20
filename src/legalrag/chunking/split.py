@@ -19,8 +19,8 @@ def split_sentences(text: str) -> list[str]:
     return pieces
 
 
-def split_paragraphs(text: str) -> list[str]:
-    return [p for p in text.split("\n") if p.strip()]
+def split_paragraphs(text: str, sep: str = "\n\n") -> list[str]:
+    return [p for p in text.split(sep) if p.strip()]
 
 
 def pack(
@@ -28,11 +28,12 @@ def pack(
     budget: int,
     count_tokens: Callable[[str], int],
     sep: str = " ",
+    fallback: Callable[[str], list[tuple[str, bool]]] | None = None,
 ) -> list[tuple[str, bool]]:
     """Greedily join consecutive pieces so each group fits the budget (tokens, header excluded).
 
-    Returns (text, forced) pairs; forced is True when a single piece alone exceeded the budget and
-    was cut into word windows.
+    Returns (text, forced) pairs. A single piece over the budget goes to `fallback` (a finer
+    split); without one it is cut into word windows and flagged forced.
     """
     groups: list[tuple[str, bool]] = []
     current: list[str] = []
@@ -43,7 +44,10 @@ def pack(
             if current:
                 groups.append((sep.join(current), False))
                 current, used = [], 0
-            groups.extend((w, True) for w in _word_windows(piece, budget, count_tokens))
+            if fallback:
+                groups.extend(fallback(piece))
+            else:
+                groups.extend((w, True) for w in _word_windows(piece, budget, count_tokens))
             continue
         if used + cost > budget and current:
             groups.append((sep.join(current), False))

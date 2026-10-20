@@ -1,10 +1,12 @@
 .PHONY: db-up db-down profile verify test lint
 
+SOURCE ?= legi
+
 profile:
-	uv run legalrag profile
+	uv run legalrag profile $(SOURCE)
 
 verify:
-	uv run legalrag verify
+	uv run legalrag verify $(SOURCE)
 
 db-up:
 	docker compose up -d db
