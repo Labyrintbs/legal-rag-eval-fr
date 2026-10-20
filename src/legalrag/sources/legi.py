@@ -9,6 +9,9 @@ import numpy as np
 import pandas as pd
 from tokenizers import Tokenizer
 
+from legalrag.models import Article
+from legalrag.text import content_hash, normalize_text
+
 DOC_TITLE = "code du travail"
 # "R*3231-4" is a real decree article (star = number kept from an older numbering), not an annex.
 CODE_NUM = re.compile(r"^[LRD]\*?\d")
@@ -18,6 +21,31 @@ def read(parquet_path: Path) -> pd.DataFrame:
     df = pd.read_parquet(parquet_path)
     # Exact match: "contains" would also return laws that merely mention the code.
     return df[df.texte_titre.str.strip().str.lower() == DOC_TITLE].reset_index(drop=True)
+
+
+def to_articles(m: pd.DataFrame) -> list[Article]:
+    articles = []
+    for r in m.itertuples():
+        num = r.article_num.strip()
+        body = normalize_text(r.article_contenu_text)
+        articles.append(
+            Article(
+                uid=f"code_travail:fr:{r.article_id}",
+                source_code="code_travail",
+                lang="fr",
+                kind="article" if CODE_NUM.match(num) else "annex",
+                native_id=r.article_id,
+                article_num=num,
+                section_path=r.texte_contexte,
+                body_text=body,
+                valid_from=r.date_debut,
+                valid_to=r.date_fin,
+                status=r.article_etat,
+                content_hash=content_hash(body),
+                source_url=f"https://www.legifrance.gouv.fr/codes/article_lc/{r.article_id}",
+            )
+        )
+    return articles
 
 
 def _pct(a: np.ndarray) -> dict[int, int]:
