@@ -24,6 +24,7 @@ def build_chunks(
     style: str = "last_k",
     k: int = 3,
     max_tokens: int = MAX_TOKENS,
+    collapse_repeats: bool = False,
 ) -> list[Chunk]:
     chunks = []
     for a in articles:
@@ -34,6 +35,7 @@ def build_chunks(
             style=style,
             k=k,
             is_article=a.kind == "article",
+            collapse_repeats=collapse_repeats,
         )
         prefix = header + "\n" if header else ""
         whole = prefix + a.body_text

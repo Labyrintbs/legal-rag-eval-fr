@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from legalrag.chunking.header import build_header
+from legalrag.chunking.header import build_header, collapse_repeated_levels
 from legalrag.chunking.split import pack, split_sentences
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import legi
@@ -56,6 +56,33 @@ def test_header_annex_has_no_article_word():
 def test_header_cleans_carriage_return_in_titles():
     h = build_header("Code du travail", "L1", ["Section 1 :\r\nRupture"], "last_k")
     assert "\r" not in h and "Section 1 : Rupture" in h
+
+
+def test_collapse_keeps_last_of_a_run_only():
+    titles = ["Partie R", "Titre V : a", "TITRE V : b", "Titre V : c", "Chapitre Ier : x",
+              "Section 3 : y", "Sous-section 1 : z", "Section 3 : w"]
+    assert collapse_repeated_levels(titles) == [
+        "Partie R", "Titre V : c", "Chapitre Ier : x", "Section 3 : y", "Sous-section 1 : z",
+        "Section 3 : w",
+    ]
+
+
+def test_header_collapse_option_changes_only_the_header():
+    path = ["Partie R", "Livre III : old", "Livre III : new", "Titre VI : t", "Titre VI : u"]
+    plain = build_header("Code du travail", "L1", path, "full")
+    collapsed = build_header("Code du travail", "L1", path, "full", collapse_repeats=True)
+    assert "Livre III : old" in plain and "Livre III : old" not in collapsed
+    assert collapsed == "Code du travail, article L1. Partie R > Livre III : new > Titre VI : u."
+
+
+SITE_PATHS = json.loads((FIXTURE.parent / "legifrance_site_paths.json").read_text())
+
+
+@pytest.mark.parametrize("article_id", [k for k in SITE_PATHS if not k.startswith("_")])
+def test_collapse_reproduces_legifrance_path(article_id):
+    case = SITE_PATHS[article_id]
+    got = [normalize_text(t) for t in collapse_repeated_levels(case["data"])]
+    assert got == case["site"], case["article_num"]
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,7 @@
 
 20 articles drawn with a fixed seed, plus edge cases. Open each URL on legifrance.gouv.fr and compare number, in-force date, text and place in the code with the data. The site shows today's version, the data is the 2025-07-13 snapshot.
 
-## Checked (14 of 20)
+## Checked (20 of 20)
 
 | Article | URL | Result |
 |---|---|---|
@@ -20,17 +20,12 @@
 | L7342-11 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000039678041 | OK: number, date (2019-12-27), text and path (data 8 levels, site 6) match. |
 | R5132-21 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018526800 | OK: date (2008-05-01) and path match (7 levels). Text not visible in the screenshot. |
 | D1441-24-2 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037481360 | OK: date (2018-10-10) and path match (data 10 levels, site 7). Text not visible in the screenshot. |
-
-## Still to check (6 of 20)
-
-| Article | URL | Section path (last level) | Body start | Result |
-|---|---|---|---|---|
-| L2363-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018050413 | Section 3 : Dispositions applicables aux sociétés coopératives européennes non soumises initialement à la constitution du groupe spécial de négociation | Dans le cas de la société coopérative européenne mentionnée à l'article L. 2363- | |
-| D5132-10-2 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029775713 | Sous-section 3 : Périodes de mise en situation en milieu professionnel. | Chaque période de mise en situation en milieu professionnel prescrite, en accord | |
-| L2362-9 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018050480 | Sous-section 3 : Fonctionnement | Les dispositions des articles L. 2352-14 et L. 2352-15 relatives à la protection | |
-| L3123-9 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033020058 | Paragraphe 5 : Durée minimale de travail et heures complémentaires | Les heures complémentaires ne peuvent avoir pour effet de porter la durée de tra | |
-| L5426-8-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600556 | Section 4 : Répétition des prestations indues. | L'opérateur France Travail est autorisé à différer ou à abandonner la mise en re | |
-| R5324-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018525260 | Chapitre IV : Contrôle | Lorsque des manquements à la réglementation ont été constatés dans les condition | |
+| L2363-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018050413 | OK: date (2008-05-01) and path (6 levels) match. Text not visible. |
+| D5132-10-2 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000029775713 | OK: date (2014-11-16) and path match (data 8 levels, site 7). Text not visible. |
+| L2362-9 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018050480 | OK: date (2008-05-01) and path (7 levels) match. Text not visible. |
+| L3123-9 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033020058 | OK: date (2016-08-10) and path match (data 11 levels, site 8). Text not visible. |
+| L5426-8-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600556 | OK: date (2024-01-01) and path match (data 7 levels, site 6). Text not visible. |
+| R5324-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018525260 | OK: date (2008-05-01) and path (5 levels) match. Text not visible. |
 
 ## Edge cases (not in the seeded sample)
 

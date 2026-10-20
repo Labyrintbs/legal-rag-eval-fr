@@ -71,3 +71,9 @@ Entry template:
 - Measured effect: number, in-force date and (where visible) text match in all 14. Rule "collapse each run of same-label levels, keep the last" applied to the data path gives exactly the site path for 14 of 14 articles (for example 12 levels to 8, 10 to 7). One typographic difference: curly quotes with inner spaces in the data, straight quotes on the site.
 - Limit: 14 articles, all read from screenshots at one date; the site shows today's version.
 - Default unchanged (path as is); the rule is the header variant to test in 0c.
+
+## 2026-10-20: collapse-repeated-levels option and spot check 20 of 20
+- Change: `collapse_repeated_levels` and a `collapse_repeats` option (default off) in `chunking/header.py`, passed through `ingest.build_chunks`. Six more seeded articles checked (L2363-12, D5132-10-2, L2362-9, L3123-9, L5426-8-3, R5324-1); site paths of all 20 stored with the data paths in `tests/fixtures/legifrance_site_paths.json`. 40 tests pass (22 new, one per site path).
+- Measured effect on the site paths: the rule reproduces the Légifrance path exactly for 20 of 20 articles; in-force dates match in all 20; texts that were visible match.
+- Measured effect on chunks, option on versus off (header style last_k, k=3): chunks 11,562 vs 11,563; header tokens median 54 vs 54, p90 71 vs 72; split articles 45 vs 46; total tokens 2,254,356 vs 2,256,934. The option changes which levels the header shows, not its size.
+- Default unchanged. Quality effect to be measured in 0c.
