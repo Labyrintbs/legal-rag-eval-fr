@@ -2,7 +2,7 @@
 
 20 articles drawn with a fixed seed, plus edge cases. Open each URL on legifrance.gouv.fr and compare number, in-force date, text and place in the code with the data. The site shows today's version, the data is the 2025-07-13 snapshot.
 
-## Checked (4 of 20)
+## Checked (9 of 20)
 
 | Article | URL | Result |
 |---|---|---|
@@ -10,16 +10,16 @@
 | L4162-4 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036262858 | OK: number, date (2019-01-01) and text match. Data path has 7 levels, site 5: two older titles ("Titre VI : ...pénibilité", "Chapitre II : Compte personnel de prévention de la pénibilité") appear before the current ones. |
 | L3132-25-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000035653129 | URL, status (in force since 2018-01-01) and path match the site; the data path has one extra level ("Paragraphe 3 : Dérogations temporaires...") that the site does not show. Article number and text not visible in the screenshot. |
 | L6362-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006904464 | OK: number, date (2008-05-01) and text match. Data path has 8 levels, site 6: older "Livre III : ...continue" and "Titre VI : ...continue" appear before the current titles. |
+| R5123-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018527022 | OK: number, date (2008-05-01), text and all 6 levels match (data has a double space in one title). |
+| L2262-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901817 | OK: number, date (2008-05-01), text and all 6 levels match. |
+| R4451-6 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037024991 | OK: number, date (2018-07-01) and text match. Data path 12 levels, site 7: each of Titre V, Chapitre Ier, Section 3, Sous-section 1 appears 2-3 times with different titles; the site shows the last one of each. |
+| D6331-71 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038023456 | OK: number, date (2019-01-01) and text start match. Data path 8 levels, site 7: "Section 4" appears twice, the site shows the second (longer) one. Livre III is "...formation professionnelle continue" on the site too (regulatory part). |
+| D4626-5 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045677256 | OK: number, date (2022-04-28) and text match. Data path 9 levels, site 6: "Titre II" appears 3 times, the site shows the last ("Services de prévention et de santé au travail"). |
 
-## Still to check (16 of 20)
+## Still to check (11 of 20)
 
 | Article | URL | Section path (last level) | Body start | Result |
 |---|---|---|---|---|
-| R5123-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018527022 | Section 3 : Convention de formation | Le salarié qui suit une action de conversion ayant fait l'objet d'une convention | |
-| L2262-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901817 | Section 2 : Information et communication. | Il peut être donné communication et délivré copie des textes conventionnels dépo | |
-| R4451-6 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037024991 | Sous-section 1 : Valeurs limites d'exposition | L'exposition d'un travailleur aux rayonnements ionisants ne dépasse pas : 1° Pou | |
-| D6331-71 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038023456 | Sous-section 5 : Particuliers employeurs | En cas de dépassement du plafond mentionné au dernier alinéa de l'article D. 633 | |
-| D4626-5 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045677256 | Sous-section 1 : Organisation. | Lorsque le service autonome de prévention et de santé au travail regroupe par co | |
 | R7524-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037563341 | Chapitre IV :  Concierges et employés d'immeubles à usage d'habitation, employés de maison et services à la personne | Pour l'application à Mayotte de l'article R. 7213-7, les mots : “ mois de mai à  | |
 | R4641-15 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044804685 | Paragraphe 1 : Missions | Placé auprès du préfet de région, le comité régional d'orientation des condition | |
 | L7342-11 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000039678041 | Section 2 : Dispositions particulières | Les modalités d'application de la présente section sont déterminées par voie rég | |
