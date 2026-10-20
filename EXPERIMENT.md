@@ -44,5 +44,6 @@ Entry template:
 ## 2026-10-20: spot check 1 of 20 and repeated levels in section paths
 - Change: none in code. First manual check on legifrance.gouv.fr (L3132-25-3).
 - Measured effect: the URL pattern works, the in-force date and the last levels of the path match the site. The data path has 10 levels, the site shows 9: an extra "Paragraphe 3 : Dérogations temporaires au repos dominical" sits before "Paragraphe 3 : Autres dérogations au repos dominical". Across the code, 5,691 of 11,433 paths (50%) have two consecutive levels with the same label (for example "TITRE V : ..." then "Titre V : ..."), so the header's last 3 levels often repeat a level.
-- Open: collapse repeated levels in the header (keep the later one, as on the site) or keep the path as is. To be decided with the user and tested in 0c.
+- Note: the site shows today's version and the data is the 2025-07-13 snapshot, so the extra level may be a later update, not an extract flaw. The site is not the reference for structure.
+- Open: collapse repeated levels in the header (keep the later, more specific one) or keep the path as is. Only the repetition inside the data justifies it. To be decided with the user and tested in 0c.
 - Annexes: decided to keep them searchable. 0c compares as-is, excluded, and LLM-summary search.
