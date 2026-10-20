@@ -1,12 +1,20 @@
 # Spot check: Code du travail
 
-20 articles drawn with a fixed seed. Open each URL and compare number, text and place in the code with the line below. Write the result in the last column.
+20 articles drawn with a fixed seed, plus edge cases. Open each URL on legifrance.gouv.fr and compare number, in-force date, text and place in the code with the data. The site shows today's version, the data is the 2025-07-13 snapshot.
 
-| Article | URL | Section path (last level) | Body start | OK? |
+## Checked (4 of 20)
+
+| Article | URL | Result |
+|---|---|---|
+| R3232-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043128608 | OK: number, date (2021-02-13), text and all 6 path levels match the site. |
+| L4162-4 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036262858 | OK: number, date (2019-01-01) and text match. Data path has 7 levels, site 5: two older titles ("Titre VI : ...pénibilité", "Chapitre II : Compte personnel de prévention de la pénibilité") appear before the current ones. |
+| L3132-25-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000035653129 | URL, status (in force since 2018-01-01) and path match the site; the data path has one extra level ("Paragraphe 3 : Dérogations temporaires...") that the site does not show. Article number and text not visible in the screenshot. |
+| L6362-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006904464 | OK: number, date (2008-05-01) and text match. Data path has 8 levels, site 6: older "Livre III : ...continue" and "Titre VI : ...continue" appear before the current titles. |
+
+## Still to check (16 of 20)
+
+| Article | URL | Section path (last level) | Body start | Result |
 |---|---|---|---|---|
-| R3232-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043128608 | Section 3 : Dispositions particulières à certaines catégories de salariés | En cas de réduction d'activité, le travailleur à domicile employé au cours d'un  | OK: number, date (2021-02-13), text and all 6 path levels match the site. |
-| L4162-4 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036262858 | Chapitre II : Accords en faveur de la prévention des effets de l'exposition à certains facteurs de risques professionnels | I.-La méconnaissance des obligations mentionnées aux articles L. 4162-1 à L. 416 | OK: number, date (2019-01-01) and text match. Data path has 7 levels, site 5: two older titles ("Titre VI : ...pénibilité", "Chapitre II : Compte personnel de prévention de la pénibilité") appear before the current ones. |
-| L3132-25-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000035653129 | Sous-paragraphe 2 : Dérogations sur un fondement géographique | I. – Les autorisations prévues à l'article L. 3132-20 sont accordées au vu d'un  | URL, status (in force since 2018-01-01) and path match the site; the data path has one extra level ("Paragraphe 3 : Dérogations temporaires...") that the site does not show. Article number and text not visible in the screenshot. |
 | R5123-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018527022 | Section 3 : Convention de formation | Le salarié qui suit une action de conversion ayant fait l'objet d'une convention | |
 | L2262-8 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901817 | Section 2 : Information et communication. | Il peut être donné communication et délivré copie des textes conventionnels dépo | |
 | R4451-6 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037024991 | Sous-section 1 : Valeurs limites d'exposition | L'exposition d'un travailleur aux rayonnements ionisants ne dépasse pas : 1° Pou | |
@@ -23,4 +31,16 @@
 | L3123-9 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033020058 | Paragraphe 5 : Durée minimale de travail et heures complémentaires | Les heures complémentaires ne peuvent avoir pour effet de porter la durée de tra | |
 | L5426-8-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600556 | Section 4 : Répétition des prestations indues. | L'opérateur France Travail est autorisé à différer ou à abandonner la mise en re | |
 | R5324-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018525260 | Chapitre IV : Contrôle | Lorsque des manquements à la réglementation ont été constatés dans les condition | |
-| L6362-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006904464 | Section 3 : Sanctions. | Le recouvrement des versements exigibles au titre des contrôles réalisés en appl | OK: number, date (2008-05-01) and text match. Data path has 8 levels, site 6: older "Livre III : ...continue" and "Titre VI : ...continue" appear before the current titles. |
+
+## Edge cases (not in the seeded sample)
+
+| Article | URL | What to look at | Result |
+|---|---|---|---|
+| L1237-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901174 | Resignation notice; the path used in our example header | |
+| L1232-3 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901001 | Same body as L1233-12 | |
+| L1233-12 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006901024 | Same body as L1232-3; its path says dismissal (licenciement) | |
+| R*3231-4 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018552958 | Number with a star | |
+| L1251-33-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600683 | Number had a leading space in the source | |
+| L2152-1 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033023399 | Path contains a carriage return in the source | |
+| L6123-5 | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048700924 | Long article, split into several chunks | |
+| Annexe I | https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000040477365 | Annex whose text is only a link to a PDF | |

@@ -35,6 +35,9 @@ def verify_cmd() -> None:
     for name, ok, detail in results:
         typer.echo(f"{'PASS' if ok else 'FAIL'}  {name}  {detail}")
 
+    spot_file = PROFILES / "spot_check_code_travail.md"
+    if spot_file.exists():  # holds the user's manual results; never overwrite
+        raise typer.Exit(0 if all(ok for _, ok, _ in results) else 1)
     rows = [
         "# Spot check: Code du travail",
         "",
