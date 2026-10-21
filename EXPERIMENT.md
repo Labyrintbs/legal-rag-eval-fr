@@ -92,3 +92,8 @@ Entry template:
 - Measured effect (FR): 99 articles, 173 recitals, 11 chapters, 15 sections (sections now verified), 58 articles under a section, 17 articles without numbered-paragraph blocks, one article (4) with nested definition tables. Article body tokens: median 345, p90 1,160, 15 over 1,024 (max 2,226); recitals median 175, max 842. 272 units give 292 chunks; 15 articles split; no chunk over 1,024 (max 1,023); no word-window fallback needed. EN: 281 chunks, 8 articles split, max 1,013.
 - Difference from the spec's earlier measurement: token percentiles are slightly lower (max 2,226 vs 2,230) because footnote markers are removed.
 - All checks pass (`make verify SOURCE=gdpr`), including FR and EN having the same ids and Article 5 having points a) to f) then paragraph 2.
+
+## 2026-10-21: GDPR spot check
+- Change: none in code. The user compared the 15 sampled units (10 articles, 5 recitals) with EUR-Lex by hand and judged it sufficient. Screenshots sent show only the document header, so I did not compare texts myself.
+- EUR-Lex header: CELEX 32016R0679, JO L 119 of 4.5.2016, pp. 1-88, "Current consolidated version: 04/05/2016". Corrigenda handling not verified.
+- Loop 2 approved by the user.
