@@ -42,6 +42,16 @@ Hardware of the Windows laptop: Lenovo Legion R9000P 2021H, Ryzen 7 5800H, NVIDI
 6. `cd ~/legal-rag-eval-fr && uv sync --extra embed`. Then check `uv run python -c "import torch; print(torch.cuda.is_available())"` prints `True`. If it prints `False`, the PyTorch wheel has no CUDA: pin the CUDA index in `pyproject.toml` as described in https://docs.astral.sh/uv/guides/integration/pytorch/ (needs uv 0.5.3 or newer) and record the change in `EXPERIMENT.md`.
 7. Run `uv run pytest` and expect 59 passed (the real-tokenizer tests are skipped until the data in section 5 is present).
 
+### Install the user's global rules on the Windows laptop
+`docs/handoff/global_CLAUDE.md` is a verbatim copy of the user's global Claude Code instructions (comments, commit messages, tests, delete commands, how to explain). Install it once, in the place where Claude Code runs (inside WSL, `~` is the Ubuntu home):
+
+```
+mkdir -p ~/.claude
+cp ~/legal-rag-eval-fr/docs/handoff/global_CLAUDE.md ~/.claude/CLAUDE.md
+```
+
+If an `~/.claude/CLAUDE.md` already exists there, show it to the user and ask before replacing it. If Claude Code runs natively on Windows instead, the same file goes to `%USERPROFILE%\.claude\CLAUDE.md`. It then applies to every project on that machine. Git identity and push access are separate: see the user's note in the conversation (`git config --global user.name` and `user.email`, then `gh auth login` and `gh auth setup-git`).
+
 ## 5. Get the raw data
 The `data/` folder is not in git. Either copy the four files from the Mac's `data/raw/` or download them. Check the SHA-256 of each (`sha256sum`).
 
