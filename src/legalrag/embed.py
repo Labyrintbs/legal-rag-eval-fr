@@ -162,24 +162,30 @@ def write_run_json(path: Path, info: dict) -> None:
 
 
 class SentenceTransformerEmbedder:
-    """bge-m3 on the GPU in fp16. Imports torch lazily so the light install stays light."""
+    """bge-m3 in fp16 on the GPU, or in float32 on the CPU. Imports torch lazily."""
 
-    def __init__(self, max_seq_length: int = MAX_SEQ_LENGTH) -> None:
+    def __init__(self, device: str = "cuda", max_seq_length: int = MAX_SEQ_LENGTH) -> None:
         import torch
         from huggingface_hub import model_info
         from sentence_transformers import SentenceTransformer
 
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA is not available; this job is meant for the GPU laptop")
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        if device not in ("cuda", "cpu"):
+            raise ValueError(f"device must be cuda, cpu or auto, got {device}")
+        if device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available; use --device cpu or auto")
+        self.device = device
         self.revision = model_info(MODEL).sha
         self.model = SentenceTransformer(
             MODEL,
-            device="cuda",
+            device=device,
             revision=self.revision,
-            model_kwargs={"torch_dtype": torch.float16},
+            model_kwargs={"torch_dtype": torch.float16 if device == "cuda" else torch.float32},
         )
         self.model.max_seq_length = max_seq_length
-        torch.cuda.reset_peak_memory_stats()
+        if device == "cuda":
+            torch.cuda.reset_peak_memory_stats()
 
     def encode(self, texts: list[str], batch_size: int) -> np.ndarray:
         return self.model.encode(
@@ -190,11 +196,14 @@ class SentenceTransformerEmbedder:
         import sentence_transformers
         import torch
 
-        return {
+        info = {
             "model": MODEL,
             "model_revision": self.revision,
-            "gpu": torch.cuda.get_device_name(0),
-            "peak_vram_mb": round(torch.cuda.max_memory_allocated() / 2**20),
+            "device": self.device,
             "torch": torch.__version__,
             "sentence_transformers": sentence_transformers.__version__,
         }
+        if self.device == "cuda":
+            info["gpu"] = torch.cuda.get_device_name(0)
+            info["peak_vram_mb"] = round(torch.cuda.max_memory_allocated() / 2**20)
+        return info

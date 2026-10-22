@@ -1,4 +1,4 @@
-.PHONY: db-up db-down fetch embed profile verify test lint
+.PHONY: db-up db-down fetch embed sanity profile verify test lint
 
 SOURCE ?= legi
 
@@ -7,6 +7,9 @@ fetch:
 
 embed:
 	uv run legalrag embed
+
+sanity:
+	uv run legalrag sanity
 
 profile:
 	uv run legalrag profile $(SOURCE)

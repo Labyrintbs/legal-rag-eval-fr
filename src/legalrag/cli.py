@@ -6,7 +6,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import embed, fetch, verify
+from legalrag import embed, fetch, sanity, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -53,10 +53,11 @@ def fetch_cmd(
 def embed_cmd(
     run: Annotated[str, typer.Option(help="Run name, used in the output file names")] = "main",
     limit: Annotated[int | None, typer.Option(help="Trial: embed only about this many chunks")] = None,
-    batch_size: Annotated[int, typer.Option(help="Texts per GPU batch")] = embed.BATCH_SIZE,
+    batch_size: Annotated[int, typer.Option(help="Texts per batch")] = embed.BATCH_SIZE,
     shard_size: Annotated[int, typer.Option(help="Chunks per saved shard")] = embed.SHARD_SIZE,
+    device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "cuda",
 ) -> None:
-    """Embed all chunks with bge-m3 on the GPU; resumes from the shards already saved."""
+    """Embed all chunks with bge-m3 (GPU by default); resumes from the shards already saved."""
     count = token_counter(TOKENIZER)
     chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **CHUNK_SETTINGS)
     for lang in ("fr", "en"):
@@ -65,7 +66,7 @@ def embed_cmd(
         chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
     typer.echo(f"{len(chunks)} chunks")
 
-    embedder = embed.SentenceTransformerEmbedder()
+    embedder = embed.SentenceTransformerEmbedder(device)
     name = f"bge-m3-{run}"
     shard_dir = EMBEDDINGS / name
     started = time.monotonic()
@@ -93,6 +94,23 @@ def embed_cmd(
         },
     )
     typer.echo(f"{rows} rows written, {computed} computed in {seconds}s")
+
+
+@app.command("sanity")
+def sanity_cmd(
+    run: Annotated[str, typer.Option(help="Run name of the embeddings file")] = "main",
+    device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
+) -> None:
+    """Rank the embedded chunks against known questions; exit 1 if an expected article misses."""
+    uids, vectors = sanity.load(EMBEDDINGS / f"bge-m3-{run}.parquet")
+    numbers = {a.uid: a.article_num for a in legi.to_articles(legi.read(PARQUET))}
+    labels = [numbers.get(u, u) for u in uids]
+    results = sanity.rank(labels, vectors, embed.SentenceTransformerEmbedder(device))
+    for r in results:
+        typer.echo(f"{'PASS' if r.ok else 'FAIL'}  {r.question}  (expected {r.expected})")
+        for label, score in r.hits:
+            typer.echo(f"    {score:.3f}  {label}")
+    raise typer.Exit(0 if all(r.ok for r in results) else 1)
 
 
 @app.command()
