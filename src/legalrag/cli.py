@@ -1,10 +1,12 @@
+import time
+from collections import Counter
 from pathlib import Path
 from typing import Annotated
 
 import pandas as pd
 import typer
 
-from legalrag import fetch, verify
+from legalrag import embed, fetch, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -13,8 +15,13 @@ app = typer.Typer(no_args_is_help=True)
 RAW = Path("data/raw")
 PARQUET = RAW / "legi_vincegx33_train.parquet"
 TOKENIZER = RAW / "bge-m3-tokenizer.json"
+EMBEDDINGS = Path("data/embeddings")
 PROFILES = Path("docs/data_profiles")
 SOURCES = ("legi", "gdpr")
+# The decided defaults (EXPERIMENT.md); they define the chunk set that gets embedded.
+# style "last_k": header shows only the last k section titles; max_tokens: split above it;
+# collapse_repeats: merge consecutive same-label levels (see chunking/header.py).
+CHUNK_SETTINGS = {"style": "last_k", "k": 3, "max_tokens": 1024, "collapse_repeats": False}
 
 
 def _check_source(source: str) -> None:
@@ -40,6 +47,52 @@ def fetch_cmd(
                 typer.echo(f"FAILED     {f.name}: {e}")
                 failed = True
     raise typer.Exit(1 if failed else 0)
+
+
+@app.command("embed")
+def embed_cmd(
+    run: Annotated[str, typer.Option(help="Run name, used in the output file names")] = "main",
+    limit: Annotated[int | None, typer.Option(help="Trial: embed only about this many chunks")] = None,
+    batch_size: Annotated[int, typer.Option(help="Texts per GPU batch")] = embed.BATCH_SIZE,
+    shard_size: Annotated[int, typer.Option(help="Chunks per saved shard")] = embed.SHARD_SIZE,
+) -> None:
+    """Embed all chunks with bge-m3 on the GPU; resumes from the shards already saved."""
+    count = token_counter(TOKENIZER)
+    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **CHUNK_SETTINGS)
+    for lang in ("fr", "en"):
+        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **CHUNK_SETTINGS)
+    if limit:
+        chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
+    typer.echo(f"{len(chunks)} chunks")
+
+    embedder = embed.SentenceTransformerEmbedder()
+    name = f"bge-m3-{run}"
+    shard_dir = EMBEDDINGS / name
+    started = time.monotonic()
+    computed = embed.embed_chunks(
+        chunks, embedder, shard_dir, shard_size, batch_size,
+        progress=lambda done, total: typer.echo(f"embedded {done}/{total}"),
+    )
+    seconds = round(time.monotonic() - started)
+    info = embedder.info()
+    rows = embed.merge_shards(
+        chunks, shard_dir, EMBEDDINGS / f"{name}.parquet", embed.MODEL, info["model_revision"]
+    )
+    embed.write_run_json(
+        EMBEDDINGS / f"{name}.run.json",
+        {
+            **info,
+            "git_commit": embed.git_commit(),
+            "chunk_settings": CHUNK_SETTINGS,
+            "batch_size": batch_size,
+            "max_seq_length": embed.MAX_SEQ_LENGTH,
+            "rows": rows,
+            "computed_in_this_invocation": computed,
+            "seconds_this_invocation": seconds,
+            "rows_by_corpus": dict(Counter(c.article_uid.rpartition(":")[0] for c in chunks)),
+        },
+    )
+    typer.echo(f"{rows} rows written, {computed} computed in {seconds}s")
 
 
 @app.command()
