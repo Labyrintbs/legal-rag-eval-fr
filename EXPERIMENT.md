@@ -136,3 +136,8 @@ Entry template:
 - Sizes: `chunk_embeddings` 162 MB including the 95 MB index, `chunks` 38 MB, `articles` 32 MB, keyword index 6 MB.
 - Observed, not a design rule: a one-shot query with the model passed as a parameter still used the partial index. A prepared statement reused many times may build a generic plan that cannot; not tested.
 - Not done: `make fresh-rebuild` (needs a drop of the database, to be confirmed with the user), the sanity check with the model on the Mac, Loop 4.
+
+## 2026-10-22: stemming cases and index versus exact scan (measured for the 0c decisions)
+- Change: none in code. Two measurements on the loaded database.
+- French dictionary (`french_stem`), stems: démission -> `démiss`; démissions -> `dem`; démissionner -> `démission`; commission -> `commiss`; commissions -> `comm`; missions -> `mission`; finissions -> `fin`; licenciement(s) -> `licenci`; salarié(s) -> `salari`; contrat(s) -> `contrat`. Reading: words ending in "-issions" lose that ending as if they were a verb form like "finissions" (inference from these examples, the rule itself was not read). Singular and plural of most words still agree; the "-ission(s)" words do not.
+- Vector search, 100 random stored vectors as queries, top 10, same Python harness: HNSW index median 2.30 ms, exact scan (index off) median 1.01 ms; the index returned the same 10 chunks as the exact scan in 100 of 100 queries. At 12,136 vectors the index brings no speed gain; it is kept for larger corpora and the plan's production design. (The 0.77 ms in the entry above was the execution time inside the database, without the Python round trip.)
