@@ -101,3 +101,7 @@ Entry template:
 ## 2026-10-21: Loop 3 split between machines
 - Change: none in code. Decision (user): the bge-m3 vectors are computed on the Windows laptop (RTX 3060, 6 GB), not on the Mac. Handoff written in `docs/handoff/loop3_windows_embedding.md`, project rules in `CLAUDE.md`.
 - Plan: the Windows session builds `legalrag embed` (output keyed by article_uid and chunk_index, with embed_text_hash), the Mac later creates the database and loads the vectors.
+
+## 2026-10-22: fetch command for the raw data
+- Change: `legalrag fetch` (`src/legalrag/fetch.py`, `make fetch`) downloads the four raw files and checks their SHA-256; handoff sections 5.1 to 5.3 rewritten with the exact access, fetch and processing steps. 3 new tests (62 in total).
+- Measured effect: run against the real sources into an empty folder, all four files downloaded in about 6 seconds and matched the recorded checksums, so the upstream data is unchanged as of 2026-10-22. A second run reports `present` for all four. Building all chunks from the raw files gives 12,136 chunks with unique keys, max 1,023 tokens, in about 23 seconds and 1.8 GB peak memory on the Mac.

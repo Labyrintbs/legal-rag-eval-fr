@@ -1,6 +1,17 @@
 # Handoff: Loop 3 embeddings on the Windows laptop
 
-Written 2026-10-21 on the Mac, at commit `91b6927`. Read this file fully, then `CLAUDE.md` (working rules) and `EXPERIMENT.md` (every data and chunking change so far). Facts marked "unverified" come from memory, not from a check.
+Written 2026-10-21 on the Mac, data sections rewritten 2026-10-22 (commit after `a142546`). Read this file fully, then `CLAUDE.md` (working rules) and `EXPERIMENT.md` (every data and chunking change so far). Facts marked "unverified" come from memory, not from a check.
+
+## 0. Quick path (details in the sections below)
+```
+# once: WSL2 + NVIDIA driver + uv + git login (section 4), then
+git clone https://github.com/Labyrintbs/legal-rag-eval-fr.git ~/legal-rag-eval-fr && cd ~/legal-rag-eval-fr
+uv sync --extra embed            # then check torch.cuda.is_available() (section 4, step 6)
+make fetch                       # 4 raw files into data/raw, checksums verified (section 5.2)
+make verify SOURCE=legi          # all PASS
+make verify SOURCE=gdpr          # all PASS
+# build and run the embedding job (section 6), run the checks (section 7), hand back (section 8)
+```
 
 ## 1. What this project is
 A question-answering service over French labour law (Code du travail) and the GDPR, with measured evaluation. French questions first. Answers will cite articles and refuse when the corpus cannot answer. The corpus is built in step 0a (ingest) in four loops, each ending with a review gate where the user approves before the next one starts:
@@ -25,11 +36,11 @@ Hardware of the Windows laptop: Lenovo Legion R9000P 2021H, Ryzen 7 5800H, NVIDI
 ## 3. State of the repository
 - Repo: https://github.com/Labyrintbs/legal-rag-eval-fr (public; never commit raw data, keys, `.env`, or the embeddings file).
 - Python 3.12 with `uv`; `uv sync` installs the light set; `uv sync --extra embed` adds `sentence-transformers` and PyTorch for this job.
-- 59 tests pass (`uv run pytest`). `make verify SOURCE=legi` and `make verify SOURCE=gdpr` pass. On Windows use WSL2, where `make` works.
+- 62 tests pass (`uv run pytest`). `make verify SOURCE=legi` and `make verify SOURCE=gdpr` pass. On Windows use WSL2, where `make` works.
 - Code that matters for you:
   - `src/legalrag/sources/legi.py` (Code du travail reader), `src/legalrag/sources/gdpr.py` (GDPR reader, French and English)
   - `src/legalrag/ingest.py`: `build_chunks(articles, count_tokens, style="last_k", k=3, max_tokens=1024, collapse_repeats=False)` returns `Chunk` objects (`src/legalrag/models.py`). The text to embed is `chunk.embed_text` (header, a line break, then the body).
-  - `src/legalrag/cli.py`: Typer commands `profile` and `verify`; add the embedding command here.
+  - `src/legalrag/cli.py`: Typer commands `fetch`, `profile` and `verify`; add the embedding command here. `src/legalrag/fetch.py` holds the download list and checksums.
 - Default chunk settings (decisions made, see `EXPERIMENT.md`): one article = one chunk, split only above 1,024 bge-m3 tokens, no overlap, header style `last_k` with k=3, `collapse_repeats` off. Use exactly these defaults for the run; they define the chunk set.
 - Expected chunk counts with those defaults: Code du travail 11,563 (from 11,433 articles), GDPR French 292 (from 99 articles and 173 recitals), GDPR English 281. Total 12,136. Largest chunk is 1,023 tokens (counted without special tokens).
 
@@ -40,7 +51,7 @@ Hardware of the Windows laptop: Lenovo Legion R9000P 2021H, Ryzen 7 5800H, NVIDI
 4. In Ubuntu: `sudo apt update && sudo apt install -y make git`, install uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`), and set up GitHub access for pushing (for example `gh auth login`).
 5. Clone inside the Linux filesystem, not under `/mnt/c`: `git clone https://github.com/Labyrintbs/legal-rag-eval-fr.git ~/legal-rag-eval-fr`.
 6. `cd ~/legal-rag-eval-fr && uv sync --extra embed`. Then check `uv run python -c "import torch; print(torch.cuda.is_available())"` prints `True`. If it prints `False`, the PyTorch wheel has no CUDA: pin the CUDA index in `pyproject.toml` as described in https://docs.astral.sh/uv/guides/integration/pytorch/ (needs uv 0.5.3 or newer) and record the change in `EXPERIMENT.md`.
-7. Run `uv run pytest` and expect 59 passed (the real-tokenizer tests are skipped until the data in section 5 is present).
+7. Run `uv run pytest` and expect 62 passed (the real-tokenizer tests are skipped until the data in section 5 is present).
 
 ### Install the user's global rules on the Windows laptop
 `docs/handoff/global_CLAUDE.md` is a verbatim copy of the user's global Claude Code instructions (comments, commit messages, tests, delete commands, how to explain). Install it once, in the place where Claude Code runs (inside WSL, `~` is the Ubuntu home):
@@ -52,19 +63,77 @@ cp ~/legal-rag-eval-fr/docs/handoff/global_CLAUDE.md ~/.claude/CLAUDE.md
 
 If an `~/.claude/CLAUDE.md` already exists there, show it to the user and ask before replacing it. If Claude Code runs natively on Windows instead, the same file goes to `%USERPROFILE%\.claude\CLAUDE.md`. It then applies to every project on that machine. Git identity and push access are separate: see the user's note in the conversation (`git config --global user.name` and `user.email`, then `gh auth login` and `gh auth setup-git`).
 
-## 5. Get the raw data
-The `data/` folder is not in git. Either copy the four files from the Mac's `data/raw/` or download them. Check the SHA-256 of each (`sha256sum`).
+## 5. Data access, fetch and processing
 
-| File in `data/raw/` | SHA-256 | Source |
+### 5.1 Where the data comes from (no account, no key, no token)
+| Data | Publisher and licence | Size | What it is |
+|---|---|---|---|
+| Code du travail | Hugging Face dataset `VinceGx33/legi-french-law-2025`: a community extract of the official DILA LEGI dump of 2025-07-13, articles in force only. Etalab-2.0 / Licence Ouverte | 263 MB parquet | 367,075 rows covering many French codes and texts. We keep the rows whose `texte_titre` is "code du travail": 11,433 articles |
+| GDPR, French and English | EU Publications Office, CELEX 32016R0679, the text as published in OJ L 119 of 4 May 2016. CC BY 4.0 | 0.8 to 0.9 MB each (XHTML) | 99 articles and 173 recitals per language |
+| bge-m3 tokenizer | Hugging Face `BAAI/bge-m3`, MIT | 17 MB | Only counts tokens, to apply the 1,024-token chunk limit |
+
+The bge-m3 model weights (about 2.3 GB, unverified) are not fetched by us: `sentence-transformers` downloads them on first use into the Hugging Face cache (`~/.cache/huggingface`).
+
+Network access is all you need. The GDPR endpoint answers only requests that send a browser-like User-Agent and an `Accept` header; the fetch code already does.
+
+### 5.2 Fetch
+```
+make fetch            # same as: uv run legalrag fetch   (all four files into data/raw/)
+uv run legalrag fetch gdpr          # one source: legi, gdpr or tokenizer
+```
+For each file it prints one line:
+- `present`: the file is already in `data/raw/` and its SHA-256 matches.
+- `downloaded`: downloaded to `<name>.part`, SHA-256 matched, renamed.
+- `FAILED`: exit code 1. A checksum mismatch keeps the new file as `<name>.mismatch` and overwrites nothing.
+
+Expected output on a fresh clone: four lines, `downloaded` for each, in this order: `legi_vincegx33_train.parquet`, `gdpr_fr.xhtml`, `gdpr_en.xhtml`, `bge-m3-tokenizer.json`. Verified on 2026-10-22 on the Mac: all four downloaded in about 6 seconds and matched. A second run prints `present` four times.
+
+You may also copy the four files from the Mac's `data/raw/` into `data/raw/` and run `make fetch` to check them.
+
+| File | Bytes | SHA-256 (test oracle, defined in `src/legalrag/fetch.py`) |
 |---|---|---|
-| `legi_vincegx33_train.parquet` (262,688,820 bytes) | `6b4e2fde6daab5fa92bccec533037a33e27f4df353b4f7e647cc356f3018287b` | `https://huggingface.co/datasets/VinceGx33/legi-french-law-2025/resolve/refs%2Fconvert%2Fparquet/default/train/0000.parquet` |
-| `gdpr_fr.xhtml` (876,858 bytes) | `27a2248cf0cf7c79a3ec7eae30b6e871817230d9f577632fed915181642144c2` | `curl -sL -A "Mozilla/5.0 (research)" -H "Accept: application/xhtml+xml" -H "Accept-Language: fr" -o data/raw/gdpr_fr.xhtml https://publications.europa.eu/resource/celex/32016R0679` |
-| `gdpr_en.xhtml` (806,864 bytes) | `962539af03738bf552319ff4ce42d69e5f95a576307c4dfed7bf87e81b646b9d` | same command with `Accept-Language: en` |
-| `bge-m3-tokenizer.json` (17,098,108 bytes) | `21106b6d7dab2952c1d496fb21d5dc9db75c28ed361a05f5020bbba27810dd08` | `https://huggingface.co/BAAI/bge-m3/resolve/main/tokenizer.json` |
+| `legi_vincegx33_train.parquet` | 262,688,820 | `6b4e2fde6daab5fa92bccec533037a33e27f4df353b4f7e647cc356f3018287b` |
+| `gdpr_fr.xhtml` | 876,858 | `27a2248cf0cf7c79a3ec7eae30b6e871817230d9f577632fed915181642144c2` |
+| `gdpr_en.xhtml` | 806,864 | `962539af03738bf552319ff4ce42d69e5f95a576307c4dfed7bf87e81b646b9d` |
+| `bge-m3-tokenizer.json` | 17,098,108 | `21106b6d7dab2952c1d496fb21d5dc9db75c28ed361a05f5020bbba27810dd08` |
 
-If a checksum differs, the upstream file changed. Do not continue silently: run `make verify SOURCE=legi` and `make verify SOURCE=gdpr`; they check the counts and the token statistics, and the expected chunk total in section 3 must still match. Tell the user what changed.
+If a download fails:
+- HTTP 403 or 429 from Hugging Face: wait and retry.
+- A checksum mismatch means the upstream file changed. Stop, tell the user, and run the verify commands below to see what moved. Do not edit the expected checksums to make it pass without the user's approval.
 
-Then `make verify SOURCE=legi` and `make verify SOURCE=gdpr` must both pass before you embed anything.
+### 5.3 Processing: from raw files to chunks to vectors
+```
+data/raw/               the four files from fetch                    (gitignored)
+data/embeddings/        the output of the embedding job              (gitignored)
+docs/data_profiles/     profiles and spot checks                     (committed, already written)
+```
+What each stage does, and what already exists:
+
+1. **Read** (exists). `legi.read(parquet)` keeps the Code du travail rows (11,433); `legi.to_articles` turns them into `Article` records: article number stripped, body whitespace normalised, `kind` article or annex, uid `code_travail:fr:<LEGIARTI…>`, `section_path` kept exactly as in the source. `gdpr.parse(xhtml, lang)` gives 99 articles and 173 recitals per language (uids `rgpd:<lang>:art_N` and `rgpd:<lang>:rct_N`); numbered paragraphs are separated by a blank line.
+2. **Chunk** (exists). `build_chunks(articles, count_tokens)` makes one chunk per article, or several when the text plus header exceeds 1,024 tokens. `chunk.embed_text` is the header line, a line break, then the body. `count_tokens` comes from `token_counter(data/raw/bge-m3-tokenizer.json)`.
+3. **Verify** (exists). `make verify SOURCE=legi` and `make verify SOURCE=gdpr` print PASS or FAIL per check. Expected: `11433 articles, 11563 chunks` for legi; `fr: 272 units, 292 chunks` and `en: 272 units, 281 chunks` for gdpr; every line PASS, exit code 0. Both must pass before embedding.
+4. **Embed** (you build it, section 6). It takes the chunks of the three corpora, computes vectors, writes the output file.
+
+This snippet builds the complete chunk set. It was run on the Mac on 2026-10-22: it printed 12,136 chunks, 12,136 unique (`article_uid`, `chunk_index`) keys and a maximum of 1,023 tokens, in about 23 seconds with 1.8 GB peak memory (the parquet file is the heavy part).
+
+```python
+from pathlib import Path
+
+from legalrag.ingest import build_chunks, token_counter
+from legalrag.sources import gdpr, legi
+
+raw = Path("data/raw")
+count = token_counter(raw / "bge-m3-tokenizer.json")
+corpora = {
+    "code_travail_fr": legi.to_articles(legi.read(raw / "legi_vincegx33_train.parquet")),
+    "rgpd_fr": gdpr.parse(raw / "gdpr_fr.xhtml", "fr"),
+    "rgpd_en": gdpr.parse(raw / "gdpr_en.xhtml", "en"),
+}
+chunks = [c for arts in corpora.values() for c in build_chunks(arts, count)]
+assert len(chunks) == 12_136
+```
+
+Chunk identity across machines: the key is (`article_uid`, `chunk_index`), and `embed_text_hash` is the SHA-256 of `chunk.embed_text` encoded as UTF-8. The Mac recomputes both from the same code, so a changed chunking would be detected.
 
 ## 6. The embedding job to build
 Add a command `legalrag embed` (Makefile target `make embed`). Design, from the step 0a spec:

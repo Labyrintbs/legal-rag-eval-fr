@@ -1,6 +1,9 @@
-.PHONY: db-up db-down profile verify test lint
+.PHONY: db-up db-down fetch profile verify test lint
 
 SOURCE ?= legi
+
+fetch:
+	uv run legalrag fetch
 
 profile:
 	uv run legalrag profile $(SOURCE)

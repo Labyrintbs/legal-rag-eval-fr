@@ -17,10 +17,11 @@ Attribution: see [NOTICE.md](NOTICE.md).
 
 ```
 uv sync
+make fetch     # raw data into data/raw/ (gitignored), checksums verified
 make db-up
 ```
 
-Needs Docker and [uv](https://docs.astral.sh/uv/). Raw data goes in `data/raw/` (gitignored).
+Needs Docker and [uv](https://docs.astral.sh/uv/).
 
 ## Tracking
 

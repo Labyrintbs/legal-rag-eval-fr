@@ -1,9 +1,10 @@
 from pathlib import Path
+from typing import Annotated
 
 import pandas as pd
 import typer
 
-from legalrag import verify
+from legalrag import fetch, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -19,6 +20,26 @@ SOURCES = ("legi", "gdpr")
 def _check_source(source: str) -> None:
     if source not in SOURCES:
         raise typer.BadParameter(f"source must be one of {SOURCES}")
+
+
+@app.command("fetch")
+def fetch_cmd(
+    source: Annotated[str, typer.Argument(help="legi, gdpr, tokenizer or all")] = "all",
+    dest: Annotated[Path, typer.Option(help="Folder for the raw files")] = RAW,
+) -> None:
+    """Download raw files into data/raw and check their SHA-256 (skips files already correct)."""
+    names = list(fetch.SOURCES) if source == "all" else [source]
+    if any(n not in fetch.SOURCES for n in names):
+        raise typer.BadParameter(f"source must be one of {[*fetch.SOURCES, 'all']}")
+    failed = False
+    for name in names:
+        for f in fetch.SOURCES[name]:
+            try:
+                typer.echo(f"{fetch.fetch_file(f, dest):<10} {f.name}")
+            except (fetch.ChecksumError, OSError) as e:
+                typer.echo(f"FAILED     {f.name}: {e}")
+                failed = True
+    raise typer.Exit(1 if failed else 0)
 
 
 @app.command()
