@@ -120,3 +120,8 @@ Entry template:
 - Sanity check now in the repo: `legalrag sanity` (`make sanity`, `src/legalrag/sanity.py`, 3 tests with a stub embedder; 73 tests in total). On the real file it prints 6 PASS, same scores as the scratch script. The 6 questions are short and share words with their articles, so a pass means "vectors not broken", not retrieval quality; realistic questions come in Loop 4 and step 0b.
 - Device choice: `--device cuda|cpu|auto` on `embed` (default cuda) and `sanity` (default auto). CPU uses float32 instead of fp16. Measured: `sanity --device cpu` gives the same 6 PASS in 19 s wall on this machine (including model load); a full CPU embedding run was not timed. Not run on the Mac.
 - Not done: the Mac side (database, load, index) is untouched.
+
+## 2026-10-22: Mac check of the Windows embeddings (Loop 3)
+- Change: none in code. Release `embeddings-bge-m3-main-v1` downloaded into `data/embeddings/` and compared with chunks rebuilt on the Mac from the raw files.
+- Measured effect: both SHA-256 values match the release notes; 73 tests pass and ruff is clean on the Mac; `uv lock --check` is consistent. The Mac builds the same 12,136 keys as the file, and all 12,136 `embed_text_hash` values match, so both machines produce identical chunks. Vectors: 1,024 dimensions, all finite, norms 0.9999999 to 1.0000001, no all-zero rows, no duplicate vectors, one model revision (5617a9f6). Independent signal: the same GDPR chunk in French and in English has a median cosine of 0.865 (n=281, minimum 0.748). The two Code du travail articles with identical bodies (L1232-3, L1233-12) have cosine 0.849, since their headers differ.
+- Not yet done: the sanity command on the Mac (needs torch there), the database part.
