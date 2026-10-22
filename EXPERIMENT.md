@@ -105,3 +105,9 @@ Entry template:
 ## 2026-10-22: fetch command for the raw data
 - Change: `legalrag fetch` (`src/legalrag/fetch.py`, `make fetch`) downloads the four raw files and checks their SHA-256; handoff sections 5.1 to 5.3 rewritten with the exact access, fetch and processing steps. 3 new tests (62 in total).
 - Measured effect: run against the real sources into an empty folder, all four files downloaded in about 6 seconds and matched the recorded checksums, so the upstream data is unchanged as of 2026-10-22. A second run reports `present` for all four. Building all chunks from the raw files gives 12,136 chunks with unique keys, max 1,023 tokens, in about 23 seconds and 1.8 GB peak memory on the Mac.
+
+## 2026-10-22: Windows laptop setup and CUDA wheel (Loop 3)
+- Change: `pyproject.toml` pins `torch` to the PyTorch CUDA 12.6 index (`pytorch-cu126`) on Linux only, and `torch` is listed in the `embed` extra so uv applies the pin. The Mac install is unchanged.
+- Why: the default torch 2.14.1 wheel is built for CUDA 13.0; the laptop's Windows driver (546.30, CUDA 12.3) is too old for it, so `torch.cuda.is_available()` was False.
+- Measured effect: with `2.14.1+cu126`, `torch.cuda.is_available()` is True on the RTX 3060 Laptop GPU (CUDA 12.6 wheel on a 12.3 driver, through minor-version compatibility), and a 2048x2048 fp16 matrix product runs on the GPU. 57 tests pass, 2 skipped (they need the raw data); ruff passes. About 5.3 GB of the 6 GB VRAM was free.
+- Setup on this machine: WSL2 Ubuntu with 10 GB RAM (`.wslconfig`), `make`, `uv` 0.13.4, `gh` 2.103.0. Raw data not yet in place.
