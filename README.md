@@ -19,6 +19,10 @@ Attribution: see [NOTICE.md](NOTICE.md).
 uv sync
 make fetch     # raw data into data/raw/ (gitignored), checksums verified
 make db-up
+make migrate   # create the tables (DATABASE_URL, default: the compose database)
+make load-chunks
+make load-embeddings   # needs data/embeddings/bge-m3-main.parquet, see the Releases page
+make db-check
 ```
 
 Needs Docker and [uv](https://docs.astral.sh/uv/).

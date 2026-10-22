@@ -164,7 +164,7 @@ Add a command `legalrag embed` (Makefile target `make embed`). Design, from the 
 3. The embeddings file and `run.json` (about 50 MB) go to the Mac as assets of a public GitHub Release, not in git: `gh release create embeddings-bge-m3-<run>-v1 data/embeddings/bge-m3-<run>.parquet data/embeddings/bge-m3-<run>.run.json` with the SHA-256 values in the notes. On the Mac: `gh release download <tag> -D data/embeddings`, then compare `sha256sum`. A direct copy or a private cloud drive also work.
 4. Stop at the review gate: show the user the checks, the sanity results and the timing, and wait for approval.
 
-## 9. What the Mac does afterwards (part B, for context)
+## 9. What the Mac does afterwards (part B, for context; done 2026-10-22, see `EXPERIMENT.md`)
 Docker Compose with `pgvector/pgvector:0.8.7-pg16` (`make db-up`, tested earlier). Alembic migrations for the accepted schema:
 - `corpus_versions`, `articles`, `chunking_runs`, `chunks` (with a keyword-search column `tsv`), `chunk_embeddings` keyed by (chunk id, model) with `vector(1024)`.
 - Load articles and chunks, load the vectors by matching (`article_uid`, `chunk_index`) and checking `embed_text_hash`, then build a partial HNSW index with cosine operators for `model = 'BAAI/bge-m3'` (queries must repeat that literal for the planner to use it).

@@ -9,6 +9,7 @@ dependencies = [
     "beautifulsoup4",
     "lxml",
     "pandas",
+    "pgvector>=0.5.1",
     "psycopg[binary]>=3",
     "pyarrow",
     "pydantic>=2",

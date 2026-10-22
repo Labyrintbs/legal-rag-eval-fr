@@ -1,6 +1,18 @@
-.PHONY: db-up db-down fetch embed sanity profile verify test lint
+.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity profile verify test lint
 
 SOURCE ?= legi
+
+migrate:
+	uv run legalrag migrate
+
+load-chunks:
+	uv run legalrag load-chunks
+
+load-embeddings:
+	uv run legalrag load-embeddings
+
+db-check:
+	uv run legalrag db-check
 
 fetch:
 	uv run legalrag fetch

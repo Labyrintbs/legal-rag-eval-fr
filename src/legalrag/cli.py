@@ -6,7 +6,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import embed, fetch, sanity, verify
+from legalrag import db, dbcheck, embed, fetch, sanity, store, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -111,6 +111,70 @@ def sanity_cmd(
         for label, score in r.hits:
             typer.echo(f"    {score:.3f}  {label}")
     raise typer.Exit(0 if all(r.ok for r in results) else 1)
+
+
+def _all_articles() -> dict[tuple[str, str], list]:
+    return {
+        ("code_travail", "fr"): legi.to_articles(legi.read(PARQUET)),
+        ("rgpd", "fr"): gdpr.parse(RAW / "gdpr_fr.xhtml", "fr"),
+        ("rgpd", "en"): gdpr.parse(RAW / "gdpr_en.xhtml", "en"),
+    }
+
+
+@app.command("migrate")
+def migrate_cmd() -> None:
+    """Create or update the database schema (DATABASE_URL)."""
+    db.migrate()
+    typer.echo("schema up to date")
+
+
+@app.command("load-chunks")
+def load_chunks_cmd(
+    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+) -> None:
+    """Load articles and chunks (default chunk settings) into Postgres; safe to re-run."""
+    count = token_counter(TOKENIZER)
+    corpora = _all_articles()
+    with db.connect() as conn:
+        for (code, lang), articles in corpora.items():
+            corpus_id = store.register_corpus(conn, code, lang, RAW, len(articles))
+            store.load_articles(conn, articles, corpus_id)
+        run_id = store.get_or_create_run(
+            conn, run, CHUNK_SETTINGS, "BAAI/bge-m3",
+            "code_travail: sentences; rgpd: paragraphs, then points, then sentences",
+            embed.git_commit(),
+        )
+        chunks = [c for arts in corpora.values() for c in build_chunks(arts, count, **CHUNK_SETTINGS)]
+        inserted = store.load_chunks(conn, run_id, chunks)
+    typer.echo(f"{sum(len(a) for a in corpora.values())} articles, {inserted} new chunks of {len(chunks)}")
+
+
+@app.command("load-embeddings")
+def load_embeddings_cmd(
+    file: Annotated[Path, typer.Option(help="Vectors file from `embed`")] = EMBEDDINGS / "bge-m3-main.parquet",
+    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+) -> None:
+    """Load the vectors and build the vector index."""
+    with db.connect() as conn:
+        run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
+        if run_id is None:
+            raise typer.BadParameter(f"no chunking run named {run!r}; run load-chunks first")
+        rows = store.load_embeddings(conn, run_id[0], file)
+        store.build_hnsw_index(conn)
+    typer.echo(f"{rows} vectors loaded, index {store.HNSW_INDEX} ready")
+
+
+@app.command("db-check")
+def db_check_cmd(
+    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    expected_chunks: Annotated[int, typer.Option(help="Expected chunk count")] = 12_136,
+) -> None:
+    """Check what is stored in Postgres: counts, vectors, index use."""
+    with db.connect() as conn:
+        results = dbcheck.db_checks(conn, run, expected_chunks)
+    for name, ok, detail in results:
+        typer.echo(f"{'PASS' if ok else 'FAIL'}  {name}  {detail}")
+    raise typer.Exit(0 if all(ok for _, ok, _ in results) else 1)
 
 
 @app.command()
