@@ -161,7 +161,7 @@ Add a command `legalrag embed` (Makefile target `make embed`). Design, from the 
 ## 8. Finish and hand back
 1. Log the run in `EXPERIMENT.md` (date, what changed, measured effect: time, VRAM, counts, sanity results, commit hash).
 2. Commit the code, tests and docs (not the data), push, and tell the user.
-3. The user copies the embeddings file and `run.json` to the Mac (about 50 MB; do not put them in git, the repo is public). A private cloud drive or a direct copy both work.
+3. The embeddings file and `run.json` (about 50 MB) go to the Mac as assets of a public GitHub Release, not in git: `gh release create embeddings-bge-m3-<run>-v1 data/embeddings/bge-m3-<run>.parquet data/embeddings/bge-m3-<run>.run.json` with the SHA-256 values in the notes. On the Mac: `gh release download <tag> -D data/embeddings`, then compare `sha256sum`. A direct copy or a private cloud drive also work.
 4. Stop at the review gate: show the user the checks, the sanity results and the timing, and wait for approval.
 
 ## 9. What the Mac does afterwards (part B, for context)

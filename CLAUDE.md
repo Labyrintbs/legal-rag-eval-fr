@@ -1,6 +1,6 @@
 # Project rules for Claude sessions
 
-French legal RAG (Code du travail + GDPR) with measured evaluation. The repo is public: no secrets, raw data, personal information or embeddings in git.
+French legal RAG (Code du travail + GDPR) with measured evaluation. The repo is public: no secrets, raw data, personal information or embeddings in git. Embedding files may be shared only as GitHub Release assets (user decision 2026-10-22), never committed.
 
 To continue Loop 3 on the Windows laptop, read `docs/handoff/loop3_windows_embedding.md` first. Every data-processing or chunking change is logged with its measured effect in `EXPERIMENT.md`.
 
