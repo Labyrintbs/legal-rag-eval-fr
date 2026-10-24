@@ -151,3 +151,7 @@ Entry template:
 - Insert, 1,000 rows in one batch into the loaded table: both indexes 4.0 s, 5.1 s, 5.6 s; GIN only 0.25, 0.40, 0.26 s; no index 0.25, 0.26, 0.26 s. Single-row insert with both indexes: median 5.0, 5.9, 6.1 ms. The HNSW index accounts for almost all of the insert cost.
 - Delete 1,000 rows: 11, 48, 23 ms. Table and index sizes did not change after the delete, nor after VACUUM (rows are marked dead; the files do not shrink). VACUUM took 18 s, 83 s, 0.3 s; the last value is unexplained (autovacuum may have run first, not checked).
 - Memory: the first attempt asked for a 2 GB work area for the parallel index build and failed because Docker gives Postgres 64 MB of shared memory; that was my setting, not a need. The HNSW graph itself needs about its index size in memory (94 MB for the real data).
+
+## 2026-10-24: load-chunks refuses a tree with uncommitted changes
+- Change: `load-chunks` stops with exit code 1 when the git working tree is not clean; `--allow-dirty` loads anyway and the stored `code_version` carries the flag. `embed.DIRTY` names the flag text. 3 new tests (86 in total).
+- Why: the run `default` was stored with `code_version` `7799a18… (uncommitted changes)`, because the loader was not committed yet when it ran. A stored run is never changed, so its `code_version` should name the exact commit. The data itself is right (its chunk fingerprints match the Windows embedding run exactly); only the provenance record is imprecise, and it stays as it is.

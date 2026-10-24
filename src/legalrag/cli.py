@@ -131,8 +131,16 @@ def migrate_cmd() -> None:
 @app.command("load-chunks")
 def load_chunks_cmd(
     run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    allow_dirty: Annotated[
+        bool, typer.Option(help="Load from a tree with uncommitted changes (recorded as such)")
+    ] = False,
 ) -> None:
     """Load articles and chunks (default chunk settings) into Postgres; safe to re-run."""
+    commit = embed.git_commit()
+    # A stored run is never changed, so its code_version must name the exact code that made it.
+    if commit.endswith(embed.DIRTY) and not allow_dirty:
+        typer.echo("Uncommitted changes: commit first, or pass --allow-dirty to record the flag.")
+        raise typer.Exit(1)
     count = token_counter(TOKENIZER)
     corpora = _all_articles()
     with db.connect() as conn:
@@ -142,7 +150,7 @@ def load_chunks_cmd(
         run_id = store.get_or_create_run(
             conn, run, CHUNK_SETTINGS, "BAAI/bge-m3",
             "code_travail: sentences; rgpd: paragraphs, then points, then sentences",
-            embed.git_commit(),
+            commit,
         )
         chunks = [c for arts in corpora.values() for c in build_chunks(arts, count, **CHUNK_SETTINGS)]
         inserted = store.load_chunks(conn, run_id, chunks)

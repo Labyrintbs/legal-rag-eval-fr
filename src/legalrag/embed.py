@@ -20,6 +20,7 @@ SPECIAL_TOKENS = 2  # the model adds a start and an end token to every text
 SHARD_SIZE = 1000
 BATCH_SIZE = 16
 NORM_TOLERANCE = 1e-3
+DIRTY = " (uncommitted changes)"  # appended to the git hash when the working tree is not clean
 
 
 class Embedder(Protocol):
@@ -154,7 +155,7 @@ def git_commit() -> str:
         out = subprocess.run(["git", *args], check=True, capture_output=True, text=True)
         return out.stdout.strip()
 
-    return git("rev-parse", "HEAD") + (" (uncommitted changes)" if git("status", "--short") else "")
+    return git("rev-parse", "HEAD") + (DIRTY if git("status", "--short") else "")
 
 
 def write_run_json(path: Path, info: dict) -> None:
