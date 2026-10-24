@@ -155,3 +155,9 @@ Entry template:
 ## 2026-10-24: load-chunks refuses a tree with uncommitted changes
 - Change: `load-chunks` stops with exit code 1 when the git working tree is not clean; `--allow-dirty` loads anyway and the stored `code_version` carries the flag. `embed.DIRTY` names the flag text. 3 new tests (86 in total).
 - Why: the run `default` was stored with `code_version` `7799a18… (uncommitted changes)`, because the loader was not committed yet when it ran. A stored run is never changed, so its `code_version` should name the exact commit. The data itself is right (its chunk fingerprints match the Windows embedding run exactly); only the provenance record is imprecise, and it stays as it is.
+
+## 2026-10-24: known limits of the splitters (to check in step 0c)
+- Change: none in code; a note for debugging. If the evaluation shows weak retrieval on split articles, look at these first and re-split (a new chunking run).
+- `split_sentences` cuts at `.`, `!` or `?` + whitespace + capital letter or digit, except after a single capital letter or a listed abbreviation. Read from the code, not measured on the data: the word before the stop is taken up to the last space, so "l'art." and "(art." are not recognised and are cut; "Mme." and "MM." are not on the list; a sentence starting with a lowercase letter is never cut.
+- GDPR `paragraphs` note: a chunk that starts inside a paragraph (a split paragraph) lists only the numbers it begins paragraphs with, so the range can miss that paragraph; a chunk made only of points "(a)", "(b)" gets no note.
+- Last-resort word windows (`word_windows` flag) are the lowest-quality cuts; check whether those chunks retrieve worse.
