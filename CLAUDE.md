@@ -12,6 +12,11 @@ To continue Loop 3 on the Windows laptop, read `docs/handoff/loop3_windows_embed
 - Report honestly: what was verified, what was not, and any test failure with its output.
 - Ask before anything that spends money, deletes or overwrites, or is outward-facing. Before any delete or destructive command, show the before and after state and wait for confirmation.
 
+## Teaching preferences
+The user is learning system design alongside the code. When explaining anything
+at system-design level (server, storage, concurrency, architecture choices),
+also name the common alternatives and when each is preferred, briefly.
+
 ## Code and git
 - The user's global coding rules (comments, commit messages, tests, delete commands, how to explain) are in `docs/handoff/global_CLAUDE.md`. If they are not installed on this machine (`~/.claude/CLAUDE.md`), follow that file anyway.
 - Push to origin after every commit.
