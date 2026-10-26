@@ -235,6 +235,15 @@ def test_deleting_a_run_removes_its_chunks_and_vectors_but_not_articles(conn, lo
     assert count(conn, "articles") == articles
 
 
+def test_analyze_gives_the_planner_row_counts_after_a_load(conn, loaded):
+    def estimate():
+        return conn.execute("SELECT reltuples FROM pg_class WHERE relname = 'chunks'").fetchone()[0]
+
+    assert estimate() < 0  # -1: never analysed
+    store.analyze(conn)
+    assert estimate() == len(loaded[1])
+
+
 def test_exact_scan_skips_the_vector_index_and_restores_the_setting(conn, loaded, tmp_path):
     run_id, chunks = loaded
     write_vectors(tmp_path / "v.parquet", chunks, unit_vectors(chunks, same_unit_same_vector=False))

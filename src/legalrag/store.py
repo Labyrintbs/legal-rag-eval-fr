@@ -219,6 +219,11 @@ def delete_run(conn: psycopg.Connection, name: str) -> None:
     conn.execute("DELETE FROM chunking_runs WHERE name = %s", (name,))
 
 
+def analyze(conn: psycopg.Connection) -> None:
+    """Refresh the planner's statistics after a bulk load; until autovacuum does, plans are guesses."""
+    conn.execute("ANALYZE")
+
+
 def build_hnsw_index(conn: psycopg.Connection) -> None:
     """Partial HNSW index for the one model; queries must repeat `model = '<model>'`."""
     conn.execute(

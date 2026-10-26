@@ -169,6 +169,7 @@ def load_embeddings_cmd(
             raise typer.BadParameter(f"no chunking run named {run!r}; run load-chunks first")
         rows = store.load_embeddings(conn, run_id[0], file)
         store.build_hnsw_index(conn)
+        store.analyze(conn)
     typer.echo(f"{rows} vectors loaded, index {store.HNSW_INDEX} ready")
 
 

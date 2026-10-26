@@ -73,6 +73,9 @@ def main() -> int:
         for name in old:
             print(f"{'SAME' if old[name] == new[name] else 'DIFF'}  {name}: {old[name]} | {new[name]}")
         return 0 if old == new else 1
+    except subprocess.CalledProcessError as e:
+        print(f"FAIL  {' '.join(e.cmd)} exited with {e.returncode}")
+        return 1
     finally:
         admin.execute(f"DROP DATABASE IF EXISTS {SCRATCH} WITH (FORCE)")
         admin.close()

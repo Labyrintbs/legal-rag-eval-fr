@@ -175,3 +175,8 @@ Entry template:
 - Measured on the real data: check 10 exact 289/292 = 99.0% in 1.8 s; check 11 998/1000 = 99.8% in 5.9 s.
 - Not verified: the candidate-list explanation is inferred from the settings comparison (longer list or iterative scan removes the empty results); the candidate list itself was not inspected.
 - For step 0c: any search with a language filter has the same limit; try `SET LOCAL hnsw.iterative_scan = relaxed_order` first (it matched the exact result here at the default speed).
+
+## 2026-10-26: ANALYZE after loading vectors; fresh rebuild (database)
+- Change: `load-embeddings` runs `ANALYZE` after building the index (`store.analyze`). New `make fresh-rebuild` (`scripts/fresh_rebuild.py`): builds a scratch database from migrations, `fetch all`, the vectors downloaded from the GitHub Release (SHA-256 compared with `data/embeddings`), `load-chunks`, `load-embeddings`, `db-check`; compares row counts, article and chunk fingerprints, the mean vector and the schema version with the real database; drops the scratch database. The real database is only read. 93 tests.
+- Found by the first rebuild: right after loading, check 9 (planner uses the HNSW index) failed in the scratch database (plan `Limit (cost=833.66..833.67 rows=1)`). Tables had never been analysed (`last_analyze` and `last_autoanalyze` empty), so the planner worked from guessed row counts. After a manual `ANALYZE` the same database passed (`Limit (cost=287.46..313.61 rows=5)`). The real database passed only because autovacuum had analysed it in the days since the load.
+- Why it matters: searches right after a load could run a slow plan. `ANALYZE` after a bulk load is the usual practice.
