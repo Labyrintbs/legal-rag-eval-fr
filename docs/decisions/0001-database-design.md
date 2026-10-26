@@ -28,5 +28,7 @@ Written 2026-10-22. Measured numbers are in `EXPERIMENT.md`; the schema is `migr
 ## Known limits and open points
 - Keyword search uses Postgres's French stemmer, which maps "démission" and "démissions" to different roots. Whether to keep it is a step 0c decision.
 - The keyword column is built from header and body together (a word in a section title matches every chunk of that section). To be tested in 0c.
-- `lang` and `kind` are free text; removing a chunking run needs manual ordered deletes.
+- Migration `0002` (2026-10-26) limits `lang` to fr/en and `kind` to article/recital/annex, and makes deleting a chunking run delete its chunks and their vectors (`legalrag delete-run`, which asks first). Articles are shared by runs and stay.
+- `valid_to` keeps the source value: Code du travail uses 2999-01-01 for "no end date", GDPR rows use NULL. Decide when the first query filters on dates (step 0c).
+- The database tests skip when no Postgres is reachable; the CI of step 0e must start one.
 - When comparing query plans from Python, disable prepared statements (`prepare_threshold=None`); otherwise a cached plan makes the comparison meaningless (this happened once, see `EXPERIMENT.md`).

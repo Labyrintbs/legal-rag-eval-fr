@@ -172,6 +172,23 @@ def load_embeddings_cmd(
     typer.echo(f"{rows} vectors loaded, index {store.HNSW_INDEX} ready")
 
 
+@app.command("delete-run")
+def delete_run_cmd(
+    name: Annotated[str, typer.Argument(help="Chunking run name")],
+    yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation")] = False,
+) -> None:
+    """Delete a chunking run with its chunks and vectors (articles stay); asks first."""
+    with db.connect() as conn:
+        size = store.run_size(conn, name)
+        if size is None:
+            raise typer.BadParameter(f"no chunking run named {name!r}")
+        typer.echo(f"Run {name!r}: {size[0]} chunks and {size[1]} vectors will be deleted.")
+        if not yes:
+            typer.confirm("Delete them?", abort=True)
+        store.delete_run(conn, name)
+    typer.echo("deleted")
+
+
 @app.command("db-check")
 def db_check_cmd(
     run: Annotated[str, typer.Option(help="Chunking run name")] = "default",

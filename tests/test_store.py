@@ -217,6 +217,24 @@ def test_cross_language_rate_counts_matching_units(conn, loaded, tmp_path):
     assert hits == total
 
 
+def test_unknown_lang_and_kind_are_refused(conn, loaded):
+    for column, value, table in (("lang", "FR", "articles"), ("kind", "preamble", "articles"), ("lang", "de", "chunks")):
+        with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
+            conn.execute(f"UPDATE {table} SET {column} = %s", (value,))
+
+
+def test_deleting_a_run_removes_its_chunks_and_vectors_but_not_articles(conn, loaded, tmp_path):
+    run_id, chunks = loaded
+    write_vectors(tmp_path / "v.parquet", chunks, unit_vectors(chunks))
+    store.load_embeddings(conn, run_id, tmp_path / "v.parquet")
+    articles = count(conn, "articles")
+    assert store.run_size(conn, "t") == (len(chunks), len(chunks))
+    store.delete_run(conn, "t")
+    assert store.run_size(conn, "t") is None
+    assert (count(conn, "chunking_runs"), count(conn, "chunks"), count(conn, "chunk_embeddings")) == (0, 0, 0)
+    assert count(conn, "articles") == articles
+
+
 def test_db_checks_run_end_to_end_on_loaded_data(conn, loaded, tmp_path):
     from legalrag.dbcheck import db_checks
 

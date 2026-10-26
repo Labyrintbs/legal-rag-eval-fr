@@ -198,6 +198,27 @@ def load_embeddings(conn: psycopg.Connection, run_id: int, path: Path) -> int:
     return len(keys)
 
 
+def run_size(conn: psycopg.Connection, name: str) -> tuple[int, int] | None:
+    """(chunks, vectors) of the named run, or None when there is no such run."""
+    row = conn.execute(
+        """
+        SELECT r.id, count(DISTINCT c.id), count(e.chunk_id)
+        FROM chunking_runs r
+        LEFT JOIN chunks c ON c.run_id = r.id
+        LEFT JOIN chunk_embeddings e ON e.chunk_id = c.id
+        WHERE r.name = %s
+        GROUP BY r.id
+        """,
+        (name,),
+    ).fetchone()
+    return None if row is None else (row[1], row[2])
+
+
+def delete_run(conn: psycopg.Connection, name: str) -> None:
+    """Delete the run; its chunks and their vectors go with it (ON DELETE CASCADE). Articles stay."""
+    conn.execute("DELETE FROM chunking_runs WHERE name = %s", (name,))
+
+
 def build_hnsw_index(conn: psycopg.Connection) -> None:
     """Partial HNSW index for the one model; queries must repeat `model = '<model>'`."""
     conn.execute(

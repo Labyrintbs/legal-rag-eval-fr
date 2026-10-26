@@ -1,3 +1,4 @@
+import contextlib
 import subprocess
 
 import pytest
@@ -49,3 +50,27 @@ def test_allow_dirty_goes_past_the_check(monkeypatch):
     monkeypatch.setattr(cli, "token_counter", stop)
     result = runner.invoke(cli.app, ["load-chunks", "--allow-dirty"])
     assert isinstance(result.exception, RuntimeError)
+
+
+@pytest.fixture
+def deleted(monkeypatch):
+    """Stub the database: run 'r' has 5 chunks and 5 vectors; returns the names passed to delete_run."""
+    calls = []
+    monkeypatch.setattr(cli.db, "connect", lambda: contextlib.nullcontext(object()))
+    monkeypatch.setattr(cli.store, "run_size", lambda _, name: (5, 5) if name == "r" else None)
+    monkeypatch.setattr(cli.store, "delete_run", lambda _, name: calls.append(name))
+    return calls
+
+
+def test_delete_run_shows_the_size_and_waits_for_confirmation(deleted):
+    refused = runner.invoke(cli.app, ["delete-run", "r"], input="n\n")
+    assert "5 chunks and 5 vectors" in refused.output
+    assert refused.exit_code != 0 and deleted == []
+    assert runner.invoke(cli.app, ["delete-run", "r"], input="y\n").exit_code == 0
+    assert deleted == ["r"]
+
+
+def test_delete_run_yes_skips_the_question_and_an_unknown_run_is_refused(deleted):
+    assert runner.invoke(cli.app, ["delete-run", "r", "--yes"]).exit_code == 0
+    assert runner.invoke(cli.app, ["delete-run", "nope", "--yes"]).exit_code != 0
+    assert deleted == ["r"]

@@ -161,3 +161,9 @@ Entry template:
 - `split_sentences` cuts at `.`, `!` or `?` + whitespace + capital letter or digit, except after a single capital letter or a listed abbreviation. Read from the code, not measured on the data: the word before the stop is taken up to the last space, so "l'art." and "(art." are not recognised and are cut; "Mme." and "MM." are not on the list; a sentence starting with a lowercase letter is never cut.
 - GDPR `paragraphs` note: a chunk that starts inside a paragraph (a split paragraph) lists only the numbers it begins paragraphs with, so the range can miss that paragraph; a chunk made only of points "(a)", "(b)" gets no note.
 - Last-resort word windows (`word_windows` flag) are the lowest-quality cuts; check whether those chunks retrieve worse.
+
+## 2026-10-26: migration 0002 and delete-run (database)
+- Change: migration `0002` adds `CHECK` constraints (`lang` in fr/en on articles and chunks; `kind` in article/recital/annex on articles) and `ON DELETE CASCADE` on `chunks.run_id`. New command `legalrag delete-run NAME` prints how many chunks and vectors would go and asks before deleting (`--yes` skips the question); articles stay. 4 new tests (90 in total).
+- Why: free-text `lang` would let a typo like `FR` get English stemming in the generated `tsv` column; removing a chunking run needed two hand-ordered deletes.
+- Checked: the stored values fit the constraints (lang fr/en; kind article, recital, annex), so 0002 applied to the real database without changes to the data; downgrade then upgrade on a throwaway database ended at `0002`; the 10 `db-check` checks still pass. `delete-run` was run for real only on an unknown name (refused); deleting an existing run is covered by a test on a throwaway database, not done on `default`.
+- Decided with the user: `valid_to` 2999-01-01 stays as in the source for now.
