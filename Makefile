@@ -1,4 +1,4 @@
-.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity profile verify test lint
+.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity profile verify test lint fresh-rebuild
 
 SOURCE ?= legi
 
@@ -34,6 +34,9 @@ db-up:
 
 db-down:
 	docker compose down
+
+fresh-rebuild:
+	uv run python scripts/fresh_rebuild.py
 
 test:
 	uv run pytest
