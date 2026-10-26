@@ -13,7 +13,7 @@ import pytest
 
 from legalrag import db, store
 from legalrag.config import database_url
-from legalrag.dbcheck import cross_language_rate
+from legalrag.dbcheck import NEIGHBOUR_QUERY, _exact_scan, cross_language_rate, index_recall
 from legalrag.embed import DIM, MODEL, embed_text_hash
 from legalrag.ingest import build_chunks
 from legalrag.sources import gdpr, legi
@@ -235,6 +235,33 @@ def test_deleting_a_run_removes_its_chunks_and_vectors_but_not_articles(conn, lo
     assert count(conn, "articles") == articles
 
 
+def test_exact_scan_skips_the_vector_index_and_restores_the_setting(conn, loaded, tmp_path):
+    run_id, chunks = loaded
+    write_vectors(tmp_path / "v.parquet", chunks, unit_vectors(chunks, same_unit_same_vector=False))
+    store.load_embeddings(conn, run_id, tmp_path / "v.parquet")
+    store.build_hnsw_index(conn)
+    conn.execute("SET LOCAL enable_seqscan = off")  # a table this small would otherwise be scanned
+    probe = conn.execute("SELECT embedding FROM chunk_embeddings LIMIT 1").fetchone()[0]
+
+    def plan():
+        sql = "EXPLAIN " + NEIGHBOUR_QUERY.format(extra="")
+        return " ".join(r[0] for r in conn.execute(sql, (run_id, probe, 5)))
+
+    with _exact_scan(conn):
+        assert store.HNSW_INDEX not in plan()
+    assert store.HNSW_INDEX in plan()
+    assert conn.execute("SHOW enable_indexscan").fetchone()[0] == "on"
+
+
+def test_index_recall_counts_the_exact_neighbours_the_index_returns(conn, loaded, tmp_path):
+    run_id, chunks = loaded
+    write_vectors(tmp_path / "v.parquet", chunks, unit_vectors(chunks, same_unit_same_vector=False))
+    store.load_embeddings(conn, run_id, tmp_path / "v.parquet")
+    store.build_hnsw_index(conn)
+    found, possible = index_recall(conn, run_id, sample=10, k=3)
+    assert possible == 30 and found == possible
+
+
 def test_db_checks_run_end_to_end_on_loaded_data(conn, loaded, tmp_path):
     from legalrag.dbcheck import db_checks
 
@@ -246,4 +273,4 @@ def test_db_checks_run_end_to_end_on_loaded_data(conn, loaded, tmp_path):
     # On a table this small the planner prefers a sequential scan, so that one check may fail.
     failing = [name for name, ok, _ in results if not ok and not name.startswith("planner")]
     assert failing == []
-    assert len(results) == 10
+    assert len(results) == 11

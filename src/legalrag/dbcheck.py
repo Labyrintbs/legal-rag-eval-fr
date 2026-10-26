@@ -1,5 +1,8 @@
 """Checks on what is stored in Postgres after loading."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import psycopg
 
 from legalrag.embed import DIM, MODEL
@@ -22,19 +25,58 @@ def _unit(uid: str) -> str:
     return uid.rsplit(":", 1)[1]
 
 
+@contextmanager
+def _exact_scan(conn: psycopg.Connection) -> Iterator[None]:
+    """Search without the vector index, so a result does not depend on how the index approximates."""
+    conn.execute("SET LOCAL enable_indexscan = off")
+    try:
+        yield
+    finally:
+        conn.execute("SET LOCAL enable_indexscan = on")
+
+
 def cross_language_rate(conn: psycopg.Connection, run_id: int) -> tuple[int, int]:
-    """For each French GDPR chunk, is its nearest English chunk the same article or recital?"""
+    """For each French GDPR chunk, is its nearest English chunk the same article or recital?
+
+    Exact search: with the index, the language filter is applied to a short candidate list, which
+    can hold no English chunk at all (see EXPERIMENT.md, 2026-10-26).
+    """
     rows = conn.execute(
         "SELECT c.article_uid, e.embedding FROM chunks c JOIN chunk_embeddings e ON e.chunk_id = c.id "
         "WHERE c.run_id = %s AND c.article_uid LIKE 'rgpd:fr:%%' AND e.model = %s",
         (run_id, MODEL),
     ).fetchall()
     hits = 0
-    for uid, vec in rows:
-        sql = NEIGHBOUR_QUERY.format(extra="AND c.lang = 'en'")
-        nearest = conn.execute(sql, (run_id, vec, 1)).fetchone()
-        hits += nearest is not None and _unit(nearest[0]) == _unit(uid)
+    sql = NEIGHBOUR_QUERY.format(extra="AND c.lang = 'en'")
+    with _exact_scan(conn):
+        for uid, vec in rows:
+            nearest = conn.execute(sql, (run_id, vec, 1)).fetchone()
+            hits += nearest is not None and _unit(nearest[0]) == _unit(uid)
     return hits, len(rows)
+
+
+def index_recall(
+    conn: psycopg.Connection, run_id: int, sample: int = 100, k: int = 10
+) -> tuple[int, int]:
+    """(found, possible): how many of the exact k nearest chunks the index also returns.
+
+    The sample is a fixed pseudo-random set of stored vectors; a probe is not its own neighbour.
+    """
+    probes = conn.execute(
+        "SELECT c.id, e.embedding FROM chunks c JOIN chunk_embeddings e ON e.chunk_id = c.id "
+        "WHERE c.run_id = %s AND e.model = %s ORDER BY md5(c.id::text) LIMIT %s",
+        (run_id, MODEL, sample),
+    ).fetchall()
+    sql = NEIGHBOUR_QUERY.format(extra="AND c.id <> %s")
+    found = possible = 0
+    for chunk_id, vec in probes:
+        args = (run_id, chunk_id, vec, k)
+        approximate = set(conn.execute(sql, args).fetchall())
+        with _exact_scan(conn):
+            exact = set(conn.execute(sql, args).fetchall())
+        found += len(approximate & exact)
+        possible += len(exact)
+    return found, possible
 
 
 def db_checks(conn: psycopg.Connection, run_name: str, expected_chunks: int) -> list[Check]:
@@ -78,6 +120,8 @@ def db_checks(conn: psycopg.Connection, run_name: str, expected_chunks: int) -> 
     )
     hits, total = cross_language_rate(conn, run_id)
     rate = hits / total if total else 0.0
+    found, possible = index_recall(conn, run_id)
+    recall = found / possible if possible else 0.0
     return [
         (f"{expected_chunks} chunks in run {run_name}", chunks == expected_chunks, f"got {chunks}"),
         ("every chunk has a vector for the model", vectors == chunks and without == 0, f"{vectors} vectors, {without} chunks without"),
@@ -88,5 +132,6 @@ def db_checks(conn: psycopg.Connection, run_name: str, expected_chunks: int) -> 
         ("every chunk belongs to a stored article", orphans == 0, f"{orphans} orphans"),
         (f"HNSW index {HNSW_INDEX} exists", index == 1, ""),
         ("planner uses the HNSW index for a nearest-neighbour query", HNSW_INDEX in plan, plan.splitlines()[0] if plan else ""),
-        ("French GDPR chunk -> same unit in English (top 1) >= 95%", rate >= 0.95, f"{hits}/{total} = {rate:.1%}"),
+        ("French GDPR chunk -> same unit in English (top 1, exact) >= 95%", rate >= 0.95, f"{hits}/{total} = {rate:.1%}"),
+        ("HNSW index finds >= 98% of the exact 10 nearest (100 chunks)", recall >= 0.98, f"{found}/{possible} = {recall:.1%}"),
     ]
