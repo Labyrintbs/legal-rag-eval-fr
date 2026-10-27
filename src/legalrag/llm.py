@@ -2,7 +2,8 @@
 
 import json
 import math
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,9 +30,13 @@ class BudgetExceeded(Exception):
 
 @dataclass
 class Budget:
+    """reserved is the worst case of the calls in flight, so parallel calls cannot overshoot a cap."""
+
     run_cap: float
     total_cap: float
     spent: float = 0.0
+    reserved: float = 0.0
+    lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 def is_peak(when: datetime) -> bool:
@@ -72,13 +77,16 @@ def ledger_total(path: Path) -> float:
 
 
 def ensure_within_budget(budget: Budget, ledger_spent: float, worst_case: float) -> None:
-    if budget.spent + worst_case > budget.run_cap:
+    in_flight = budget.reserved
+    if budget.spent + in_flight + worst_case > budget.run_cap:
         raise BudgetExceeded(
-            f"run cap {budget.run_cap}: spent {budget.spent:.4f} + worst case {worst_case:.4f}"
+            f"run cap {budget.run_cap}: spent {budget.spent:.4f} + in flight {in_flight:.4f}"
+            f" + worst case {worst_case:.4f}"
         )
-    if ledger_spent + worst_case > budget.total_cap:
+    if ledger_spent + in_flight + worst_case > budget.total_cap:
         raise BudgetExceeded(
-            f"total cap {budget.total_cap}: spent {ledger_spent:.4f} + worst case {worst_case:.4f}"
+            f"total cap {budget.total_cap}: spent {ledger_spent:.4f} + in flight {in_flight:.4f}"
+            f" + worst case {worst_case:.4f}"
         )
 
 
@@ -86,7 +94,7 @@ def make_http(api_key: str, transport: httpx.BaseTransport | None = None) -> htt
     return httpx.Client(
         base_url=BASE_URL,
         headers={"Authorization": f"Bearer {api_key}"},
-        timeout=120,
+        timeout=300,  # a thinking call at effort low took up to a minute
         transport=transport,
     )
 
@@ -101,23 +109,21 @@ def chat(
     max_tokens: int,
     thinking: bool = False,
     json_mode: bool = True,
+    temperature: float | None = None,
+    reasoning_effort: str | None = None,
 ) -> str:
-    """One call, never retried. Raises BudgetExceeded before sending if the worst case does not fit."""
+    """One call, never retried. Raises BudgetExceeded before sending if the worst case does not fit.
+    Safe to call from several threads sharing one Budget."""
     prompt_tokens = estimate_tokens("".join(m["content"] for m in messages))
     worst = worst_case_cost(model, prompt_tokens, max_tokens)
-    ensure_within_budget(budget, ledger_total(ledger), worst)
-
-    body = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "thinking": {"type": "enabled" if thinking else "disabled"},
-    }
-    if json_mode:
-        body["response_format"] = {"type": "json_object"}
-    response = http.post("/chat/completions", json=body)
-    response.raise_for_status()
-    data = response.json()
+    with budget.lock:
+        ensure_within_budget(budget, ledger_total(ledger), worst)
+        budget.reserved += worst
+    try:
+        data = _post(http, model, messages, max_tokens, thinking, json_mode, temperature, reasoning_effort)
+    finally:
+        with budget.lock:
+            budget.reserved -= worst
 
     usage = data["usage"]
     now = datetime.now(UTC)
@@ -128,28 +134,47 @@ def chat(
         usage["completion_tokens"],
         now,
     )
-    budget.spent += cost
     # Written before the content is checked: an empty answer is still billed.
-    append_ledger(
-        ledger,
-        {
-            "type": "call",
-            "time": now.isoformat(timespec="seconds"),
-            "label": label,
-            "model": model,
-            "estimated_prompt_tokens": prompt_tokens,
-            "prompt_tokens": usage["prompt_tokens"],
-            "cache_hit_tokens": usage["prompt_cache_hit_tokens"],
-            "completion_tokens": usage["completion_tokens"],
-            "reasoning_tokens": usage.get("completion_tokens_details", {}).get("reasoning_tokens"),
-            "cost_usd": cost,
-            "request_id": data.get("id"),
-        },
-    )
+    with budget.lock:
+        budget.spent += cost
+        append_ledger(
+            ledger,
+            {
+                "type": "call",
+                "time": now.isoformat(timespec="seconds"),
+                "label": label,
+                "model": model,
+                "estimated_prompt_tokens": prompt_tokens,
+                "prompt_tokens": usage["prompt_tokens"],
+                "cache_hit_tokens": usage["prompt_cache_hit_tokens"],
+                "completion_tokens": usage["completion_tokens"],
+                "reasoning_tokens": usage.get("completion_tokens_details", {}).get("reasoning_tokens"),
+                "cost_usd": cost,
+                "request_id": data.get("id"),
+            },
+        )
     content = data["choices"][0]["message"]["content"]
     if not content or not content.strip():
         raise ValueError(f"empty answer from {model} (billed {cost:.6f} USD)")
     return content
+
+
+def _post(http, model, messages, max_tokens, thinking, json_mode, temperature, reasoning_effort) -> dict:
+    body = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "thinking": {"type": "enabled" if thinking else "disabled"},
+    }
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    if temperature is not None:  # ignored by the API when thinking is on
+        body["temperature"] = temperature
+    if reasoning_effort is not None:  # low, high or max; the docs tie it to thinking mode
+        body["reasoning_effort"] = reasoning_effort
+    response = http.post("/chat/completions", json=body)
+    response.raise_for_status()
+    return response.json()
 
 
 def balance(http: httpx.Client) -> dict[str, float]:

@@ -94,6 +94,47 @@ def test_a_call_is_logged_with_its_cost_and_sent_without_thinking(tmp_path):
     assert llm.ledger_total(tmp_path / "ledger.jsonl") == pytest.approx(entry["cost_usd"])
 
 
+def test_the_temperature_is_sent_only_when_given(tmp_path):
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json=reply())
+
+    call(fake_http(handler), tmp_path)
+    call(fake_http(handler), tmp_path, temperature=0.0)
+    assert "temperature" not in sent[0] and sent[1]["temperature"] == 0.0
+
+
+def test_the_reasoning_effort_and_thinking_switch_are_sent_as_given(tmp_path):
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json=reply())
+
+    call(fake_http(handler), tmp_path)
+    call(fake_http(handler), tmp_path, thinking=True, reasoning_effort="low")
+    assert "reasoning_effort" not in sent[0] and sent[0]["thinking"] == {"type": "disabled"}
+    assert sent[1]["reasoning_effort"] == "low" and sent[1]["thinking"] == {"type": "enabled"}
+
+
+def test_calls_in_flight_count_against_the_caps():
+    budget = llm.Budget(run_cap=1.0, total_cap=5.0, reserved=0.9)
+    with pytest.raises(llm.BudgetExceeded, match="in flight"):
+        llm.ensure_within_budget(budget, 0.0, 0.2)
+    llm.ensure_within_budget(budget, 0.0, 0.05)
+
+
+def test_the_reservation_is_released_after_a_call_even_when_it_fails(tmp_path):
+    budget = llm.Budget(run_cap=1.0, total_cap=5.0)
+    with pytest.raises(httpx.HTTPStatusError):
+        call(fake_http(lambda r: httpx.Response(500, json={})), tmp_path, budget)
+    assert budget.reserved == 0.0 and budget.spent == 0.0
+    call(fake_http(lambda r: httpx.Response(200, json=reply())), tmp_path, budget)
+    assert budget.reserved == 0.0 and budget.spent > 0
+
+
 def test_a_call_over_budget_is_never_sent(tmp_path):
     def handler(request):
         raise AssertionError("must not reach the network")
