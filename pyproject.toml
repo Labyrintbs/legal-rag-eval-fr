@@ -13,6 +13,7 @@ dependencies = [
     "psycopg[binary]>=3",
     "pyarrow",
     "pydantic>=2",
+    "pyyaml>=6.0.3",
     "tokenizers",
     "typer",
 ]
@@ -26,6 +27,10 @@ dev = ["pytest", "ruff"]
 
 [project.scripts]
 legalrag = "legalrag.cli:app"
+
+# torch 2.12 and later ship macOS wheels for macOS 14 only; 2.11 is the newest for macOS 11 and 12.
+[tool.uv]
+constraint-dependencies = ["torch<2.12; sys_platform == 'darwin'"]
 
 # CUDA 12 wheel for Linux: the default CUDA 13 wheel needs a newer driver than the laptop's.
 [tool.uv.sources]

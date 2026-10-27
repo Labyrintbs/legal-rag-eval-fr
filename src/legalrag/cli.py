@@ -6,7 +6,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import db, dbcheck, embed, fetch, sanity, store, verify
+from legalrag import db, dbcheck, embed, fetch, sanity, smoke, store, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -201,6 +201,34 @@ def db_check_cmd(
     for name, ok, detail in results:
         typer.echo(f"{'PASS' if ok else 'FAIL'}  {name}  {detail}")
     raise typer.Exit(0 if all(ok for _, ok, _ in results) else 1)
+
+
+@app.command("smoke")
+def smoke_cmd(
+    file: Annotated[Path, typer.Option(help="Questions file")] = Path("tests/smoke_questions.yaml"),
+    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    k: Annotated[int, typer.Option(help="Chunks listed per question")] = 5,
+    device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
+) -> None:
+    """Print the nearest chunks of each smoke question: an inspection, not a metric."""
+    questions = smoke.load_questions(file)
+    vectors = smoke.embed_questions(questions, embed.SentenceTransformerEmbedder(device))
+    with db.connect() as conn:
+        row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
+        if row is None:
+            raise typer.BadParameter(f"no chunking run named {run!r}; run load-chunks first")
+        unknown = sorted({e for q in questions for e in q.expected} - smoke.known_labels(conn))
+        if unknown:
+            typer.echo(f"WARNING: expected articles not in the database: {unknown}\n")
+        ranks = {}
+        for q, vector in zip(questions, vectors, strict=True):
+            hits = smoke.nearest(conn, row[0], vector, k)
+            ranks[q.id] = smoke.first_hit_rank(hits, q.expected)
+            typer.echo(smoke.format_result(q, hits) + "\n")
+    expected = [q for q in questions if q.expected]
+    found = sum(ranks[q.id] is not None for q in expected)
+    typer.echo(f"Expected article in the top {k}: {found} of {len(expected)} questions that have one.")
+    typer.echo("First rank per question: " + ", ".join(f"Q{i}={r or '-'}" for i, r in ranks.items()))
 
 
 @app.command()

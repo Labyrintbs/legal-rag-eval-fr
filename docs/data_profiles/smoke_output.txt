@@ -1,0 +1,545 @@
+Q1 [A, fr] Quel est le préavis en cas de démission ?
+  expected: L1237-1  (first expected article at rank 1)
+  1* 0.242  L1237-1 [fr] chunk 1/1
+       Code du travail, article L1237-1. Chapitre VII : Autres cas de rupture > Section 1 : Rupture à l'initiative du salarié > Sous-section 1 : Démission.
+       En cas de démission, l'existence et la durée du préavis sont fixées par la loi, ou par convention ou accord collectif de
+  2  0.310  R1237-13 [fr] chunk 1/1
+       Code du travail, article R1237-13. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre VII : Autres cas de rupture > Section 4 : Démission.
+       L'employeur qui constate que le salarié a abandonné son poste et entend faire valoir la présomption de démission prévue 
+  3  0.320  L7112-2 [fr] chunk 1/1
+       Code du travail, article L7112-2. Titre Ier : Journalistes professionnels > Chapitre II : Contrat de travail > Section 2 : Rupture du contrat.
+       Dans les entreprises de journaux et périodiques, en cas de rupture par l'une ou l'autre des parties du contrat de travai
+  4  0.325  L1234-15 [fr] chunk 1/1
+       Code du travail, article L1234-15. Chapitre IV : Conséquences du licenciement > Section 1 : Préavis et indemnité de licenciement > Sous-section 5 : Dispositions particulières aux départements de la Moselle, du Bas-Rhin et du Haut-Rhin.
+       Le salarié a droit à un préavis : 1° D'un jour lorsque sa rémunération est fixée par jour ; 2° D'une semaine lorsque sa 
+  5  0.328  L1234-1 [fr] chunk 1/1
+       Code du travail, article L1234-1. Chapitre IV : Conséquences du licenciement > Section 1 : Préavis et indemnité de licenciement > Sous-section 1 : Préavis et indemnité compensatrice de préavis.
+       Lorsque le licenciement n'est pas motivé par une faute grave, le salarié a droit : 1° S'il justifie chez le même employe
+
+Q2 [A, fr] Quelle est la durée légale du travail par semaine ?
+  expected: L3121-27  (first expected article at rank 1)
+  1* 0.264  L3121-27 [fr] chunk 1/1
+       Code du travail, article L3121-27. Section 3 : Durée légale et heures supplémentaires > Sous-section 1 : Temps de pause. > Sous-section 1 : Ordre public.
+       La durée légale de travail effectif des salariés à temps complet est fixée à trente-cinq heures par semaine.
+  2  0.298  L3162-1 [fr] chunk 1/1
+       Code du travail, article L3162-1. Livre Ier : Durée du travail, repos et congés > Titre VI : Dispositions particulières aux jeunes travailleurs > Chapitre II : Durée du travail.
+       Les jeunes travailleurs ne peuvent être employés à un travail effectif excédant huit heures par jour et trente-cinq heur
+  3  0.302  L3121-22 [fr] chunk 1/1
+       Code du travail, article L3121-22. Sous-section 3 : Durées hebdomadaires maximales > Paragraphe 1 : Majorations de salaire. > Paragraphe 1 : Ordre public.
+       La durée hebdomadaire de travail calculée sur une période quelconque de douze semaines consécutives ne peut dépasser qua
+  4  0.306  L3121-20 [fr] chunk 1/1
+       Code du travail, article L3121-20. Sous-section 3 : Durées hebdomadaires maximales > Paragraphe 1 : Majorations de salaire. > Paragraphe 1 : Ordre public.
+       Au cours d'une même semaine, la durée maximale hebdomadaire de travail est de quarante-huit heures.
+  5  0.307  L3132-15 [fr] chunk 1/1
+       Code du travail, article L3132-15. Sous-section 2 : Dérogations au repos dominical > Paragraphe 2 : Dérogations conventionnelles > Sous-paragraphe 1 : Travail en continu.
+       La durée du travail des salariés travaillant de façon permanente en équipes successives selon un cycle continu ne doit p
+
+Q3 [A, fr] Combien de jours de congés payés acquiert-on par mois de travail ?
+  expected: L3141-3  (first expected article at rank 3)
+  1  0.335  D3142-82 [fr] chunk 1/1
+       Code du travail, article D3142-82. Livre Ier : Durée du travail, repos et congés > Titre IV : Congés payés et autres congés > Chapitre II bis : Don de congés et de jours de repos.
+       Le nombre total de jours de repos auquel le salarié peut renoncer dans les conditions prévues à l'article L. 3142-131 ne
+  2  0.358  L3121-66 [fr] chunk 1/1
+       Code du travail, article L3121-66. Section 5 : Dispositions d'application. > Section 5 : Conventions de forfait > Sous-section 3 : Dispositions supplétives.
+       En cas de renonciation, par le salarié, à des jours de repos en application de l'article L. 3121-59 et à défaut de préci
+  3* 0.359  L3141-3 [fr] chunk 1/1
+       Code du travail, article L3141-3. Section 2 : Durée du congé. > Section 2 : Durée du congé > Sous-section 1 : Ordre public.
+       Le salarié a droit à un congé de deux jours et demi ouvrables par mois de travail effectif chez le même employeur. La du
+  4  0.360  L3142-131 [fr] chunk 1/1
+       Code du travail, article L3142-131. Livre Ier : Durée du travail, repos et congés > Titre IV : Congés payés et autres congés > Chapitre II bis : Don de congés et de jours de repos.
+       Par dérogation à l'article L. 3121-59 et aux stipulations conventionnelles applicables dans l'entreprise, l'établissemen
+  5  0.364  L3164-9 [fr] chunk 1/1
+       Code du travail, article L3164-9. Titre VI : Dispositions particulières aux jeunes travailleurs > Chapitre IV : Repos et congés > Section 4 : Congés annuels.
+       Quelle que soit leur ancienneté dans l'entreprise, les salariés de moins de vingt et un ans au 30 avril de l'année précé
+
+Q4 [A, fr] Quelle est la durée maximale de la période d'essai d'un CDI ?
+  expected: L1221-19  (first expected article at rank 2)
+  1  0.383  L1242-10 [fr] chunk 1/1
+       Code du travail, article L1242-10. Titre IV : Contrat de travail à durée déterminée > Chapitre II : Conclusion et exécution du contrat > Section 3 : Période d'essai.
+       Le contrat de travail à durée déterminée peut comporter une période d'essai. Sauf si des usages ou des stipulations conv
+  2* 0.389  L1221-19 [fr] chunk 1/1
+       Code du travail, article L1221-19. Titre II : Formation et exécution du contrat de travail > Chapitre Ier : Formation du contrat de travail > Section 4 : Période d'essai.
+       Le contrat de travail à durée indéterminée peut comporter une période d'essai dont la durée maximale est : 1° Pour les o
+  3  0.402  L1221-21 [fr] chunk 1/1
+       Code du travail, article L1221-21. Titre II : Formation et exécution du contrat de travail > Chapitre Ier : Formation du contrat de travail > Section 4 : Période d'essai.
+       La période d'essai peut être renouvelée une fois si un accord de branche étendu le prévoit. Cet accord fixe les conditio
+  4  0.419  L1251-14 [fr] chunk 1/1
+       Code du travail, article L1251-14. Section 3 : Contrat de mission > Sous-section 1 : Formation et exécution du contrat > Paragraphe 2 : Période d'essai.
+       Le contrat de mission peut comporter une période d'essai dont la durée est fixée par convention ou accord professionnel 
+  5  0.426  L7313-5 [fr] chunk 1/1
+       Code du travail, article L7313-5. Chapitre III : Contrat de travail > Section 2 : Conclusion et exécution du contrat de travail > Sous-section 1 : Période d'essai.
+       Le contrat de travail peut comporter une période d'essai dont la durée ne peut être supérieure à trois mois.
+
+Q5 [B, fr] Mon patron veut me virer, doit-il me recevoir avant ?
+  expected: L1232-2  (first expected article at rank 1)
+  note: colloquial, no legal terms
+  1* 0.322  L1232-2 [fr] chunk 1/1
+       Code du travail, article L1232-2. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre II : Licenciement pour motif personnel > Section 2 : Entretien préalable.
+       L'employeur qui envisage de licencier un salarié le convoque, avant toute décision, à un entretien préalable. La convoca
+  2  0.351  R1232-2 [fr] chunk 1/1
+       Code du travail, article R1232-2. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre II : Licenciement pour motif personnel > Section 1 : Entretien préalable.
+       Le salarié qui souhaite se faire assister, lors de l'entretien préalable à son licenciement, par un conseiller du salari
+  3  0.360  L1233-11 [fr] chunk 1/1
+       Code du travail, article L1233-11. Section 3 : Licenciement de moins de dix salariés dans une même période de trente jours > Sous-section 2 : Procédure à l'égard des salariés > Paragraphe 1 : Entretien préalable.
+       L'employeur qui envisage de procéder à un licenciement pour motif économique, qu'il s'agisse d'un licenciement individue
+  4  0.375  L1232-4 [fr] chunk 1/1
+       Code du travail, article L1232-4. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre II : Licenciement pour motif personnel > Section 2 : Entretien préalable.
+       Lors de son audition, le salarié peut se faire assister par une personne de son choix appartenant au personnel de l'entr
+  5  0.383  L5134-105 [fr] chunk 1/1
+       Code du travail, article L5134-105. Chapitre IV : Contrats de travail aidés > Section 7 : Contrat relatif aux activités d'adultes-relais > Sous-section 3 : Contrat de travail.
+       L'employeur qui décide de rompre le contrat du salarié pour une cause réelle et sérieuse notifie cette rupture par lettr
+
+Q6 [B, fr] Peut-on mettre fin à un CDI d'un commun accord ?
+  expected: L1237-11  (expected article NOT in the top results)
+  note: the law says rupture conventionnelle
+  1  0.414  L1237-17 [fr] chunk 1/1
+       Code du travail, article L1237-17. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre VII : Autres cas de rupture > Section 4 : Rupture d'un commun accord dans le cadre d'un accord collectif.
+       Un accord collectif portant gestion prévisionnelle des emplois et des compétences ou rupture conventionnelle collective 
+  2  0.436  L1237-19-2 [fr] chunk 1/1
+       Code du travail, article L1237-19-2. Chapitre VII : Autres cas de rupture > Section 4 : Rupture d'un commun accord dans le cadre d'un accord collectif > Sous-section 2 : Rupture d'un commun accord dans le cadre d'un accord collectif portant rupture conventionnelle collective.
+       L'acceptation par l'employeur de la candidature du salarié dans le cadre de la rupture conventionnelle collective emport
+  3  0.436  L1237-19-14 [fr] chunk 1/1
+       Code du travail, article L1237-19-14. Chapitre VII : Autres cas de rupture > Section 4 : Rupture d'un commun accord dans le cadre d'un accord collectif > Sous-section 2 : Rupture d'un commun accord dans le cadre d'un accord collectif portant rupture conventionnelle collective.
+       Une convention-cadre nationale de revitalisation est conclue entre le ministre chargé de l'emploi et l'entreprise lorsqu
+  4  0.447  L1237-19-10 [fr] chunk 1/1
+       Code du travail, article L1237-19-10. Chapitre VII : Autres cas de rupture > Section 4 : Rupture d'un commun accord dans le cadre d'un accord collectif > Sous-section 2 : Rupture d'un commun accord dans le cadre d'un accord collectif portant rupture conventionnelle collective.
+       Une convention entre l'entreprise et l'autorité administrative, conclue dans un délai de six mois à compter de la valida
+  5  0.449  D1237-8 [fr] chunk 1/1
+       Code du travail, article D1237-8. Chapitre VII : Autres cas de rupture > Section 3 : Rupture d'un commun accord dans le cadre d'un accord collectif > Sous-section 2 : Rupture d'un commun accord dans le cadre d'un accord collectif portant rupture conventionnelle collective.
+       La transmission de l'accord au directeur régional des entreprises, de la concurrence, de la consommation, du travail et 
+
+Q7 [B, fr] quel est le preavis en cas de demission
+  expected: L1237-1  (first expected article at rank 1)
+  note: no accents, no capital, no question mark
+  1* 0.287  L1237-1 [fr] chunk 1/1
+       Code du travail, article L1237-1. Chapitre VII : Autres cas de rupture > Section 1 : Rupture à l'initiative du salarié > Sous-section 1 : Démission.
+       En cas de démission, l'existence et la durée du préavis sont fixées par la loi, ou par convention ou accord collectif de
+  2  0.352  L1234-15 [fr] chunk 1/1
+       Code du travail, article L1234-15. Chapitre IV : Conséquences du licenciement > Section 1 : Préavis et indemnité de licenciement > Sous-section 5 : Dispositions particulières aux départements de la Moselle, du Bas-Rhin et du Haut-Rhin.
+       Le salarié a droit à un préavis : 1° D'un jour lorsque sa rémunération est fixée par jour ; 2° D'une semaine lorsque sa 
+  3  0.355  R1237-13 [fr] chunk 1/1
+       Code du travail, article R1237-13. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre VII : Autres cas de rupture > Section 4 : Démission.
+       L'employeur qui constate que le salarié a abandonné son poste et entend faire valoir la présomption de démission prévue 
+  4  0.357  L1234-3 [fr] chunk 1/1
+       Code du travail, article L1234-3. Chapitre IV : Conséquences du licenciement > Section 1 : Préavis et indemnité de licenciement > Sous-section 1 : Préavis et indemnité compensatrice de préavis.
+       La date de présentation de la lettre recommandée notifiant le licenciement au salarié fixe le point de départ du préavis
+  5  0.362  L1234-1 [fr] chunk 1/1
+       Code du travail, article L1234-1. Chapitre IV : Conséquences du licenciement > Section 1 : Préavis et indemnité de licenciement > Sous-section 1 : Préavis et indemnité compensatrice de préavis.
+       Lorsque le licenciement n'est pas motivé par une faute grave, le salarié a droit : 1° S'il justifie chez le même employe
+
+Q8 [B, fr] Que dit l'article L1221-13 du code du travail ?
+  expected: L1221-13  (expected article NOT in the top results)
+  note: exact reference; the number is in the chunk header
+  1  0.356  R1221-34 [fr] chunk 1/1
+       Code du travail, article R1221-34. Sous-section 3 : Informations en cas d'expatriation > Sous-section 3 : Informations délivrées au salarié > Paragraphe 1 : Informations dues à tous les salariés.
+       Les documents mentionnés à l'article L. 1221-5-1 comportent au moins les informations suivantes : 1° L'identité des part
+  2  0.364  L1221-12 [fr] chunk 1/1
+       Code du travail, article L1221-12. Chapitre Ier : Formation du contrat de travail > Section 3 : Formalités à l'embauche et à l'emploi > Sous-section 1 : Déclaration préalable à l'embauche.
+       Un décret en Conseil d'Etat détermine : 1° Les conditions dans lesquelles la déclaration préalable à l'embauche est réal
+  3  0.364  R3221-2 [fr] chunk 1/1
+       Code du travail, article R3221-2. Livre II : Salaire et avantages divers > Titre II : Egalité de rémunération entre les femmes et les hommes > Chapitre Ier : Principes.
+       Les dispositions des articles L. 3221-1 à L. 3221-7 du code du travail sont portées, par tout moyen, à la connaissance d
+  4  0.370  L3221-1 [fr] chunk 1/1
+       Code du travail, article L3221-1. Livre II : Salaire et avantages divers > Titre II : Egalité de rémunération entre les femmes et les hommes > Chapitre Ier : Principes.
+       Les dispositions des articles L. 3221-2 à L. 3221-7 sont applicables, outre aux employeurs et salariés mentionnés à l'ar
+  5  0.370  D1221-23 [fr] chunk 1/1
+       Code du travail, article D1221-23. Chapitre Ier : Formation du contrat de travail > Section 3 : Registre unique du personnel > Section 2 : Registre unique du personnel.
+       Les indications complémentaires portées sur le registre unique du personnel pour chaque salarié, mentionnées au troisièm
+
+Q9 [B, fr] Dans quels cas l'employeur ne peut-il pas rompre le contrat pendant une suspension du contrat ?
+  expected: L1226-9  (first expected article at rank 2)
+  note: exception wording
+  1  0.256  L1225-4 [fr] chunk 1/1
+       Code du travail, article L1225-4. Chapitre V : Maternité, paternité, adoption et éducation des enfants > Section 1 : Protection de la grossesse et de la maternité > Sous-section 1 : Embauche, mutation et licenciement.
+       Aucun employeur ne peut rompre le contrat de travail d'une salariée lorsqu'elle est en état de grossesse médicalement co
+  2* 0.282  L1226-9 [fr] chunk 1/1
+       Code du travail, article L1226-9. Chapitre VI : Maladie, accident et inaptitude médicale > Section 3 : Accident du travail ou maladie professionnelle > Sous-section 2 : Suspension du contrat et protection contre la rupture.
+       Au cours des périodes de suspension du contrat de travail, l'employeur ne peut rompre ce dernier que s'il justifie soit 
+  3  0.284  L1225-4-3 [fr] chunk 1/1
+       Code du travail, article L1225-4-3. Chapitre V : Maternité, paternité, adoption et éducation des enfants > Section 1 : Protection de la grossesse et de la maternité > Sous-section 1 : Embauche, mutation et licenciement.
+       Aucun employeur ne peut rompre le contrat de travail d'une salariée pendant les dix semaines suivant une interruption sp
+  4  0.302  L1225-4-4 [fr] chunk 1/1
+       Code du travail, article L1225-4-4. Chapitre V : Maternité, paternité, adoption et éducation des enfants > Section 1 : Protection de la grossesse et de la maternité > Sous-section 1 : Embauche, mutation et licenciement.
+       Aucun employeur ne peut rompre le contrat de travail d'un salarié pendant un congé de présence parentale prévu à l'artic
+  5  0.303  L1225-4-1 [fr] chunk 1/1
+       Code du travail, article L1225-4-1. Chapitre V : Maternité, paternité, adoption et éducation des enfants > Section 1 : Protection de la grossesse et de la maternité > Sous-section 1 : Embauche, mutation et licenciement.
+       Aucun employeur ne peut rompre le contrat de travail d'un salarié pendant les dix semaines suivant la naissance de son e
+
+Q10 [C, fr] Que contient la base de données économiques, sociales et environnementales ?
+  expected: R2312-9  (first expected article at rank 2)
+  note: article split in 15 chunks; the content is after chunk 0
+  1  0.232  L2312-36 [fr] chunk 1/1
+       Code du travail, article L2312-36. Paragraphe 3 : Dispositions supplétives > Sous-paragraphe 4 : La base de données économiques et sociales > Sous-paragraphe 4 : La base de données économiques, sociales et environnementales.
+       En l'absence d'accord prévu à l'article L. 2312-21, une base de données économiques, sociales et environnementales, mise
+  2* 0.295  R2312-9 [fr] chunk 1/15
+       Code du travail, article R2312-9. Paragraphe 2 : Base de données économiques, sociales et environnementales > Sous-Paragraphe 1 : Organisation et contenu supplétifs de la base de données économiques et sociales > Sous-Paragraphe 1 : Organisation et contenu supplétifs de la base de données économiques, sociales et environnementales.
+       En l'absence d'accord prévu à l'article L. 2312-21, dans les entreprises d'au moins trois cents salariés, la base de don
+  3  0.307  R2312-12 [fr] chunk 1/1
+       Code du travail, article R2312-12. Paragraphe 2 : Base de données économiques, sociales et environnementales > Sous-Paragraphe 2 : Mise en place et fonctionnement supplétifs de la base de données économiques et sociales > Sous-Paragraphe 2 : Mise en place et fonctionnement supplétifs de la base de données économiques, sociales et environnementales.
+       En l'absence d'accord prévu à l'article L. 2312-21, la base de données est tenue à la disposition des personnes mentionn
+  4  0.310  R2312-11 [fr] chunk 1/1
+       Code du travail, article R2312-11. Paragraphe 2 : Base de données économiques, sociales et environnementales > Sous-Paragraphe 2 : Mise en place et fonctionnement supplétifs de la base de données économiques et sociales > Sous-Paragraphe 2 : Mise en place et fonctionnement supplétifs de la base de données économiques, sociales et environnementales.
+       En l'absence d'accord prévu à l'article L. 2312-21, la base de données prévue à l'article L. 2312-18 est constituée au n
+  5  0.319  R2312-7 [fr] chunk 1/1
+       Code du travail, article R2312-7. Sous-section 2 : Modalités d'exercice des attributions générales > Paragraphe 2 : Base de données économiques et sociales > Paragraphe 2 : Base de données économiques, sociales et environnementales.
+       La base de données prévue à l'article L. 2312-18 permet la mise à disposition des informations nécessaires aux trois con
+
+Q11 [C, fr] Quel est le ressort du conseil de prud'hommes de Lyon ?
+  expected: Annexe à l'article R1422-4  (expected article NOT in the top results)
+  note: flattened table; Lyon is in chunk 2
+  1  0.425  L1422-1 [fr] chunk 1/1
+       Code du travail, article L1422-1. Livre IV : La résolution des litiges - Le conseil de prud'hommes > Titre II : Institution, organisation et fonctionnement > Chapitre II : Institution.
+       Il est créé au moins un conseil de prud'hommes dans le ressort de chaque tribunal judiciaire. Le ressort du conseil, s'i
+  2  0.434  R1422-2 [fr] chunk 1/1
+       Code du travail, article R1422-2. Livre IV : La résolution des litiges - Le conseil de prud'hommes > Titre II : Institution, organisation et fonctionnement > Chapitre II : Institution.
+       Les décrets d'institution du conseil de prud'hommes prévus à l'article L. 1422-3 fixent le siège et le ressort du consei
+  3  0.435  L1421-1 [fr] chunk 1/1
+       Code du travail, article L1421-1. Livre IV : La résolution des litiges - Le conseil de prud'hommes > Titre II : Institution, organisation et fonctionnement > Chapitre Ier : Dispositions générales.
+       Le conseil de prud'hommes est une juridiction paritaire. Il est composé, ainsi que ses différentes formations, d'un nomb
+  4  0.435  R1412-1 [fr] chunk 1/1
+       Code du travail, article R1412-1. Livre IV : La résolution des litiges - Le conseil de prud'hommes > Titre Ier : Attributions du conseil de prud'hommes > Chapitre II : Compétence territoriale.
+       L'employeur et le salarié portent les différends et litiges devant le conseil de prud'hommes territorialement compétent.
+  5  0.438  L1421-2 [fr] chunk 1/1
+       Code du travail, article L1421-2. Livre IV : La résolution des litiges - Le conseil de prud'hommes > Titre II : Institution, organisation et fonctionnement > Chapitre Ier : Dispositions générales.
+       Les conseillers prud'hommes exercent leurs fonctions en toute indépendance, impartialité, dignité et probité et se compo
+
+Q12 [C, fr] Quelles règles de sécurité s'appliquent aux machines neuves ?
+  expected: Annexe I à l'article R4312-1  (first expected article at rank 1)
+  note: annex of 31 chunks
+  1* 0.315  Annexe I à l'article R4312-1 [fr] chunk 1/31
+       Code du travail, Annexe I à l'article R4312-1. Livre III : Equipements de travail et moyens de protection > Titre Ier : Conception et mise sur le marché des équipements de travail et des moyens de protection > Annexes.
+       Règles techniques en matière de santé et de sécurité applicables aux machines neuves ou considérées comme neuves mention
+  2  0.343  R4312-2 [fr] chunk 1/1
+       Code du travail, article R4312-2. Section 1 : Équipements de travail et composants de sécurité > Section 1 : Équipements de travail > Sous-section 2 : Équipements d'occasion.
+       Les machines d'occasion, soumises lors de leur mise en service à l'état neuf aux règles techniques de conception et de c
+  3* 0.365  Annexe I à l'article R4312-1 [fr] chunk 11/31
+       Code du travail, Annexe I à l'article R4312-1. Livre III : Equipements de travail et moyens de protection > Titre Ier : Conception et mise sur le marché des équipements de travail et des moyens de protection > Annexes.
+       Lorsque le risque ne peut être éliminé, la machine est équipée de manière que les matières et substances dangereuses pui
+  4* 0.368  Annexe I à l'article R4312-1 [fr] chunk 7/31
+       Code du travail, Annexe I à l'article R4312-1. Livre III : Equipements de travail et moyens de protection > Titre Ier : Conception et mise sur le marché des équipements de travail et des moyens de protection > Annexes.
+       Mesures de protection contre les risques mécaniques. 1.3.1. Risque de perte de stabilité. La machine ainsi que ses éléme
+  5* 0.369  Annexe I à l'article R4312-1 [fr] chunk 12/31
+       Code du travail, Annexe I à l'article R4312-1. Livre III : Equipements de travail et moyens de protection > Titre Ier : Conception et mise sur le marché des équipements de travail et des moyens de protection > Annexes.
+       Si l'intervention d'un opérateur ne peut être évitée, la machine est conçue et construite pour que cette intervention pu
+
+Q13 [D, fr] Quelles sont les étapes d'un licenciement pour motif personnel ?
+  expected: L1232-2, L1232-3, L1232-6  (expected article NOT in the top results)
+  note: several articles
+  1  0.337  L1233-15 [fr] chunk 1/1
+       Code du travail, article L1233-15. Section 3 : Licenciement de moins de dix salariés dans une même période de trente jours > Sous-section 2 : Procédure à l'égard des salariés > Paragraphe 2 : Notification du licenciement.
+       Lorsque l'employeur décide de licencier un salarié pour motif économique, qu'il s'agisse d'un licenciement individuel ou
+  2  0.340  L1233-7 [fr] chunk 1/1
+       Code du travail, article L1233-7. Chapitre III : Licenciement pour motif économique > Section 2 : Dispositions communes > Sous-section 4 : Critères d'ordre des licenciements.
+       Lorsque l'employeur procède à un licenciement individuel pour motif économique, il prend en compte, dans le choix du sal
+  3  0.345  R2421-13 [fr] chunk 1/1
+       Code du travail, article R2421-13. Section 1 : Procédure applicable en cas de licenciement > Sous-section 2 : Délégué du personnel, membre du comité d'entreprise et membre du comité d'hygiène, de sécurité et des conditions de travail > Sous-section 2 : Membre de la délégation du personnel au comité social et économique et représentant de proximité.
+       Lorsqu'un licenciement pour motif économique de dix salariés ou plus dans une même période de trente jours concerne un o
+  4  0.346  L1232-1 [fr] chunk 1/1
+       Code du travail, article L1232-1. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre II : Licenciement pour motif personnel > Section 1 : Cause réelle et sérieuse.
+       Tout licenciement pour motif personnel est motivé dans les conditions définies par le présent chapitre. Il est justifié 
+  5  0.346  L2421-3 [fr] chunk 1/1
+       Code du travail, article L2421-3. Section 1 : Procédure applicable en cas de licenciement > Sous-section 2 : Délégué du personnel, membre de comité d'entreprise et membre de comité d'hygiène, de sécurité et des conditions de travail. > Sous-section 2 : Membre de la délégation du personnel du comité social et économique et représentant de proximité.
+       Le licenciement envisagé par l'employeur d'un membre élu à la délégation du personnel au comité social et économique tit
+
+Q14 [D, fr] Je suis en CDI depuis 8 mois dans une boulangerie. Mon patron dit que ma période d'essai est de 6 mois et qu'il peut la renouveler. Est-ce légal ?
+  expected: L1221-19, L1221-21  (first expected article at rank 1)
+  note: long narrative question
+  1* 0.359  L1221-21 [fr] chunk 1/1
+       Code du travail, article L1221-21. Titre II : Formation et exécution du contrat de travail > Chapitre Ier : Formation du contrat de travail > Section 4 : Période d'essai.
+       La période d'essai peut être renouvelée une fois si un accord de branche étendu le prévoit. Cet accord fixe les conditio
+  2  0.384  L1242-10 [fr] chunk 1/1
+       Code du travail, article L1242-10. Titre IV : Contrat de travail à durée déterminée > Chapitre II : Conclusion et exécution du contrat > Section 3 : Période d'essai.
+       Le contrat de travail à durée déterminée peut comporter une période d'essai. Sauf si des usages ou des stipulations conv
+  3  0.395  L7332-1 [fr] chunk 1/1
+       Code du travail, article L7332-1. Livre III : Voyageurs, représentants ou placiers, gérants de succursales, entrepreneurs salariés associés d'une coopérative d'activité et d'emploi et travailleurs utilisant une plateforme de mise en relation par voie électronique > Titre III : Entrepreneurs salariés associés d'une coopérative d'activité et d'emploi > Chapitre II : Mise en œuvre.
+       Le contrat mentionné au 2° de l'article L. 7331-2 peut comporter une période d'essai dont la durée, renouvellement compr
+  4* 0.395  L1221-19 [fr] chunk 1/1
+       Code du travail, article L1221-19. Titre II : Formation et exécution du contrat de travail > Chapitre Ier : Formation du contrat de travail > Section 4 : Période d'essai.
+       Le contrat de travail à durée indéterminée peut comporter une période d'essai dont la durée maximale est : 1° Pour les o
+  5  0.397  L7313-5 [fr] chunk 1/1
+       Code du travail, article L7313-5. Chapitre III : Contrat de travail > Section 2 : Conclusion et exécution du contrat de travail > Sous-section 1 : Période d'essai.
+       Le contrat de travail peut comporter une période d'essai dont la durée ne peut être supérieure à trois mois.
+
+Q15 [D, fr] Pourquoi le RGPD prévoit-il un droit à l'oubli ?
+  expected: rct 65, art 17  (first expected article at rank 1)
+  note: explanation; a recital answers it
+  1* 0.291  rct 65 [fr] chunk 1/1
+       RGPD, considérant 65.
+       Les personnes concernées devraient avoir le droit de faire rectifier des données à caractère personnel les concernant, e
+  2  0.342  rct 66 [fr] chunk 1/1
+       RGPD, considérant 66.
+       Afin de renforcer le «droit à l'oubli» numérique, le droit à l'effacement devrait également être étendu de façon à ce qu
+  3* 0.356  art 17 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 17 : Droit à l'effacement («droit à l'oubli»). CHAPITRE III : Droits de la personne concernée > Section 3 : Rectification et effacement.
+       1. La personne concernée a le droit d'obtenir du responsable du traitement l'effacement, dans les meilleurs délais, de d
+  4  0.365  rct 73 [fr] chunk 1/1
+       RGPD, considérant 73.
+       Des limitations à certains principes spécifiques ainsi qu'au droit à l'information, au droit d'accès aux données à carac
+  5* 0.372  art 17 [en] chunk 1/1
+       GDPR (Regulation (EU) 2016/679), article 17 : Right to erasure (‘right to be forgotten’). CHAPTER III : Rights of the data subject > Section 3 : Rectification and erasure.
+       1. The data subject shall have the right to obtain from the controller the erasure of personal data concerning him or he
+
+Q16 [E, fr] Que signifie « consentement » dans le RGPD ?
+  expected: art 4  (first expected article at rank 4)
+  note: definitions article split in 3 chunks
+  1  0.278  art 7 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 7 : Conditions applicables au consentement. CHAPITRE II : Principes.
+       1. Dans les cas où le traitement repose sur le consentement, le responsable du traitement est en mesure de démontrer que
+  2  0.280  rct 42 [fr] chunk 1/1
+       RGPD, considérant 42.
+       Lorsque le traitement est fondé sur le consentement de la personne concernée, le responsable du traitement devrait être 
+  3  0.282  rct 32 [fr] chunk 1/1
+       RGPD, considérant 32.
+       Le consentement devrait être donné par un acte positif clair par lequel la personne concernée manifeste de façon libre, 
+  4* 0.296  art 4 [fr] chunk 2/3
+       RGPD (règlement (UE) 2016/679), article 4 : Définitions. CHAPITRE I : Dispositions générales.
+       11) «consentement» de la personne concernée, toute manifestation de volonté, libre, spécifique, éclairée et univoque par
+  5  0.297  rct 43 [fr] chunk 1/1
+       RGPD, considérant 43.
+       Pour garantir que le consentement est donné librement, il convient que celui-ci ne constitue pas un fondement juridique 
+
+Q17 [E, fr] Quel est le droit à l'effacement des données ?
+  expected: art 17  (first expected article at rank 1)
+  1* 0.269  art 17 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 17 : Droit à l'effacement («droit à l'oubli»). CHAPITRE III : Droits de la personne concernée > Section 3 : Rectification et effacement.
+       1. La personne concernée a le droit d'obtenir du responsable du traitement l'effacement, dans les meilleurs délais, de d
+  2  0.289  rct 66 [fr] chunk 1/1
+       RGPD, considérant 66.
+       Afin de renforcer le «droit à l'oubli» numérique, le droit à l'effacement devrait également être étendu de façon à ce qu
+  3* 0.318  art 17 [en] chunk 1/1
+       GDPR (Regulation (EU) 2016/679), article 17 : Right to erasure (‘right to be forgotten’). CHAPTER III : Rights of the data subject > Section 3 : Rectification and erasure.
+       1. The data subject shall have the right to obtain from the controller the erasure of personal data concerning him or he
+  4  0.322  rct 65 [fr] chunk 1/1
+       RGPD, considérant 65.
+       Les personnes concernées devraient avoir le droit de faire rectifier des données à caractère personnel les concernant, e
+  5  0.327  rct 65 [en] chunk 1/1
+       GDPR, recital 65.
+       A data subject should have the right to have personal data concerning him or her rectified and a ‘right to be forgotten’
+
+Q18 [E, fr] Dans quels cas faut-il désigner un délégué à la protection des données ?
+  expected: art 37, art 38, art 39  (first expected article at rank 1)
+  1* 0.238  art 37 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 37 : Désignation du délégué à la protection des données. CHAPITRE IV : Responsable du traitement et sous-traitant > Section 4 : Délégué à la protection des données.
+       1. Le responsable du traitement et le sous-traitant désignent en tout état de cause un délégué à la protection des donné
+  2* 0.273  art 39 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 39 : Missions du délégué à la protection des données. CHAPITRE IV : Responsable du traitement et sous-traitant > Section 4 : Délégué à la protection des données.
+       1. Les missions du délégué à la protection des données sont au moins les suivantes: a) informer et conseiller le respons
+  3* 0.280  art 38 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 38 : Fonction du délégué à la protection des données. CHAPITRE IV : Responsable du traitement et sous-traitant > Section 4 : Délégué à la protection des données.
+       1. Le responsable du traitement et le sous-traitant veillent à ce que le délégué à la protection des données soit associ
+  4  0.318  rct 80 [en] chunk 1/1
+       GDPR, recital 80.
+       Where a controller or a processor not established in the Union is processing personal data of data subjects who are in t
+  5  0.318  art 27 [en] chunk 1/1
+       GDPR (Regulation (EU) 2016/679), article 27 : Representatives of controllers or processors not established in the Union. CHAPTER IV : Controller and processor > Section 1 : General obligations.
+       1. Where Article 3(2) applies, the controller or the processor shall designate in writing a representative in the Union.
+
+Q19 [E, fr] Sous quel délai notifier une violation de données ?
+  expected: art 33  (first expected article at rank 1)
+  1* 0.270  art 33 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 33 : Notification à l'autorité de contrôle d'une violation de données à caractère personnel. CHAPITRE IV : Responsable du traitement et sous-traitant > Section 2 : Sécurité des données à.caractère personnel.
+       1. En cas de violation de données à caractère personnel, le responsable du traitement en notifie la violation en questio
+  2  0.294  rct 85 [fr] chunk 1/1
+       RGPD, considérant 85.
+       Une violation de données à caractère personnel risque, si l'on n'intervient pas à temps et de manière appropriée, de cau
+  3* 0.303  art 33 [en] chunk 1/1
+       GDPR (Regulation (EU) 2016/679), article 33 : Notification of a personal data breach to the supervisory authority. CHAPTER IV : Controller and processor > Section 2 : Security of personal data.
+       1. In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 7
+  4  0.315  rct 85 [en] chunk 1/1
+       GDPR, recital 85.
+       A personal data breach may, if not addressed in an appropriate and timely manner, result in physical, material or non-ma
+  5  0.350  art 34 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 34 : Communication à la personne concernée d'une violation de données à caractère personnel. CHAPITRE IV : Responsable du traitement et sous-traitant > Section 2 : Sécurité des données à.caractère personnel.
+       1. Lorsqu'une violation de données à caractère personnel est susceptible d'engendrer un risque élevé pour les droits et 
+
+Q20 [E, fr] Quel est le montant maximal des amendes administratives ?
+  expected: art 83  (first expected article at rank 2)
+  note: article split in 2 chunks
+  1  0.263  L8115-3 [fr] chunk 1/1
+       Code du travail, article L8115-3. Livre Ier : Inspection du travail > Titre Ier : Compétences et moyens d'intervention > Chapitre V : Amendes administratives.
+       Le montant maximal de l'amende est de 4 000 euros et peut être appliqué autant de fois qu'il y a de travailleurs concern
+  2* 0.286  art 83 [fr] chunk 2/2
+       RGPD (règlement (UE) 2016/679), article 83 : Conditions générales pour imposer des amendes administratives. CHAPITRE VIII : Voies de recours, responsabilité et sanctions.
+       5. Les violations des dispositions suivantes font l'objet, conformément au paragraphe 2, d'amendes administratives pouva
+  3  0.323  L8291-2 [fr] chunk 1/1
+       Code du travail, article L8291-2. Livre II : Lutte contre le travail illégal > Titre IX : Déclaration et carte d'identification professionnelle des salariés du bâtiment et des travaux publics > Chapitre unique.
+       En cas de manquement à l'obligation de déclaration mentionnée à l'article L. 8291-1, l'employeur ou, le cas échéant, l'e
+  4  0.327  L1264-3 [fr] chunk 1/1
+       Code du travail, article L1264-3. Titre VI : Salariés détachés temporairement par une entreprise non établie en France > Chapitre IV : Dispositions pénales. > Chapitre IV : Amendes administratives.
+       L'amende administrative mentionnée aux articles L. 1264-1 et L. 1264-2 est prononcée par l'autorité administrative compé
+  5  0.332  R7122-26 [fr] chunk 1/1
+       Code du travail, article R7122-26. Section 4 : Dispositions pénales > Section 4 : Dispositions pénales et sanctions administratives > Section 4 : Sanctions administratives.
+       Peut être sanctionné d'une amende administrative d'un montant maximum de 800 € pour une personne physique et de 2 000 € 
+
+Q21 [E, fr] Peut-on transférer des données personnelles hors de l'UE ?
+  expected: art 44, art 45, art 46, art 47, art 48, art 49  (first expected article at rank 2)
+  note: article 47 is split in 4 chunks
+  1  0.296  rct 101 [en] chunk 1/1
+       GDPR, recital 101.
+       Flows of personal data to and from countries outside the Union and international organisations are necessary for the exp
+  2* 0.297  art 49 [fr] chunk 1/2
+       RGPD (règlement (UE) 2016/679), article 49 : Dérogations pour des situations particulières. CHAPITRE V : Transferts de données à caractère personnel vers des pays tiers ou à des organisations internationales.
+       1. En l'absence de décision d'adéquation en vertu de l'article 45, paragraphe 3, ou de garanties appropriées en vertu de
+  3* 0.299  art 48 [fr] chunk 1/1
+       RGPD (règlement (UE) 2016/679), article 48 : Transferts ou divulgations non autorisés par le droit de l'Union. CHAPITRE V : Transferts de données à caractère personnel vers des pays tiers ou à des organisations internationales.
+       Toute décision d'une juridiction ou d'une autorité administrative d'un pays tiers exigeant d'un responsable du traitemen
+  4  0.302  rct 116 [fr] chunk 1/1
+       RGPD, considérant 116.
+       Lorsque des données à caractère personnel franchissent les frontières extérieures de l'Union, cela peut accroître le ris
+  5  0.302  rct 101 [fr] chunk 1/1
+       RGPD, considérant 101.
+       Les flux de données à caractère personnel à destination et en provenance de pays en dehors de l'Union et d'organisations
+
+Q22 [E, fr] Pourquoi le RGPD s'applique-t-il à une entreprise établie hors de l'UE ?
+  expected: art 3, rct 22, rct 23  (expected article NOT in the top results)
+  1  0.340  rct 13 [fr] chunk 1/1
+       RGPD, considérant 13.
+       Afin d'assurer un niveau cohérent de protection des personnes physiques dans l'ensemble de l'Union, et d'éviter que des 
+  2  0.341  art 47 [fr] chunk 3/4
+       RGPD (règlement (UE) 2016/679), article 47 : Règles d'entreprise contraignantes. CHAPITRE V : Transferts de données à caractère personnel vers des pays tiers ou à des organisations internationales.
+       m) les mécanismes permettant de communiquer à l'autorité de contrôle compétente toutes les obligations juridiques auxque
+  3  0.341  rct 101 [fr] chunk 1/1
+       RGPD, considérant 101.
+       Les flux de données à caractère personnel à destination et en provenance de pays en dehors de l'Union et d'organisations
+  4  0.349  rct 115 [fr] chunk 1/1
+       RGPD, considérant 115.
+       Certains pays tiers adoptent des lois, des règlements et d'autres actes juridiques qui visent à réglementer directement 
+  5  0.349  rct 25 [fr] chunk 1/1
+       RGPD, considérant 25.
+       Lorsque le droit d'un État membre s'applique en vertu du droit international public, le présent règlement devrait s'appl
+
+Q23 [F, en] What must a controller do after a personal data breach?
+  expected: art 33  (first expected article at rank 1)
+  note: English question; English text should rank first
+  1* 0.274  art 33 [en] chunk 1/1
+       GDPR (Regulation (EU) 2016/679), article 33 : Notification of a personal data breach to the supervisory authority. CHAPTER IV : Controller and processor > Section 2 : Security of personal data.
+       1. In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 7
+  2  0.277  rct 85 [en] chunk 1/1
+       GDPR, recital 85.
+       A personal data breach may, if not addressed in an appropriate and timely manner, result in physical, material or non-ma
+  3  0.289  rct 86 [en] chunk 1/1
+       GDPR, recital 86.
+       The controller should communicate to the data subject a personal data breach, without undue delay, where that personal d
+  4  0.299  art 34 [en] chunk 1/1
+       GDPR (Regulation (EU) 2016/679), article 34 : Communication of a personal data breach to the data subject. CHAPTER IV : Controller and processor > Section 2 : Security of personal data.
+       1. When the personal data breach is likely to result in a high risk to the rights and freedoms of natural persons, the c
+  5  0.330  rct 74 [en] chunk 1/1
+       GDPR, recital 74.
+       The responsibility and liability of the controller for any processing of personal data carried out by the controller or 
+
+Q24 [F, en] What is the legal working time per week in France?
+  expected: L3121-27  (first expected article at rank 1)
+  note: English question over French text
+  1* 0.359  L3121-27 [fr] chunk 1/1
+       Code du travail, article L3121-27. Section 3 : Durée légale et heures supplémentaires > Sous-section 1 : Temps de pause. > Sous-section 1 : Ordre public.
+       La durée légale de travail effectif des salariés à temps complet est fixée à trente-cinq heures par semaine.
+  2  0.385  L3162-1 [fr] chunk 1/1
+       Code du travail, article L3162-1. Livre Ier : Durée du travail, repos et congés > Titre VI : Dispositions particulières aux jeunes travailleurs > Chapitre II : Durée du travail.
+       Les jeunes travailleurs ne peuvent être employés à un travail effectif excédant huit heures par jour et trente-cinq heur
+  3  0.391  L3121-35 [fr] chunk 1/1
+       Code du travail, article L3121-35. Section 3 : Durée légale et heures supplémentaires > Sous-section 3 : Durées hebdomadaires maximales. > Sous-section 3 : Dispositions supplétives.
+       Sauf stipulations contraires dans une convention ou un accord mentionné à l'article L. 3121-32, la semaine débute le lun
+  4  0.393  L3121-22 [fr] chunk 1/1
+       Code du travail, article L3121-22. Sous-section 3 : Durées hebdomadaires maximales > Paragraphe 1 : Majorations de salaire. > Paragraphe 1 : Ordre public.
+       La durée hebdomadaire de travail calculée sur une période quelconque de douze semaines consécutives ne peut dépasser qua
+  5  0.394  L3132-15 [fr] chunk 1/1
+       Code du travail, article L3132-15. Sous-section 2 : Dérogations au repos dominical > Paragraphe 2 : Dérogations conventionnelles > Sous-paragraphe 1 : Travail en continu.
+       La durée du travail des salariés travaillant de façon permanente en équipes successives selon un cycle continu ne doit p
+
+Q25 [F, fr] Mon employeur peut-il surveiller mes e-mails professionnels ?
+  expected: L1222-4, L1121-1, art 88, art 6  (expected article NOT in the top results)
+  note: both sources
+  1  0.415  D4163-32 [fr] chunk 1/1
+       Code du travail, article D4163-32. Chapitre III : Compte professionnel de prévention > Section 4 : Gestion du compte, contrôle et réclamations > Sous-section 2 : Contrôle de l'exposition aux facteurs de risques professionnels.
+       I.-Pour le contrôle de l'effectivité ou de l'ampleur de l'exposition aux facteurs de risques professionnels et de l'exha
+  2  0.417  R4722-12 [fr] chunk 1/1
+       Code du travail, article R4722-12. Section 4 : Risques chimiques. > Sous-section 2 : Contrôle des valeurs limites d'exposition professionnelle. > Sous-section 1 : Contrôle des valeurs limites d'exposition professionnelle.
+       L'agent de contrôle de l'inspection du travail peut demander à l'employeur de faire procéder à un contrôle technique des
+  3  0.425  D4163-4 [fr] chunk 1/1
+       Code du travail, article D4163-4. Chapitre III : Accords en faveur de la prévention de la pénibilité > Chapitre III : Compte professionnel de prévention > Section 1 : Dispositions générales.
+       Pour les travailleurs mentionnés au 2° du V de l'article L. 4163-1, qui ne sont pas susceptibles d'acquérir des droits a
+  4  0.427  R4722-13 [fr] chunk 1/1
+       Code du travail, article R4722-13. Section 4 : Risques chimiques. > Sous-section 2 : Contrôle des valeurs limites d'exposition professionnelle. > Sous-section 1 : Contrôle des valeurs limites d'exposition professionnelle.
+       L'employeur justifie qu'il a saisi l'organisme accrédité pendant le délai qui lui a été fixé et transmet à l'agent de co
+  5  0.430  R4446-3 [fr] chunk 1/1
+       Code du travail, article R4446-3. Titre IV : Prévention des risques d'exposition aux vibrations mécaniques > Chapitre VI : Surveillance médicale > Chapitre VI : Suivi individuel de l'état de santé.
+       L'employeur est informé par le médecin du travail de toute conclusion significative provenant notamment du suivi de l'ét
+
+Q26 [G, fr] Pourquoi la durée légale du travail est-elle de 39 heures ?
+  expected: L3121-27  (first expected article at rank 1)
+  note: false premise (it is 35)
+  1* 0.320  L3121-27 [fr] chunk 1/1
+       Code du travail, article L3121-27. Section 3 : Durée légale et heures supplémentaires > Sous-section 1 : Temps de pause. > Sous-section 1 : Ordre public.
+       La durée légale de travail effectif des salariés à temps complet est fixée à trente-cinq heures par semaine.
+  2  0.336  L3162-1 [fr] chunk 1/1
+       Code du travail, article L3162-1. Livre Ier : Durée du travail, repos et congés > Titre VI : Dispositions particulières aux jeunes travailleurs > Chapitre II : Durée du travail.
+       Les jeunes travailleurs ne peuvent être employés à un travail effectif excédant huit heures par jour et trente-cinq heur
+  3  0.353  L3121-18 [fr] chunk 1/1
+       Code du travail, article L3121-18. Sous-section 2 : Contingent annuel d'heures supplémentaires et dérogations. > Sous-section 2 : Durée quotidienne maximale. > Paragraphe 1 : Ordre public.
+       La durée quotidienne de travail effectif par salarié ne peut excéder dix heures, sauf : 1° En cas de dérogation accordée
+  4  0.370  R3122-5 [fr] chunk 1/1
+       Code du travail, article R3122-5. Chapitre II : Travail de nuit > Section 1 : Dépassement de la durée de travail maximale quotidienne > Sous-section 1 : Ordre public.
+       L'employeur peut prendre la décision de dépasser, sous sa propre responsabilité, la durée maximale quotidienne de huit h
+  5  0.376  R3162-1 [fr] chunk 1/1
+       Code du travail, article R3162-1. Livre Ier : Durée du travail, repos et congés > Titre VI : Dispositions particulières aux jeunes travailleurs > Chapitre II : Durée du travail.
+       Lorsque l'organisation collective du travail le justifie, en application de l'article L. 3162-1, les jeunes travailleurs
+
+Q27 [G, fr] Combien de jours de congé ai-je droit ?
+  expected: L3141-3, L3142-1  (first expected article at rank 1)
+  note: underspecified
+  1* 0.293  L3141-3 [fr] chunk 1/1
+       Code du travail, article L3141-3. Section 2 : Durée du congé. > Section 2 : Durée du congé > Sous-section 1 : Ordre public.
+       Le salarié a droit à un congé de deux jours et demi ouvrables par mois de travail effectif chez le même employeur. La du
+  2  0.295  L3141-17 [fr] chunk 1/1
+       Code du travail, article L3141-17. Section 3 : Prise des congés > Sous-section 2 : Règles de fractionnement et de report. > Paragraphe 1 : Ordre public.
+       La durée des congés pouvant être pris en une seule fois ne peut excéder vingt-quatre jours ouvrables. Il peut être dérog
+  3  0.301  D3142-82 [fr] chunk 1/1
+       Code du travail, article D3142-82. Livre Ier : Durée du travail, repos et congés > Titre IV : Congés payés et autres congés > Chapitre II bis : Don de congés et de jours de repos.
+       Le nombre total de jours de repos auquel le salarié peut renoncer dans les conditions prévues à l'article L. 3142-131 ne
+  4  0.302  L3164-9 [fr] chunk 1/1
+       Code du travail, article L3164-9. Titre VI : Dispositions particulières aux jeunes travailleurs > Chapitre IV : Repos et congés > Section 4 : Congés annuels.
+       Quelle que soit leur ancienneté dans l'entreprise, les salariés de moins de vingt et un ans au 30 avril de l'année précé
+  5  0.305  L3142-4 [fr] chunk 1/1
+       Code du travail, article L3142-4. Sous-section 1 : Congé pour événements familiaux. > Sous-section 1 : Congés pour événements familiaux > Paragraphe 2 : Champ de la négociation collective.
+       Pour mettre en œuvre le droit à congé du salarié défini à l'article L. 3142-1, une convention ou un accord collectif d'e
+
+Q28 [G, fr] Quel est le montant actuel du SMIC horaire ?
+  expected: -  (no expected article)
+  note: no amount in the corpus; related articles will come back
+  1  0.459  D3231-6 [fr] chunk 1/1
+       Code du travail, article D3231-6. Chapitre Ier : Salaire minimum interprofessionnel de croissance > Section 2 : Modalités de fixation > Sous-section 1 : Garantie du pouvoir d'achat des salariés.
+       Le salaire horaire à prendre en considération pour l'application de l'article D. 3231-5 est celui qui correspond à une h
+  2  0.468  D5122-13 [fr] chunk 1/1
+       Code du travail, article D5122-13. Titre II : Aides au maintien et à la sauvegarde de l'emploi > Chapitre II : Aides aux salariés en chômage partiel > Chapitre II : Aide aux salariés placés en activité partielle.
+       Le taux horaire de l'allocation d'activité partielle est égal pour chaque salarié concerné à 36 % de la rémunération hor
+  3  0.477  D5522-16 [fr] chunk 1/1
+       Code du travail, article D5522-16. Chapitre II : Dispositifs en faveur de l'emploi > Section 1 : Aides à l'insertion, à l'accès et au retour à l'emploi. > Sous-section 2 : Contrat unique d'insertion.
+       Le montant horaire de l'aide forfaitaire pour les frais de formation mentionnés à l'article R. 5522-14 est fixé à 7,62 e
+  4  0.478  R5122-18 [fr] chunk 1/1
+       Code du travail, article R5122-18. Titre II : Aides au maintien et à la sauvegarde de l'emploi > Chapitre II : Aides aux salariés en chômage partiel > Chapitre II : Aide aux salariés placés en activité partielle.
+       Le salarié placé en activité partielle reçoit une indemnité horaire, versée par son employeur, correspondant à 60 % de s
+  5  0.485  D5424-74 [fr] chunk 1/1
+       Code du travail, article D5424-74. Chapitre IV : Régimes particuliers > Section 4 : Allocation des travailleurs indépendants > Sous-section 2 : Détermination du montant et de la durée de l'allocation et versement de l'allocation.
+       I.-En métropole, en Guadeloupe, en Guyane, en Martinique, à La Réunion, à Saint-Barthélemy, à Saint-Martin et à Saint-Pi
+
+Q29 [G, fr] Quelle est la peine pour un vol en France ?
+  expected: -  (no expected article)
+  note: outside the corpus
+  1  0.445  L8234-1 [fr] chunk 1/1
+       Code du travail, article L8234-1. Livre II : Lutte contre le travail illégal > Titre III : Marchandage > Chapitre IV : Dispositions pénales.
+       Le fait de commettre le délit de marchandage, défini par l'article L. 8231-1, est puni d'un emprisonnement de deux ans e
+  2  0.457  L1255-14 [fr] chunk 1/1
+       Code du travail, article L1255-14. Chapitre IV : Dispositions pénales > Chapitre V : Dispositions pénales > Section 3 : Portage salarial.
+       Est puni de 3 750 € d'amende le fait pour un entrepreneur de portage salarial : 1° De conclure un contrat de travail en 
+  3  0.459  L1255-17 [fr] chunk 1/1
+       Code du travail, article L1255-17. Chapitre IV : Dispositions pénales > Chapitre V : Dispositions pénales > Section 3 : Portage salarial.
+       Le fait de méconnaître, directement ou par personne interposée, l'interdiction d'exercer l'activité de portage salarial 
+  4  0.464  L1255-16 [fr] chunk 1/1
+       Code du travail, article L1255-16. Chapitre IV : Dispositions pénales > Chapitre V : Dispositions pénales > Section 3 : Portage salarial.
+       Est puni de 3 750 € d'amende le fait pour une entreprise cliente : 1° De recourir à un salarié porté en dehors des cas p
+  5  0.467  L4743-2 [fr] chunk 1/1
+       Code du travail, article L4743-2. Livre VII : Contrôle > Titre IV : Dispositions pénales > Chapitre III : Infractions aux règles concernant le travail des jeunes et des femmes enceintes, venant d'accoucher ou allaitant.
+       Est puni d'un emprisonnement de cinq ans et d'une amende de 75 000 euros le fait, pour le père, la mère, le tuteur ou l'
+
+Expected article in the top 5: 21 of 27 questions that have one.
+First rank per question: Q1=1, Q2=1, Q3=3, Q4=2, Q5=1, Q6=-, Q7=1, Q8=-, Q9=2, Q10=2, Q11=-, Q12=1, Q13=-, Q14=1, Q15=1, Q16=4, Q17=1, Q18=1, Q19=1, Q20=2, Q21=2, Q22=-, Q23=1, Q24=1, Q25=-, Q26=1, Q27=1, Q28=-, Q29=-

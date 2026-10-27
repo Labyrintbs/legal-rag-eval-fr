@@ -1,0 +1,42 @@
+# Smoke questions for `legalrag smoke`: an inspection list, not a metric.
+# expected: article labels as the smoke output prints them. Code du travail: the article number
+# (annexes: their full name). GDPR: "art N" or "rct N" (recital), French or English alike.
+# Groups: A plain lookup, B wording gap and form, C split articles and annexes,
+# D several articles or an explanation, E GDPR in French, F language and sources,
+# G questions that should not get a plain answer (refusal is built in step 0d).
+
+- {id: 1, group: A, lang: fr, question: "Quel est le préavis en cas de démission ?", expected: [L1237-1]}
+- {id: 2, group: A, lang: fr, question: "Quelle est la durée légale du travail par semaine ?", expected: [L3121-27]}
+- {id: 3, group: A, lang: fr, question: "Combien de jours de congés payés acquiert-on par mois de travail ?", expected: [L3141-3]}
+- {id: 4, group: A, lang: fr, question: "Quelle est la durée maximale de la période d'essai d'un CDI ?", expected: [L1221-19]}
+
+- {id: 5, group: B, lang: fr, question: "Mon patron veut me virer, doit-il me recevoir avant ?", expected: [L1232-2], note: "colloquial, no legal terms"}
+- {id: 6, group: B, lang: fr, question: "Peut-on mettre fin à un CDI d'un commun accord ?", expected: [L1237-11], note: "the law says rupture conventionnelle"}
+- {id: 7, group: B, lang: fr, question: "quel est le preavis en cas de demission", expected: [L1237-1], note: "no accents, no capital, no question mark"}
+- {id: 8, group: B, lang: fr, question: "Que dit l'article L1221-13 du code du travail ?", expected: [L1221-13], note: "exact reference; the number is in the chunk header"}
+- {id: 9, group: B, lang: fr, question: "Dans quels cas l'employeur ne peut-il pas rompre le contrat pendant une suspension du contrat ?", expected: [L1226-9], note: "exception wording"}
+
+- {id: 10, group: C, lang: fr, question: "Que contient la base de données économiques, sociales et environnementales ?", expected: [R2312-9], note: "article split in 15 chunks; the content is after chunk 0"}
+- {id: 11, group: C, lang: fr, question: "Quel est le ressort du conseil de prud'hommes de Lyon ?", expected: ["Annexe à l'article R1422-4"], note: "flattened table; Lyon is in chunk 2"}
+- {id: 12, group: C, lang: fr, question: "Quelles règles de sécurité s'appliquent aux machines neuves ?", expected: ["Annexe I à l'article R4312-1"], note: "annex of 31 chunks"}
+
+- {id: 13, group: D, lang: fr, question: "Quelles sont les étapes d'un licenciement pour motif personnel ?", expected: [L1232-2, L1232-3, L1232-6], note: "several articles"}
+- {id: 14, group: D, lang: fr, question: "Je suis en CDI depuis 8 mois dans une boulangerie. Mon patron dit que ma période d'essai est de 6 mois et qu'il peut la renouveler. Est-ce légal ?", expected: [L1221-19, L1221-21], note: "long narrative question"}
+- {id: 15, group: D, lang: fr, question: "Pourquoi le RGPD prévoit-il un droit à l'oubli ?", expected: ["rct 65", "art 17"], note: "explanation; a recital answers it"}
+
+- {id: 16, group: E, lang: fr, question: "Que signifie « consentement » dans le RGPD ?", expected: ["art 4"], note: "definitions article split in 3 chunks"}
+- {id: 17, group: E, lang: fr, question: "Quel est le droit à l'effacement des données ?", expected: ["art 17"]}
+- {id: 18, group: E, lang: fr, question: "Dans quels cas faut-il désigner un délégué à la protection des données ?", expected: ["art 37", "art 38", "art 39"]}
+- {id: 19, group: E, lang: fr, question: "Sous quel délai notifier une violation de données ?", expected: ["art 33"]}
+- {id: 20, group: E, lang: fr, question: "Quel est le montant maximal des amendes administratives ?", expected: ["art 83"], note: "article split in 2 chunks"}
+- {id: 21, group: E, lang: fr, question: "Peut-on transférer des données personnelles hors de l'UE ?", expected: ["art 44", "art 45", "art 46", "art 47", "art 48", "art 49"], note: "article 47 is split in 4 chunks"}
+- {id: 22, group: E, lang: fr, question: "Pourquoi le RGPD s'applique-t-il à une entreprise établie hors de l'UE ?", expected: ["art 3", "rct 22", "rct 23"]}
+
+- {id: 23, group: F, lang: en, question: "What must a controller do after a personal data breach?", expected: ["art 33"], note: "English question; English text should rank first"}
+- {id: 24, group: F, lang: en, question: "What is the legal working time per week in France?", expected: [L3121-27], note: "English question over French text"}
+- {id: 25, group: F, lang: fr, question: "Mon employeur peut-il surveiller mes e-mails professionnels ?", expected: [L1222-4, L1121-1, "art 88", "art 6"], note: "both sources"}
+
+- {id: 26, group: G, lang: fr, question: "Pourquoi la durée légale du travail est-elle de 39 heures ?", expected: [L3121-27], note: "false premise (it is 35)"}
+- {id: 27, group: G, lang: fr, question: "Combien de jours de congé ai-je droit ?", expected: [L3141-3, L3142-1], note: "underspecified"}
+- {id: 28, group: G, lang: fr, question: "Quel est le montant actuel du SMIC horaire ?", expected: [], note: "no amount in the corpus; related articles will come back"}
+- {id: 29, group: G, lang: fr, question: "Quelle est la peine pour un vol en France ?", expected: [], note: "outside the corpus"}

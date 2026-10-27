@@ -11,7 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from legalrag import db, store
+from legalrag import db, smoke, store
 from legalrag.config import database_url
 from legalrag.dbcheck import NEIGHBOUR_QUERY, _exact_scan, cross_language_rate, index_recall
 from legalrag.embed import DIM, MODEL, embed_text_hash
@@ -233,6 +233,21 @@ def test_deleting_a_run_removes_its_chunks_and_vectors_but_not_articles(conn, lo
     assert store.run_size(conn, "t") is None
     assert (count(conn, "chunking_runs"), count(conn, "chunks"), count(conn, "chunk_embeddings")) == (0, 0, 0)
     assert count(conn, "articles") == articles
+
+
+def test_smoke_finds_the_chunk_a_question_vector_equals_and_knows_the_labels(conn, loaded, tmp_path):
+    run_id, chunks = loaded
+    vectors = unit_vectors(chunks, same_unit_same_vector=False)
+    write_vectors(tmp_path / "v.parquet", chunks, vectors)
+    store.load_embeddings(conn, run_id, tmp_path / "v.parquet")
+    hits = smoke.nearest(conn, run_id, vectors[5], k=3)
+    first = conn.execute(
+        "SELECT count(*) FROM chunks WHERE article_uid = %s", (chunks[5].article_uid,)
+    ).fetchone()[0]
+    assert (hits[0].chunk_index, hits[0].chunks) == (chunks[5].chunk_index, first)
+    assert hits[0].distance == pytest.approx(0, abs=1e-5) and hits[0].distance < hits[1].distance
+    labels = smoke.known_labels(conn)
+    assert "L1237-1" in labels and any(label.startswith("art ") for label in labels)
 
 
 def test_analyze_gives_the_planner_row_counts_after_a_load(conn, loaded):
