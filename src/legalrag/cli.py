@@ -1,3 +1,4 @@
+import os
 import time
 from collections import Counter
 from pathlib import Path
@@ -6,7 +7,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import db, dbcheck, embed, fetch, sanity, smoke, store, verify
+from legalrag import db, dbcheck, embed, fetch, llm, sanity, smoke, store, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -229,6 +230,31 @@ def smoke_cmd(
     found = sum(ranks[q.id] is not None for q in expected)
     typer.echo(f"Expected article in the top {k}: {found} of {len(expected)} questions that have one.")
     typer.echo("First rank per question: " + ", ".join(f"Q{i}={r or '-'}" for i, r in ranks.items()))
+
+
+@app.command("llm-balance")
+def llm_balance_cmd(
+    label: Annotated[str, typer.Option(help="Name of this snapshot, e.g. before-pilot")] = "",
+) -> None:
+    """Read the DeepSeek balance and record it in the ledger (needs DEEPSEEK_API_KEY)."""
+    with llm.make_http(os.environ["DEEPSEEK_API_KEY"]) as http:
+        balances = llm.balance(http)
+    llm.record_balance(llm.LEDGER, balances, label)
+    typer.echo(", ".join(f"{amount:.2f} {currency}" for currency, amount in balances.items()))
+
+
+@app.command("llm-ledger")
+def llm_ledger_cmd() -> None:
+    """Spend so far, and the last two balance snapshots against the cost estimated between them."""
+    calls = [e for e in llm.read_ledger(llm.LEDGER) if e["type"] == "call"]
+    typer.echo(f"{len(calls)} calls, {llm.ledger_total(llm.LEDGER):.4f} USD estimated")
+    result = llm.reconcile(llm.LEDGER)
+    if result is None:
+        typer.echo("fewer than two balance snapshots: run llm-balance before and after a run")
+        return
+    drop = ", ".join(f"{amount:.4f} {currency}" for currency, amount in result["balance_drop"].items())
+    typer.echo(f"between the last two snapshots: {result['calls']} calls, "
+               f"{result['estimated_usd']:.4f} USD estimated, balance dropped {drop}")
 
 
 @app.command()

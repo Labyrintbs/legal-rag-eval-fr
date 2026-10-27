@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic",
     "beautifulsoup4",
+    "httpx>=0.28.1",
     "lxml",
     "pandas",
     "pgvector>=0.5.1",

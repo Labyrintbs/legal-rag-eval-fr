@@ -1,4 +1,4 @@
-.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity smoke profile verify test lint fresh-rebuild
+.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity smoke llm-balance llm-ledger profile verify test lint fresh-rebuild
 
 SOURCE ?= legi
 
@@ -25,6 +25,12 @@ sanity:
 
 smoke:
 	uv run --extra embed legalrag smoke
+
+llm-balance:
+	uv run --env-file .env legalrag llm-balance
+
+llm-ledger:
+	uv run legalrag llm-ledger
 
 profile:
 	uv run legalrag profile $(SOURCE)

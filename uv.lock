@@ -329,6 +329,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "beautifulsoup4" },
+    { name = "httpx" },
     { name = "lxml" },
     { name = "pandas" },
     { name = "pgvector" },
@@ -358,6 +359,7 @@ dev = [
 requires-dist = [
     { name = "alembic" },
     { name = "beautifulsoup4" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "lxml" },
     { name = "pandas" },
     { name = "pgvector", specifier = ">=0.5.1" },
