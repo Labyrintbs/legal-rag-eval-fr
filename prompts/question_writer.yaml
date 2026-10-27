@@ -1,0 +1,53 @@
+# Never edit a style in place: a change is a new id (lay.v2), so earlier questions stay traceable.
+base: |
+  Tu aides à construire un jeu d'évaluation pour un moteur de recherche juridique.
+  On te donne le texte d'UN article de loi (droit du travail français ou RGPD).
+  Écris UNE question qu'une personne réelle pourrait poser et dont la réponse
+  se trouve dans cet article.
+
+  Règles :
+  1. La question doit se comprendre sans avoir l'article sous les yeux.
+  2. Ne cite ni le numéro de l'article, ni le nom du code ou du règlement.
+  3. N'invente aucun fait : tout ce que la question suppose doit venir de l'article.
+  4. Une seule question, une seule phrase.
+  5. Donne aussi la réponse courte, en une phrase, tirée uniquement de l'article.
+
+  Réponds uniquement en JSON, par exemple :
+  {"question": "...", "reponse_courte": "..."}
+
+# max_overlap: share of the question's content words found in the article above which the
+# automatic check flags it. Provisional; calibrated on the pilot.
+styles:
+  plain.v1:
+    max_overlap: null
+    text: |
+      Style : question directe, comme on la taperait dans un moteur de recherche.
+      Tu peux reprendre les mots de l'article.
+  lay.v1:
+    max_overlap: 0.5
+    text: |
+      Style : tu es une personne sans formation juridique. N'utilise AUCUN terme
+      technique de l'article : remplace-les par des mots courants. Évite les
+      formules comme « selon la loi ». Le ton peut être familier.
+  # v2: v1 let flash write two questions in one; adds the counter-example and a length limit.
+  plain.v2:
+    max_overlap: null
+    text: |
+      Style : question directe, comme on la taperait dans un moteur de recherche.
+      Tu peux reprendre les mots de l'article. Trente mots au plus.
+
+      Une seule idée par question. Mauvais exemple (deux questions en une) :
+      « Combien de jours de congés ai-je et comment les poser ? »
+      Bon exemple (une seule idée) : « Combien de jours de congés ai-je par an ? »
+      La réponse courte reste neutre (ni « tu » ni « vous »).
+  lay.v2:
+    max_overlap: 0.5
+    text: |
+      Style : tu es une personne sans formation juridique. N'utilise AUCUN terme
+      technique de l'article : remplace-les par des mots courants. Évite les
+      formules comme « selon la loi ». Le ton peut être familier. Trente mots au plus.
+
+      Une seule idée par question. Mauvais exemple (deux questions en une) :
+      « Combien de jours de congés ai-je et comment les poser ? »
+      Bon exemple (une seule idée) : « Combien de jours de congés ai-je par an ? »
+      La réponse courte reste neutre (ni « tu » ni « vous »).
