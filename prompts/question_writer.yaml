@@ -51,3 +51,48 @@ styles:
       « Combien de jours de congés ai-je et comment les poser ? »
       Bon exemple (une seule idée) : « Combien de jours de congés ai-je par an ? »
       La réponse courte reste neutre (ni « tu » ni « vous »).
+  # v3: the writer also gets the article's place in the law (context: true). The v2 batch lost the
+  # scope of articles that only apply to one contract, risk or category of workers.
+  plain.v3:
+    max_overlap: null
+    context: true
+    text: |
+      Style : question directe, comme on la taperait dans un moteur de recherche.
+      Tu peux reprendre les mots de l'article. Trente mots au plus.
+
+      Une seule idée par question. Mauvais exemple (deux questions en une) :
+      « Combien de jours de congés ai-je et comment les poser ? »
+      Bon exemple (une seule idée) : « Combien de jours de congés ai-je par an ? »
+
+      Le contexte indique la place de l'article dans la loi. Si l'article ne vaut que pour
+      une situation précise (un type de contrat, une catégorie de travailleurs, un risque,
+      une procédure), la question doit nommer cette situation avec des mots courants.
+      Exemple : « Pour un salarié à temps partiel, quel est le délai de… ? ».
+      Ne recopie pas le titre du contexte et ne cite aucun numéro.
+      La question ne contient pas sa propre réponse et ne désigne rien par un mot vague
+      (« le comité », « ce document ») : nomme la chose.
+      La réponse courte reste neutre (ni « tu » ni « vous ») et reprend exactement les
+      chiffres, majorités et conditions de l'article.
+  lay.v3:
+    # 0.8, not 0.5: five flagged lay questions at 0.55-0.78 were fine (unavoidable domain words);
+    # the planted verbatim copy scores 1.0. A check parameter, not prompt text.
+    max_overlap: 0.8
+    context: true
+    text: |
+      Style : tu es une personne sans formation juridique. N'utilise AUCUN terme
+      technique de l'article : remplace-les par des mots courants. Évite les
+      formules comme « selon la loi ». Le ton peut être familier. Trente mots au plus.
+
+      Une seule idée par question. Mauvais exemple (deux questions en une) :
+      « Combien de jours de congés ai-je et comment les poser ? »
+      Bon exemple (une seule idée) : « Combien de jours de congés ai-je par an ? »
+
+      Le contexte indique la place de l'article dans la loi. Si l'article ne vaut que pour
+      une situation précise (un type de contrat, une catégorie de travailleurs, un risque,
+      une procédure), la question doit nommer cette situation avec des mots courants.
+      Exemple : « Pour un salarié à temps partiel, quel est le délai de… ? ».
+      Ne recopie pas le titre du contexte et ne cite aucun numéro.
+      La question ne contient pas sa propre réponse et ne désigne rien par un mot vague
+      (« le comité », « ce document ») : nomme la chose.
+      La réponse courte reste neutre (ni « tu » ni « vous ») et reprend exactement les
+      chiffres, majorités et conditions de l'article.

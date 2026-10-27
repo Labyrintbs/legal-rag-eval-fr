@@ -8,14 +8,18 @@ from pathlib import Path
 
 import yaml
 
+from legalrag import llm
+
 PROMPTS = Path("prompts")
 ARTICLE_REF = re.compile(r"\b[LRD]\.?\s?\d{3,4}-\d|\barticles?\s+\d+", re.IGNORECASE)
 DUPLICATE_OVERLAP = 0.7
-MAX_WORDS = 30
-# Two questions joined by "et": "..., et combien de temps ?"
+CONTEXT_LEVELS = 4
+# Above the 30 words the prompt asks for: 33-word questions were fine in the audit.
+MAX_WORDS = 35
+# Two questions joined by "et": "..., et combien de temps ?", "... et est-il payé ?"
 COMPOUND = re.compile(
     r"\bet\s+(?:est-ce que|puis-je|peux-je|peut-on|dois-je|doit-il|comment|combien|quand|"
-    r"pourquoi|quel|quelle|quels|quelles|où)\b",
+    r"pourquoi|quel|quelle|quels|quelles|où|(?:est|sont|a|ont|peut|doit|faut)-(?:il|elle|ils|elles|on))\b",
     re.IGNORECASE,
 )
 
@@ -24,24 +28,37 @@ def load_prompts(path: Path) -> dict:
     return yaml.safe_load(path.read_text())
 
 
-def writer_messages(prompts: dict, style: str, article_body: str) -> list[dict]:
-    """The model sees the article body only, never the header, number or code name."""
+def context_of(section_path: str, levels: int = CONTEXT_LEVELS) -> str:
+    """The last section levels, which name the scope of an article (a contract, a risk, a category)."""
+    return " > ".join(level[:120] for level in section_path.split(" > ")[-levels:])
+
+
+def writer_messages(prompts: dict, style: str, article_body: str, context: str = "") -> list[dict]:
+    """The model sees the article body, and the section context for the styles that ask for it;
+    never the article number or the code name."""
+    entry = prompts["styles"][style]
+    scope = f"Contexte : {context}\n" if entry.get("context") else ""
     return [
         {"role": "system", "content": prompts["base"]},
-        {"role": "user", "content": f"{prompts['styles'][style]['text']}\nArticle :\n{article_body}"},
+        {"role": "user", "content": f"{entry['text']}\n{scope}Article :\n{article_body}"},
     ]
 
 
-def reviewer_messages(prompts: dict, style: str, article_body: str, question: dict) -> list[dict]:
+def reviewer_messages(
+    prompts: dict, reviewer: str, style: str, article_body: str, context: str, question: dict
+) -> list[dict]:
+    entry = prompts["reviewers"][reviewer]
+    scope = f"Contexte : {context}\n\n" if entry["context"] else ""
     user = (
-        f"Style demandé : {style.split('.')[0]}\n\nArticle :\n{article_body}\n\n"
+        f"Style demandé : {style.split('.')[0]}\n\n{scope}Article :\n{article_body}\n\n"
         f"Question : {question['question']}\nRéponse courte : {question['reponse_courte']}"
     )
-    return [{"role": "system", "content": prompts["system"]}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": entry["system"]}, {"role": "user", "content": user}]
 
 
 def prompt_hash(prompts: dict, style: str) -> str:
-    text = prompts["base"] + prompts["styles"][style]["text"]
+    entry = prompts["styles"][style]
+    text = prompts["base"] + entry["text"] + ("+context" if entry.get("context") else "")
     return hashlib.sha256(text.encode()).hexdigest()[:12]
 
 
@@ -53,6 +70,35 @@ def parse_json(text: str) -> dict:
     if not isinstance(data, dict):
         raise TypeError(f"JSON is not an object: {text[:80]!r}")
     return data
+
+
+def run_call(
+    http, budget: llm.Budget, label: str, model: str, messages: list[dict], max_tokens: int,
+    temperature: float | None = None, thinking: bool = False, reasoning_effort: str | None = None,
+):
+    """(answer, None), or (None, error) when the answer is empty or not a JSON object; a budget
+    stop still raises, and an empty answer is still in the ledger."""
+    try:
+        text = llm.chat(
+            http, llm.LEDGER, budget, label, model, messages, max_tokens, thinking=thinking,
+            temperature=temperature, reasoning_effort=reasoning_effort,
+        )
+        return parse_json(text), None
+    except (ValueError, TypeError, KeyError) as error:
+        return None, str(error)
+
+
+def review_problems(review: dict | None, checks: dict) -> list[str]:
+    """The reviewer's failed or missing checks; its overall verdict alone is not trusted."""
+    if not review or "error" in review:
+        return ["review failed"]
+    problems = [] if review.get("verdict") == "accept" else [f"verdict {review.get('verdict')}"]
+    for field, passing in checks.items():
+        if field not in review:
+            problems.append(f"missing {field}")
+        elif review[field] != passing:
+            problems.append(field)
+    return problems
 
 
 def content_words(text: str) -> set[str]:

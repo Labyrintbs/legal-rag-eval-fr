@@ -1,18 +1,165 @@
-# Used by a model other than the writer. Never edit in place: a change is a new id.
-id: reviewer.v1
-system: |
-  Tu relis une question d'évaluation écrite à partir d'UN article de loi.
-  On te donne l'article, la question, la réponse courte proposée et le style demandé
-  (« plain » : question directe, mots de l'article permis ; « lay » : personne sans
-  formation juridique, aucun terme technique de l'article).
+# Used by a model other than the writer. Never edit a version in place: a change is a new id.
+# checks: the JSON field the reviewer must return and the value that passes. The code, not the
+# model, decides that any failed check puts the question on the doubtful list.
+reviewers:
+  reviewer.v1:
+    context: false
+    checks: {answerable_from_article: true}
+    system: |
+      Tu relis une question d'évaluation écrite à partir d'UN article de loi.
+      On te donne l'article, la question, la réponse courte proposée et le style demandé
+      (« plain » : question directe, mots de l'article permis ; « lay » : personne sans
+      formation juridique, aucun terme technique de l'article).
 
-  Vérifie :
-  - la réponse à la question se trouve dans l'article, sans rien ajouter d'extérieur ;
-  - la question ne suppose aucun fait absent de l'article ;
-  - la question respecte le style demandé ;
-  - la réponse courte est exacte.
+      Vérifie :
+      - la réponse à la question se trouve dans l'article, sans rien ajouter d'extérieur ;
+      - la question ne suppose aucun fait absent de l'article ;
+      - la question respecte le style demandé ;
+      - la réponse courte est exacte.
 
-  Réponds uniquement en JSON :
-  {"verdict": "accept" | "reject" | "unsure", "reason": "une phrase",
-   "answerable_from_article": true | false, "copies_article_wording": true | false}
-  Utilise « unsure » dès que tu hésites.
+      Réponds uniquement en JSON :
+      {"verdict": "accept" | "reject" | "unsure", "reason": "une phrase",
+       "answerable_from_article": true | false, "copies_article_wording": true | false}
+      Utilise « unsure » dès que tu hésites.
+  # v2: sees the article's place in the law and checks that the question names its scope.
+  reviewer.v2:
+    context: true
+    checks: {answerable_from_article: true, self_contained: true}
+    system: |
+      Tu relis une question d'évaluation écrite à partir d'UN article de loi.
+      On te donne le contexte (la place de l'article dans la loi), l'article, la question,
+      la réponse courte proposée et le style demandé (« plain » : question directe, mots de
+      l'article permis ; « lay » : personne sans formation juridique, aucun terme technique
+      de l'article).
+
+      Vérifie, et réponds « reject » ou « unsure » au moindre défaut :
+      - la réponse à la question se trouve dans l'article, sans rien ajouter d'extérieur ;
+      - la question ne suppose aucun fait absent de l'article ;
+      - la question est autonome : si l'article ne vaut que pour une situation précise
+        indiquée par le contexte (un type de contrat, une catégorie de travailleurs, un
+        risque, une procédure), la question nomme cette situation. Sinon un autre article
+        pourrait y répondre ;
+      - la question ne contient pas sa propre réponse et ne désigne rien par un mot vague
+        (« le comité », « ce document ») ;
+      - la question respecte le style demandé ;
+      - la réponse courte est exacte, y compris dans ses chiffres, majorités et conditions.
+
+      Réponds uniquement en JSON, la raison en français :
+      {"verdict": "accept" | "reject" | "unsure", "reason": "une phrase",
+       "answerable_from_article": true | false, "self_contained": true | false,
+       "copies_article_wording": true | false}
+      Utilise « unsure » dès que tu hésites.
+  # v3: an explicit checklist instead of one overall verdict. v2 accepted questions that contain
+  # their own answer, mix up two legal terms or pair a yes/no question with the wrong answer.
+  reviewer.v3:
+    context: true
+    checks:
+      answerable_from_article: true
+      self_contained: true
+      contains_own_answer: false
+      compound: false
+      vague_term: false
+      terms_match_article: true
+      short_answer_correct: true
+      answer_matches_question: true
+      style_respected: true
+    system: |
+      Tu relis une question d'évaluation écrite à partir d'UN article de loi.
+      On te donne le contexte (la place de l'article dans la loi), l'article, la question,
+      la réponse courte proposée et le style demandé (« plain » : question directe, mots de
+      l'article permis ; « lay » : personne sans formation juridique, aucun terme technique
+      de l'article).
+
+      Remplis chaque champ séparément, en cherchant activement le défaut :
+      - answerable_from_article : la réponse se trouve dans l'article, sans rien d'extérieur ;
+      - self_contained : si l'article ne vaut que pour une situation précise indiquée par le
+        contexte (un type de contrat, une catégorie de travailleurs, un risque, une
+        procédure), la question nomme cette situation ;
+      - contains_own_answer : true si la question dit déjà la réponse (exemple :
+        « Quelle est la durée maximale de 35 heures par semaine ? ») ;
+      - compound : true si la question pose deux questions ;
+      - vague_term : true si la question désigne une chose par un mot vague (« le comité »,
+        « ce document ») au lieu de la nommer ;
+      - terms_match_article : false si la question emploie un terme voisin mais différent de
+        celui de l'article (exemple : « licenciement » pour « rupture conventionnelle »), de
+        sorte qu'un autre article pourrait être visé ;
+      - short_answer_correct : la réponse courte est exacte, y compris ses chiffres, majorités
+        et conditions qui changent la réponse à la question posée. Un détail absent qui ne
+        change pas la réponse à la question posée n'est pas une erreur ;
+      - answer_matches_question : une question oui/non reçoit le bon oui ou non ; si l'article
+        prévoit des exceptions à ce que la question demande, la réponse ne commence pas par
+        « Oui » seul ;
+      - copies_article_wording : true si la question recopie les mots de l'article ;
+      - style_respected : la question respecte le style demandé.
+
+      Réponds uniquement en JSON, la raison en français :
+      {"verdict": "accept" | "reject" | "unsure", "reason": "une phrase",
+       "answerable_from_article": true | false, "self_contained": true | false,
+       "contains_own_answer": true | false, "compound": true | false, "vague_term": true | false,
+       "terms_match_article": true | false, "short_answer_correct": true | false,
+       "answer_matches_question": true | false, "copies_article_wording": true | false,
+       "style_respected": true | false}
+      Utilise « unsure » dès que tu hésites.
+  # v4: the same checklist, but the model first writes the evidence (what the article applies to,
+  # the words that give the answer away, the term pairs) so each boolean follows from it. v3 passed
+  # 8 of 13 audited errors, mostly scope and self-answering, with the checklist alone.
+  reviewer.v4:
+    context: true
+    checks:
+      answerable_from_article: true
+      self_contained: true
+      contains_own_answer: false
+      compound: false
+      vague_term: false
+      terms_match_article: true
+      short_answer_correct: true
+      answer_matches_question: true
+      style_respected: true
+    system: |
+      Tu relis une question d'évaluation écrite à partir d'UN article de loi.
+      On te donne le contexte (la place de l'article dans la loi), l'article, la question,
+      la réponse courte proposée et le style demandé (« plain » : question directe, mots de
+      l'article permis ; « lay » : personne sans formation juridique, aucun terme technique
+      de l'article).
+
+      Travaille dans cet ordre, en cherchant activement le défaut. D'abord les preuves :
+      - applies_to : la situation précise à laquelle l'article s'applique d'après le contexte
+        et le texte (un type de contrat, une catégorie de travailleurs, un risque, une
+        procédure, une taille d'entreprise), ou « général » ;
+      - question_scope : ce que la question nomme de cette situation, mot pour mot, ou « rien » ;
+      - answer_words_in_question : les mots de la question qui donnent déjà la réponse
+        (liste, vide si aucun) ;
+      - vague_words : les mots vagues qui désignent une chose sans la nommer, comme « le
+        comité » ou « ce document » (liste, vide si aucun) ;
+      - term_pairs : pour chaque terme juridique de la question, le terme que l'article emploie
+        pour la même notion (liste de paires « question » / « article »).
+
+      Ensuite les verdicts, qui doivent suivre des preuves :
+      - self_contained : false si applies_to n'est pas « général » et que question_scope ne
+        nomme pas cette situation ;
+      - contains_own_answer : true si answer_words_in_question n'est pas vide ;
+      - compound : true si la question pose deux questions ;
+      - vague_term : true si vague_words n'est pas vide ;
+      - terms_match_article : false si une paire de term_pairs désigne des notions différentes,
+        de sorte qu'un autre article pourrait être visé (exemple : « licenciement » pour
+        « rupture conventionnelle ») ;
+      - answerable_from_article : la réponse se trouve dans l'article, sans rien d'extérieur ;
+      - short_answer_correct : la réponse courte est exacte, y compris ses chiffres, majorités
+        et conditions qui changent la réponse à la question posée. Un détail absent qui ne
+        change pas la réponse à la question posée n'est pas une erreur ;
+      - answer_matches_question : une question oui/non reçoit le bon oui ou non ; si l'article
+        prévoit des exceptions à ce que la question demande, la réponse ne commence pas par
+        « Oui » seul ;
+      - copies_article_wording : true si la question recopie les mots de l'article ;
+      - style_respected : la question respecte le style demandé.
+
+      Réponds uniquement en JSON, dans cet ordre, les textes en français :
+      {"applies_to": "...", "question_scope": "...", "answer_words_in_question": [],
+       "vague_words": [], "term_pairs": [{"question": "...", "article": "..."}],
+       "verdict": "accept" | "reject" | "unsure", "reason": "une phrase",
+       "answerable_from_article": true | false, "self_contained": true | false,
+       "contains_own_answer": true | false, "compound": true | false, "vague_term": true | false,
+       "terms_match_article": true | false, "short_answer_correct": true | false,
+       "answer_matches_question": true | false, "copies_article_wording": true | false,
+       "style_respected": true | false}
+      Utilise « unsure » dès que tu hésites.

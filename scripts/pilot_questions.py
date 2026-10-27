@@ -56,14 +56,6 @@ def worst_case(jobs: list[dict], max_tokens: int) -> float:
     )
 
 
-def run_call(http, budget, label, job, max_tokens):
-    try:
-        text = llm.chat(http, llm.LEDGER, budget, label, job["model"], job["messages"], max_tokens)
-        return qg.parse_json(text), None
-    except (ValueError, TypeError, KeyError) as error:
-        return None, str(error)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", action="store_true", help="spend money; default is a dry run")
@@ -94,7 +86,9 @@ def main() -> None:
         llm.record_balance(llm.LEDGER, llm.balance(http), f"before-{tag}")
         records = []
         for job in jobs:
-            question, error = run_call(http, budget, "pilot-writer", job, WRITER_MAX_TOKENS)
+            question, error = qg.run_call(
+                http, budget, "pilot-writer", job["model"], job["messages"], WRITER_MAX_TOKENS
+            )
             body = articles[job["article"]]
             earlier = [r["question"]["question"] for r in records if r["article"] == job["article"] and r["question"]]
             max_overlap = writer_prompts["styles"][job["style"]]["max_overlap"]
@@ -113,10 +107,11 @@ def main() -> None:
         for record in records:
             if record["model"] not in (WRITER, "planted") or not record["question"]:
                 continue
-            messages = qg.reviewer_messages(reviewer_prompts, record["style"], articles[record["article"]], record["question"])
-            review, error = run_call(
-                http, budget, "pilot-reviewer",
-                {"model": REVIEWER, "messages": messages}, REVIEWER_MAX_TOKENS,
+            messages = qg.reviewer_messages(
+                reviewer_prompts, "reviewer.v1", record["style"], articles[record["article"]], "", record["question"]
+            )
+            review, error = qg.run_call(
+                http, budget, "pilot-reviewer", REVIEWER, messages, REVIEWER_MAX_TOKENS
             )
             record["review"] = review or {"error": error}
         llm.record_balance(llm.LEDGER, llm.balance(http), f"after-{tag}")
