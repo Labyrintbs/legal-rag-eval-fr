@@ -76,3 +76,17 @@ Per the DeepSeek docs, `reasoning_effort` only sets the depth of thinking (`none
 The 5 real errors: a short answer that lists one document where the question asks for all of them (R1263-1), a missing "du comité social et économique" (L2315-81-1 plain), a question that asks "quand" where the article sets no deadline (L2315-81-1 lay), and an unconditional "Oui" where the GDPR article 27 has conditions and exceptions (both styles). The auditor saw the reviewer's reasons, so the audit may be anchored by them: a spot check by the user of the 13 accepted questions is the way to confirm.
 
 **Style differences (both runs).** Technical articles on staff representation and collective agreements (L1233-24-1, L2315-38, L2232-25) make awkward lay questions. The GDPR and the plain-rule articles (L1225-56, GDPR 15) give good ones.
+
+## The model-written set: batches 2, 3 and 1c
+
+All 50 questions come from the final pipeline (writer `plain.v3`/`lay.v3`, automatic checks, reviewer v4 with thinking on at effort low), on 25 articles: batch 2 (10 fresh articles), batch 3 (5 fresh articles: 2 weighted and 1 random Code du travail, 2 GDPR) and batch 1c (the batch 1 articles written again). The assistant audited every question with the reviewer's reasons in view. Consolidated, with the audit reason of each, in `data/questions/model_written.json` (not committed).
+
+| | Count |
+|---|---|
+| Questions | 50 |
+| Real errors (dropped) | 15 |
+| Borderline (kept, noted) | 7 |
+| Clean | 28 |
+| Kept | 35 (24 Code du travail, 11 GDPR; 19 plain, 16 lay) |
+
+The pipeline put 17 questions on the doubtful list, 12 of them real errors; it let 3 real errors through: R7343-43 plain (the vote concerns the platform workers' organisations; the writer left that out although the context named it), GDPR 8 lay ("16 ans" without the national-law lower limit down to 13) and L2232-25 lay ("désigné" for "mandaté", which the same reviewer had flagged in an earlier run: thinking mode has no temperature control, so its verdicts vary between runs). Recall on real errors was 5 of 5, 3 of 5 and 4 of 5 in the three batches, 12 of 15 together. Five articles keep no question (L1225-56, L2315-81-1, R7343-43, GDPR 27 and 34). Cost of batches 3 and 1c: 0.1482 USD estimated; the whole project so far 0.6118 USD estimated for 427 calls, and the balance fell from 46.67 to 43.19 CNY, about 5.7 CNY per estimated USD.
