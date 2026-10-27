@@ -19,6 +19,9 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 10 | Flash writes with `plain.v2` and `lay.v2` (one idea per question, 30 words at most, counter-example in the prompt); pro reviews with thinking off, to be revisited after the full set. Automatic checks (JSON keys, article number, wording overlap, compound question, length, duplicates) run first on every question and put it on the doubtful list. The pilot is in `docs/data_profiles/question_pilot_notes.md` | User, 2026-10-27 |
 
+| 11 | The writer sees the last four section levels as context (`plain.v3`, `lay.v3`). The reviewer is `reviewer.v4` (evidence first, then a checklist; the code decides that any failed check puts a question on the doubtful list) on `deepseek-v4-pro` with thinking on at effort `low`, 8,000 max tokens, run 8 at a time. Thinking-off reviewers caught 7 of 16 audited errors at best. Flags loosened: overlap 0.8 for lay, 35 words. `reasoning_effort` is part of thinking mode in the DeepSeek API, so "more effort with thinking off" does not exist. The assistant triages the doubtful list and reports only the important cases to the user | User, 2026-10-27 |
+| 12 | The first audit was corrected (3 real errors, 5 borderline). The fresh batch (10 articles, final pipeline, no prompt change after seeing it) had 5 real errors, all flagged, 0 accepted silently, 0 scope errors. The assistant sees the reviewer's reasons while auditing, so the user spot-checks accepted questions | User, 2026-10-27 |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.
