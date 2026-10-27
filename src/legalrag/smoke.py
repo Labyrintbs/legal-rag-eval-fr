@@ -18,6 +18,9 @@ NEAREST = (
     "JOIN articles a ON a.uid = c.article_uid "
     "WHERE e.model = 'BAAI/bge-m3' AND c.run_id = %s ORDER BY e.embedding <=> %s LIMIT %s"
 )
+# Candidate list of the index search. With pgvector's default of 40 one smoke question lost 3 of its
+# exact top 5; from 100 up the 29 questions match the exact result (EXPERIMENT.md, 2026-10-27).
+EF_SEARCH = 100
 LABELS = (
     "SELECT DISTINCT CASE WHEN source_code = 'code_travail' THEN article_num "
     "ELSE CASE kind WHEN 'article' THEN 'art ' ELSE 'rct ' END || article_num END FROM articles"
@@ -64,6 +67,7 @@ def article_label(source_code: str, kind: str, article_num: str) -> str:
 
 
 def nearest(conn: psycopg.Connection, run_id: int, vector: np.ndarray, k: int = 5) -> list[Hit]:
+    conn.execute("SELECT set_config('hnsw.ef_search', %s, true)", (str(EF_SEARCH),))
     rows = conn.execute(NEAREST, (vector, run_id, vector, k)).fetchall()
     return [
         Hit(article_label(code, kind, num), lang, index, chunks, distance, header, text)

@@ -246,6 +246,7 @@ def test_smoke_finds_the_chunk_a_question_vector_equals_and_knows_the_labels(con
     ).fetchone()[0]
     assert (hits[0].chunk_index, hits[0].chunks) == (chunks[5].chunk_index, first)
     assert hits[0].distance == pytest.approx(0, abs=1e-5) and hits[0].distance < hits[1].distance
+    assert conn.execute("SHOW hnsw.ef_search").fetchone()[0] == str(smoke.EF_SEARCH)
     labels = smoke.known_labels(conn)
     assert "L1237-1" in labels and any(label.startswith("art ") for label in labels)
 
