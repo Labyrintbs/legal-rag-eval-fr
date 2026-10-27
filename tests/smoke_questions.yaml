@@ -16,13 +16,13 @@
 - {id: 8, group: B, lang: fr, question: "Que dit l'article L1221-13 du code du travail ?", expected: [L1221-13], note: "exact reference; the number is in the chunk header"}
 - {id: 9, group: B, lang: fr, question: "Dans quels cas l'employeur ne peut-il pas rompre le contrat pendant une suspension du contrat ?", expected: [L1226-9], note: "exception wording"}
 
-- {id: 10, group: C, lang: fr, question: "Que contient la base de données économiques, sociales et environnementales ?", expected: [R2312-9], note: "article split in 15 chunks; the content is after chunk 0"}
+- {id: 10, group: C, lang: fr, question: "Que contient la base de données économiques, sociales et environnementales ?", expected: [R2312-9, L2312-36], note: "R2312-9 is split in 15 chunks, the content is after chunk 0; L2312-36 lists the themes"}
 - {id: 11, group: C, lang: fr, question: "Quel est le ressort du conseil de prud'hommes de Lyon ?", expected: ["Annexe à l'article R1422-4"], note: "flattened table; Lyon is in chunk 2"}
 - {id: 12, group: C, lang: fr, question: "Quelles règles de sécurité s'appliquent aux machines neuves ?", expected: ["Annexe I à l'article R4312-1"], note: "annex of 31 chunks"}
 
-- {id: 13, group: D, lang: fr, question: "Quelles sont les étapes d'un licenciement pour motif personnel ?", expected: [L1232-2, L1232-3, L1232-6], note: "several articles"}
+- {id: 13, group: D, lang: fr, question: "Quelles sont les étapes d'un licenciement pour motif personnel ?", expected: [L1232-1, L1232-2, L1232-3, L1232-6], note: "several articles; L1232-1 is the general rule"}
 - {id: 14, group: D, lang: fr, question: "Je suis en CDI depuis 8 mois dans une boulangerie. Mon patron dit que ma période d'essai est de 6 mois et qu'il peut la renouveler. Est-ce légal ?", expected: [L1221-19, L1221-21], note: "long narrative question"}
-- {id: 15, group: D, lang: fr, question: "Pourquoi le RGPD prévoit-il un droit à l'oubli ?", expected: ["rct 65", "art 17"], note: "explanation; a recital answers it"}
+- {id: 15, group: D, lang: fr, question: "Pourquoi le RGPD prévoit-il un droit à l'oubli ?", expected: ["rct 65", "rct 66", "art 17"], note: "explanation; recitals answer it"}
 
 - {id: 16, group: E, lang: fr, question: "Que signifie « consentement » dans le RGPD ?", expected: ["art 4"], note: "definitions article split in 3 chunks"}
 - {id: 17, group: E, lang: fr, question: "Quel est le droit à l'effacement des données ?", expected: ["art 17"]}
@@ -34,7 +34,7 @@
 
 - {id: 23, group: F, lang: en, question: "What must a controller do after a personal data breach?", expected: ["art 33"], note: "English question; English text should rank first"}
 - {id: 24, group: F, lang: en, question: "What is the legal working time per week in France?", expected: [L3121-27], note: "English question over French text"}
-- {id: 25, group: F, lang: fr, question: "Mon employeur peut-il surveiller mes e-mails professionnels ?", expected: [L1222-4, L1121-1, "art 88", "art 6"], note: "both sources"}
+- {id: 25, group: F, lang: fr, question: "Mon employeur peut-il surveiller mes e-mails professionnels ?", expected: [L1222-4, L1121-1, "art 88", "rct 155", "art 6"], note: "both sources; no article names e-mail; art 88 is the one on employee data"}
 
 - {id: 26, group: G, lang: fr, question: "Pourquoi la durée légale du travail est-elle de 39 heures ?", expected: [L3121-27], note: "false premise (it is 35)"}
 - {id: 27, group: G, lang: fr, question: "Combien de jours de congé ai-je droit ?", expected: [L3141-3, L3142-1], note: "underspecified"}

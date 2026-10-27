@@ -166,9 +166,9 @@ Q9 [B, fr] Dans quels cas l'employeur ne peut-il pas rompre le contrat pendant u
        Aucun employeur ne peut rompre le contrat de travail d'un salarié pendant les dix semaines suivant la naissance de son e
 
 Q10 [C, fr] Que contient la base de données économiques, sociales et environnementales ?
-  expected: R2312-9  (first expected article at rank 2)
-  note: article split in 15 chunks; the content is after chunk 0
-  1  0.232  L2312-36 [fr] chunk 1/1
+  expected: R2312-9, L2312-36  (first expected article at rank 1)
+  note: R2312-9 is split in 15 chunks, the content is after chunk 0; L2312-36 lists the themes
+  1* 0.232  L2312-36 [fr] chunk 1/1
        Code du travail, article L2312-36. Paragraphe 3 : Dispositions supplétives > Sous-paragraphe 4 : La base de données économiques et sociales > Sous-paragraphe 4 : La base de données économiques, sociales et environnementales.
        En l'absence d'accord prévu à l'article L. 2312-21, une base de données économiques, sociales et environnementales, mise
   2* 0.295  R2312-9 [fr] chunk 1/15
@@ -223,8 +223,8 @@ Q12 [C, fr] Quelles règles de sécurité s'appliquent aux machines neuves ?
        Si l'intervention d'un opérateur ne peut être évitée, la machine est conçue et construite pour que cette intervention pu
 
 Q13 [D, fr] Quelles sont les étapes d'un licenciement pour motif personnel ?
-  expected: L1232-2, L1232-3, L1232-6  (expected article NOT in the top results)
-  note: several articles
+  expected: L1232-1, L1232-2, L1232-3, L1232-6  (first expected article at rank 4)
+  note: several articles; L1232-1 is the general rule
   1  0.337  L1233-15 [fr] chunk 1/1
        Code du travail, article L1233-15. Section 3 : Licenciement de moins de dix salariés dans une même période de trente jours > Sous-section 2 : Procédure à l'égard des salariés > Paragraphe 2 : Notification du licenciement.
        Lorsque l'employeur décide de licencier un salarié pour motif économique, qu'il s'agisse d'un licenciement individuel ou
@@ -234,7 +234,7 @@ Q13 [D, fr] Quelles sont les étapes d'un licenciement pour motif personnel ?
   3  0.345  R2421-13 [fr] chunk 1/1
        Code du travail, article R2421-13. Section 1 : Procédure applicable en cas de licenciement > Sous-section 2 : Délégué du personnel, membre du comité d'entreprise et membre du comité d'hygiène, de sécurité et des conditions de travail > Sous-section 2 : Membre de la délégation du personnel au comité social et économique et représentant de proximité.
        Lorsqu'un licenciement pour motif économique de dix salariés ou plus dans une même période de trente jours concerne un o
-  4  0.346  L1232-1 [fr] chunk 1/1
+  4* 0.346  L1232-1 [fr] chunk 1/1
        Code du travail, article L1232-1. Titre III : Rupture du contrat de travail à durée indéterminée > Chapitre II : Licenciement pour motif personnel > Section 1 : Cause réelle et sérieuse.
        Tout licenciement pour motif personnel est motivé dans les conditions définies par le présent chapitre. Il est justifié 
   5  0.346  L2421-3 [fr] chunk 1/1
@@ -261,12 +261,12 @@ Q14 [D, fr] Je suis en CDI depuis 8 mois dans une boulangerie. Mon patron dit qu
        Le contrat de travail peut comporter une période d'essai dont la durée ne peut être supérieure à trois mois.
 
 Q15 [D, fr] Pourquoi le RGPD prévoit-il un droit à l'oubli ?
-  expected: rct 65, art 17  (first expected article at rank 1)
-  note: explanation; a recital answers it
+  expected: rct 65, rct 66, art 17  (first expected article at rank 1)
+  note: explanation; recitals answer it
   1* 0.291  rct 65 [fr] chunk 1/1
        RGPD, considérant 65.
        Les personnes concernées devraient avoir le droit de faire rectifier des données à caractère personnel les concernant, e
-  2  0.342  rct 66 [fr] chunk 1/1
+  2* 0.342  rct 66 [fr] chunk 1/1
        RGPD, considérant 66.
        Afin de renforcer le «droit à l'oubli» numérique, le droit à l'effacement devrait également être étendu de façon à ce qu
   3* 0.356  art 17 [fr] chunk 1/1
@@ -447,8 +447,8 @@ Q24 [F, en] What is the legal working time per week in France?
        La durée du travail des salariés travaillant de façon permanente en équipes successives selon un cycle continu ne doit p
 
 Q25 [F, fr] Mon employeur peut-il surveiller mes e-mails professionnels ?
-  expected: L1222-4, L1121-1, art 88, art 6  (first expected article at rank 4)
-  note: both sources
+  expected: L1222-4, L1121-1, art 88, rct 155, art 6  (first expected article at rank 4)
+  note: both sources; no article names e-mail; art 88 is the one on employee data
   1  0.415  D4163-32 [fr] chunk 1/1
        Code du travail, article D4163-32. Chapitre III : Compte professionnel de prévention > Section 4 : Gestion du compte, contrôle et réclamations > Sous-section 2 : Contrôle de l'exposition aux facteurs de risques professionnels.
        I.-Pour le contrôle de l'effectivité ou de l'ampleur de l'exposition aux facteurs de risques professionnels et de l'exha
@@ -541,5 +541,5 @@ Q29 [G, fr] Quelle est la peine pour un vol en France ?
        Code du travail, article L4743-2. Livre VII : Contrôle > Titre IV : Dispositions pénales > Chapitre III : Infractions aux règles concernant le travail des jeunes et des femmes enceintes, venant d'accoucher ou allaitant.
        Est puni d'un emprisonnement de cinq ans et d'une amende de 75 000 euros le fait, pour le père, la mère, le tuteur ou l'
 
-Expected article in the top 5: 22 of 27 questions that have one.
-First rank per question: Q1=1, Q2=1, Q3=3, Q4=2, Q5=1, Q6=-, Q7=1, Q8=-, Q9=2, Q10=2, Q11=-, Q12=1, Q13=-, Q14=1, Q15=1, Q16=4, Q17=1, Q18=1, Q19=1, Q20=2, Q21=2, Q22=-, Q23=1, Q24=1, Q25=4, Q26=1, Q27=1, Q28=-, Q29=-
+Expected article in the top 5: 23 of 27 questions that have one.
+First rank per question: Q1=1, Q2=1, Q3=3, Q4=2, Q5=1, Q6=-, Q7=1, Q8=-, Q9=2, Q10=1, Q11=-, Q12=1, Q13=4, Q14=1, Q15=1, Q16=4, Q17=1, Q18=1, Q19=1, Q20=2, Q21=2, Q22=-, Q23=1, Q24=1, Q25=4, Q26=1, Q27=1, Q28=-, Q29=-

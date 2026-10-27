@@ -255,8 +255,7 @@ def test_analyze_gives_the_planner_row_counts_after_a_load(conn, loaded):
     def estimate():
         return conn.execute("SELECT reltuples FROM pg_class WHERE relname = 'chunks'").fetchone()[0]
 
-    assert estimate() < 0  # -1: never analysed
-    store.analyze(conn)
+    store.analyze(conn)  # before it, reltuples is -1 or 0: autovacuum may have analysed the empty table
     assert estimate() == len(loaded[1])
 
 

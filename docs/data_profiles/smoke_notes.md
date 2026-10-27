@@ -11,15 +11,15 @@ I read the full text of every retrieved chunk and of every expected article that
 
 ## Result
 
-Expected article in the top 5 for 22 of the 27 questions that have one (Q28 and Q29 have none).
+With the expected lists as first written, the expected article was in the top 5 for 22 of the 27 questions that have one (Q28 and Q29 have none). After the list changes of 2026-10-27 (see the section on expected lists below) it is 23 of 27; the table below uses the changed lists, and the question-by-question table that follows was written against the first lists.
 
 | First expected article at | Questions |
 |---|---|
-| rank 1 (14) | Q1, Q2, Q5, Q7, Q12, Q14, Q15, Q17, Q18, Q19, Q23, Q24, Q26, Q27 |
-| rank 2 to 4 (8) | Q3 (3), Q4 (2), Q9 (2), Q10 (2), Q16 (4), Q20 (2), Q21 (2), Q25 (4) |
-| not in the top 5 (5) | Q6, Q8, Q11, Q13, Q22 |
+| rank 1 (15) | Q1, Q2, Q5, Q7, Q10, Q12, Q14, Q15, Q17, Q18, Q19, Q23, Q24, Q26, Q27 |
+| rank 2 to 4 (8) | Q3 (3), Q4 (2), Q9 (2), Q13 (4), Q16 (4), Q20 (2), Q21 (2), Q25 (4) |
+| not in the top 5 (4) | Q6, Q8, Q11, Q22 |
 
-By group: A 4 of 4, B 3 of 5 (Q6, Q8 not found), C 2 of 3 (Q11), D 2 of 3 (Q13), E 6 of 7 (Q22), F 3 of 3, G 2 of 2 with an expected article.
+By group: A 4 of 4, B 3 of 5 (Q6, Q8 not found), C 2 of 3 (Q11), D 3 of 3, E 6 of 7 (Q22), F 3 of 3, G 2 of 2 with an expected article.
 
 ## Question by question (after reading the texts)
 
@@ -68,15 +68,17 @@ By group: A 4 of 4, B 3 of 5 (Q6, Q8 not found), C 2 of 3 (Q11), D 2 of 3 (Q13),
 
 ## Expected lists to review before they become an evaluation set
 
-The YAML is unchanged so far. After reading the texts I would add, or reconsider:
-- Q10: add L2312-36.
-- Q13: add L1232-1; the three listed steps are far down.
-- Q15: add recital 66.
-- Q16: articles 7 and recitals 32, 42, 43 are on topic; article 4 stays the definition.
+Changed in `tests/smoke_questions.yaml` on 2026-10-27 (the user allowed changes):
+- Q10: L2312-36 added.
+- Q13: L1232-1 added (the general rule); the three listed steps are far down.
+- Q15: recital 66 added.
+- Q25: recital 155 added; article 88 is the one that concerns employees; L1222-4 and L1121-1 stay as my legal reading, no result supports them; article 6 is general.
+
+Not changed, left for the design of the evaluation set in 0b (a primary article and also-acceptable ones):
+- Q16: article 7 and recitals 32, 42, 43 are on topic; article 4 stays the definition.
 - Q20: the question is underspecified between the two sources; L8115-3 is a valid answer.
-- Q21: add recitals 101 and 116 as on-topic context, or keep only articles 44 to 49.
-- Q25: article 88 is the one that concerns employees; recital 155 fits; L1222-4 and L1121-1 are my legal reading and no result supports them; GDPR article 6 is general.
-- Q22: article 3 does answer (paragraph 2 on non-EU controllers offering services to people in the Union).
+- Q21: recitals 101 and 116 are on-topic context.
+- Q22: article 3 does answer (paragraph 2: non-EU controllers offering services to people in the Union); it stays expected.
 
 ## What to look at in 0b and 0c
 
@@ -84,7 +86,7 @@ The YAML is unchanged so far. After reading the texts I would add, or reconsider
 - Everyday words (Q6, Q22, Q25): query rewriting, a reranker, or both.
 - Annex tables (Q11) and long annexes (Q12): annex handling and chunk size experiments; per-article grouping of results.
 - French and English chunks together: a language filter or one unit for both; the index only searches a short candidate list before it applies a filter (see `EXPERIMENT.md`, 2026-10-26).
-- Index setting: `hnsw.ef_search` (see below).
+- Index setting: `hnsw.ef_search` (see `EXPERIMENT.md`, 2026-10-27).
 - Header variants (Q3, Q8).
 - Close calls (Q3, Q4, Q16, Q20): reranker.
 
