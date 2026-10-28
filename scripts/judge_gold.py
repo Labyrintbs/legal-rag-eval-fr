@@ -18,7 +18,7 @@ from legalrag import questiongen as qg
 from legalrag.gold import GoldQuestion, load_gold
 from legalrag.smoke import Question, embed_questions, nearest
 
-MODEL = "deepseek-v4-pro"
+MODEL = "deepseek-v4-pro"  # --model overrides
 MAX_TOKENS = 8000
 POOL = 8
 OUT = Path("data/gold")
@@ -56,8 +56,8 @@ def pooled_labels(conn, run_id: int, vectors, questions: list[GoldQuestion]) -> 
     return pooled
 
 
-def judge_one(http, budget, tag, messages):
-    return qg.run_call(http, budget, f"{tag}-judge", MODEL, messages, MAX_TOKENS, thinking=True, reasoning_effort="low")
+def judge_one(http, budget, tag, model, messages):
+    return qg.run_call(http, budget, f"{tag}-judge", model, messages, MAX_TOKENS, thinking=True, reasoning_effort="low")
 
 
 def select(questions: list[GoldQuestion]) -> list[GoldQuestion]:
@@ -91,6 +91,7 @@ def main() -> None:
     parser.add_argument("--gold", type=Path, default=OUT / "draft.jsonl")
     parser.add_argument("--tag", default="v1")
     parser.add_argument("--judge", default="judge.v1")
+    parser.add_argument("--model", default=MODEL)
     parser.add_argument("--only", nargs="+", default=[], help="question id prefixes to judge, e.g. hw smoke")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--run-cap", type=float, default=1.0)
@@ -116,7 +117,7 @@ def main() -> None:
             texts = article_texts(conn, set(pooled[q.id]), q.lang)
             candidates = goldjudge.shuffled_candidates(pooled[q.id], texts, q.id)
             jobs.append((q, candidates, goldjudge.judge_messages(prompts, args.judge, q.question, candidates)))
-    worst = sum(llm.worst_case_cost(MODEL, llm.estimate_tokens("".join(m["content"] for m in msgs)), MAX_TOKENS)
+    worst = sum(llm.worst_case_cost(args.model, llm.estimate_tokens("".join(m["content"] for m in msgs)), MAX_TOKENS)
                 for _, _, msgs in jobs)
     print(f"{len(jobs)} questions, {sum(len(c) for _, c, _ in jobs)} candidate articles; worst case {worst:.4f} USD; "
           f"run cap {args.run_cap}")
@@ -127,7 +128,8 @@ def main() -> None:
     budget = llm.Budget(run_cap=args.run_cap, total_cap=5.0)
     with llm.make_http(os.environ["DEEPSEEK_API_KEY"]) as http, ThreadPoolExecutor(args.workers) as pool:
         llm.record_balance(llm.LEDGER, llm.balance(http), f"before-{tag}")
-        verdicts = list(pool.map(judge_one, repeat(http), repeat(budget), repeat(tag), [m for *_, m in jobs]))
+        verdicts = list(pool.map(judge_one, repeat(http), repeat(budget), repeat(tag), repeat(args.model),
+                                 [m for *_, m in jobs]))
         llm.record_balance(llm.LEDGER, llm.balance(http), f"after-{tag}")
     rows = []
     for (q, candidates, _), (verdict, error) in zip(jobs, verdicts, strict=True):

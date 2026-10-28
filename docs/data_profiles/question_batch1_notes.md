@@ -135,3 +135,5 @@ Two flaws of mine before the result could be read: the first run cut articles at
 | Kind disagreements | smoke-27 and hw-13 (underspecified): the judge calls them answerable because the corpus covers every case; canicule (sheet-05): the judge calls it unanswerable, not sure |
 
 The judge confirmed the audit's overall shape and found about ten articles the audit had missed, in both directions. Where it and the assistant still differ the list stays needs_review: hw-01, hw-13, smoke-15, smoke-25, smoke-27, sheet-05.
+
+**Third opinion (flash, thinking on, judge.v2).** For the 6 lists still needs_review, `deepseek-flash` judged the same candidates (0.0104 USD estimated). Rule fixed before the run: a list passes if the kind agrees, every primary gold article gets at least 1, and the judge gives no 2 to an article outside the gold; a failing question would be dropped. All 6 pass, none dropped. smoke-27 loses L3142-1 (graded 0 in all four runs) and flash agrees it is underspecified; hw-01, hw-13, smoke-15, smoke-25 and sheet-05 become checked. No list is needs_review any more; the user's spot check remains.
