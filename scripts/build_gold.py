@@ -2,8 +2,8 @@
 
 Reads data/questions/model_written.json, data/questions/sheet_questions.json and tests/smoke_questions.yaml, takes each gold article's
 content hash from the database, and writes data/gold/draft.jsonl. No API call.
-Smoke questions list articles without grades: all become primary and a list of several is marked
-needs_review.
+Smoke questions list articles without grades: the assistant's proposed grades (smoke_grades.json,
+null drops an article) are applied and every list of several stays needs_review until the user checks.
 """
 
 import json
@@ -14,6 +14,7 @@ from legalrag.smoke import load_questions
 
 MODEL_WRITTEN = Path("data/questions/model_written.json")
 SHEETS = Path("data/questions/sheet_questions.json")
+SMOKE_GRADES = Path("data/questions/smoke_grades.json")
 SMOKE = Path("tests/smoke_questions.yaml")
 OUT = Path("data/gold/draft.jsonl")
 # Plain questions are lookups (group A); lay ones are the wording gap (group B); conditions ones
@@ -58,13 +59,19 @@ def model_written(hashes: dict) -> list[gold.GoldQuestion]:
 
 def smoke(hashes: dict) -> list[gold.GoldQuestion]:
     questions = []
+    grades = json.loads(SMOKE_GRADES.read_text())
     for q in load_questions(SMOKE):
-        articles = [gold_article(label, q.lang, hashes) for label in q.expected]
+        proposal = grades.get(str(q.id), {})
+        # A null grade drops a background article; no proposal means all expected articles stay primary.
+        articles = [gold_article(label, q.lang, hashes, proposal.get(label, gold.GRADE_PRIMARY))
+                    for label in q.expected if proposal.get(label, 1) is not None]
         questions.append(gold.GoldQuestion(
             id=f"smoke-{q.id:02d}", question=q.question, lang=q.lang, group=q.group,
             kind=SMOKE_KINDS.get(q.id, "answerable"), gold=articles,
             provenance=gold.Provenance(method="smoke", date="2026-10-22"),
-            review=gold.Review(note=q.note, status="needs_review" if len(articles) > 1 else "checked"),
+            review=gold.Review(note=" | ".join(filter(None, [q.note, proposal.get("note", "")])),
+                               by="assistant" if proposal else None,
+                               status="needs_review" if len(q.expected) > 1 else "checked"),
         ))
     return questions
 
