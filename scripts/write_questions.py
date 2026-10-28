@@ -15,7 +15,6 @@ from pathlib import Path
 from legalrag import llm
 from legalrag import questiongen as qg
 
-FAMILIES = ["plain", "lay"]
 WRITER, REVIEWER = "deepseek-flash", "deepseek-v4-pro"
 WRITER_MAX_TOKENS = 400
 # Thinking tokens count against max_tokens: a review at effort low used 2,500 on average, 4,000 failed.
@@ -42,14 +41,15 @@ def review_one(http, budget, tag, prompts, reviewer, effort, item):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("name", help="drawn batch, e.g. batch2")
-    parser.add_argument("--version", default="v3", help="writer style version")
+    parser.add_argument("--styles", nargs="+", default=["plain.v3", "lay.v3"], help="writer style ids")
+    parser.add_argument("--suffix", default="v3", help="added to the batch name in the output file")
     parser.add_argument("--reviewer", default="reviewer.v4", help="reviewer prompt id")
     parser.add_argument("--effort", default="low", choices=list(REVIEWER_MAX_TOKENS), help="reviewer thinking effort")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--run-cap", type=float, default=1.0, help="USD this run may spend")
     parser.add_argument("--run", action="store_true", help="spend money; default is a dry run")
     args = parser.parse_args()
-    tag = f"{args.name}-{args.version}"
+    tag = f"{args.name}-{args.suffix}"
 
     articles = json.loads((Path("data/drawn") / f"{args.name}.json").read_text())["articles"]
     writer_prompts = qg.load_prompts(qg.PROMPTS / "question_writer.yaml")
@@ -57,9 +57,8 @@ def main() -> None:
     checks = reviewer_prompts["reviewers"][args.reviewer]["checks"]
 
     jobs = [
-        (a, f"{family}.{args.version}",
-         qg.writer_messages(writer_prompts, f"{family}.{args.version}", a["body"], qg.context_of(a["section_path"])))
-        for a in articles for family in FAMILIES
+        (a, style, qg.writer_messages(writer_prompts, style, a["body"], qg.context_of(a["section_path"])))
+        for a in articles for style in args.styles
     ]
     writer_cost = sum(
         llm.worst_case_cost(WRITER, llm.estimate_tokens("".join(m["content"] for m in messages)), WRITER_MAX_TOKENS)

@@ -163,3 +163,67 @@ reviewers:
        "answer_matches_question": true | false, "copies_article_wording": true | false,
        "style_respected": true | false}
       Utilise « unsure » dès que tu hésites.
+
+  # v5 = v4 plus the conditions style.
+  reviewer.v5:
+    context: true
+    checks:
+      answerable_from_article: true
+      self_contained: true
+      contains_own_answer: false
+      compound: false
+      vague_term: false
+      terms_match_article: true
+      short_answer_correct: true
+      answer_matches_question: true
+      style_respected: true
+    system: |
+      Tu relis une question d'évaluation écrite à partir d'UN article de loi.
+      On te donne le contexte (la place de l'article dans la loi), l'article, la question,
+      la réponse courte proposée et le style demandé (« plain » : question directe, mots de
+      l'article permis ; « lay » : personne sans formation juridique, aucun terme technique
+      de l'article ; « conditions » : situation concrète avec un détail précis, la question
+      porte sur une condition, un seuil, un délai ou une exception de l'article, et la réponse
+      courte retient cette condition).
+
+      Travaille dans cet ordre, en cherchant activement le défaut. D'abord les preuves :
+      - applies_to : la situation précise à laquelle l'article s'applique d'après le contexte
+        et le texte (un type de contrat, une catégorie de travailleurs, un risque, une
+        procédure, une taille d'entreprise), ou « général » ;
+      - question_scope : ce que la question nomme de cette situation, mot pour mot, ou « rien » ;
+      - answer_words_in_question : les mots de la question qui donnent déjà la réponse
+        (liste, vide si aucun) ;
+      - vague_words : les mots vagues qui désignent une chose sans la nommer, comme « le
+        comité » ou « ce document » (liste, vide si aucun) ;
+      - term_pairs : pour chaque terme juridique de la question, le terme que l'article emploie
+        pour la même notion (liste de paires « question » / « article »).
+
+      Ensuite les verdicts, qui doivent suivre des preuves :
+      - self_contained : false si applies_to n'est pas « général » et que question_scope ne
+        nomme pas cette situation ;
+      - contains_own_answer : true si answer_words_in_question n'est pas vide ;
+      - compound : true si la question pose deux questions ;
+      - vague_term : true si vague_words n'est pas vide ;
+      - terms_match_article : false si une paire de term_pairs désigne des notions différentes,
+        de sorte qu'un autre article pourrait être visé (exemple : « licenciement » pour
+        « rupture conventionnelle ») ;
+      - answerable_from_article : la réponse se trouve dans l'article, sans rien d'extérieur ;
+      - short_answer_correct : la réponse courte est exacte, y compris ses chiffres, majorités
+        et conditions qui changent la réponse à la question posée. Un détail absent qui ne
+        change pas la réponse à la question posée n'est pas une erreur ;
+      - answer_matches_question : une question oui/non reçoit le bon oui ou non ; si l'article
+        prévoit des exceptions à ce que la question demande, la réponse ne commence pas par
+        « Oui » seul ;
+      - copies_article_wording : true si la question recopie les mots de l'article ;
+      - style_respected : la question respecte le style demandé.
+
+      Réponds uniquement en JSON, dans cet ordre, les textes en français :
+      {"applies_to": "...", "question_scope": "...", "answer_words_in_question": [],
+       "vague_words": [], "term_pairs": [{"question": "...", "article": "..."}],
+       "verdict": "accept" | "reject" | "unsure", "reason": "une phrase",
+       "answerable_from_article": true | false, "self_contained": true | false,
+       "contains_own_answer": true | false, "compound": true | false, "vague_term": true | false,
+       "terms_match_article": true | false, "short_answer_correct": true | false,
+       "answer_matches_question": true | false, "copies_article_wording": true | false,
+       "style_respected": true | false}
+      Utilise « unsure » dès que tu hésites.

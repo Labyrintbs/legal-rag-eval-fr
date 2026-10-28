@@ -15,12 +15,13 @@ def question(text, answer="Par la loi ou une convention."):
 def test_the_prompt_files_are_well_formed():
     writer = qg.load_prompts(qg.PROMPTS / "question_writer.yaml")
     families = ["plain", "lay"]
-    assert set(writer["styles"]) == {f"{f}.v{n}" for f in families for n in (1, 2, 3)}
+    assert set(writer["styles"]) == {f"{f}.v{n}" for f in families for n in (1, 2, 3)} | {"conditions.v1"}
+    assert writer["styles"]["conditions.v1"]["context"]
     assert "JSON" in writer["base"]
     assert writer["styles"]["plain.v1"]["max_overlap"] is None
     assert writer["styles"]["lay.v3"]["context"] and not writer["styles"]["lay.v2"].get("context")
     reviewers = qg.load_prompts(qg.PROMPTS / "question_reviewer.yaml")["reviewers"]
-    assert set(reviewers) == {f"reviewer.v{n}" for n in (1, 2, 3, 4)}
+    assert set(reviewers) == {f"reviewer.v{n}" for n in (1, 2, 3, 4, 5)}
     for reviewer in reviewers.values():  # every checked field is one the prompt asks the model for
         assert all(field in reviewer["system"] for field in reviewer["checks"])
     assert all("unsure" in r["system"] for r in reviewers.values())

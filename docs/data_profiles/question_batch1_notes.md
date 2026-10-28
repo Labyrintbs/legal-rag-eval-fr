@@ -90,3 +90,17 @@ All 50 questions come from the final pipeline (writer `plain.v3`/`lay.v3`, autom
 | Kept | 35 (24 Code du travail, 11 GDPR; 19 plain, 16 lay) |
 
 The pipeline put 17 questions on the doubtful list, 12 of them real errors; it let 3 real errors through: R7343-43 plain (the vote concerns the platform workers' organisations; the writer left that out although the context named it), GDPR 8 lay ("16 ans" without the national-law lower limit down to 13) and L2232-25 lay ("désigné" for "mandaté", which the same reviewer had flagged in an earlier run: thinking mode has no temperature control, so its verdicts vary between runs). Recall on real errors was 5 of 5, 3 of 5 and 4 of 5 in the three batches, 12 of 15 together. Five articles keep no question (L1225-56, L2315-81-1, R7343-43, GDPR 27 and 34). Cost of batches 3 and 1c: 0.1482 USD estimated; the whole project so far 0.6118 USD estimated for 427 calls, and the balance fell from 46.67 to 43.19 CNY, about 5.7 CNY per estimated USD.
+
+## Replacement batches with the conditions style (batches 4b and 5)
+
+New style `conditions.v1` (a person describes a case with one detail, the question is about one condition, threshold, deadline or exception; 35 words at most) and `reviewer.v5` (reviewer.v4 plus the conditions style). Batch 4b: 11 new articles (seed 20261029, earlier articles excluded; 3 institutional draws replaced: L1442-13-3, R8124-2, GDPR 31), `plain.v3`, `lay.v3` and `conditions.v1` each: 33 questions, 0.1981 USD estimated. Batch 5: the 5 articles with no kept question (L1225-56, L2315-81-1, R7343-43, GDPR 27 and 34), `conditions.v1` only: 5 questions, 0.0340 USD. The assistant audited all 38 against the article text, with the reviewer's reasons in view.
+
+| | Count |
+|---|---|
+| Questions | 38 |
+| Real errors / borderline / clean | 12 / 6 / 20 |
+| Flagged by the pipeline | 14 (9 real errors, 5 false alarms) |
+| Real errors accepted silently | 3 (R2152-13 plain, L2315-81-1 conditions, R7343-43 conditions) |
+| Kept | 26 |
+
+Errors by style: plain 2 of 11, lay 2 of 11, conditions 8 of 16 (4 of 11 on the new articles, 4 of 5 on the articles that already failed twice). The conditions style invents or bends a premise more often (an employer that is a public authority; a deadline where the article says "au besoin"; a vague "les activités visées"). Silent errors over the four batches: 15 of 27 real errors were flagged in the first three, 9 of 12 here; the two repeat articles L2315-81-1 and R7343-43 fail again because the question asks for something the article does not fix. With all batches, the model-written set is 88 questions, 61 kept. The conditions questions are kept in a separate group H so their weaker reliability shows in the group tables.

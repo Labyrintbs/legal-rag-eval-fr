@@ -15,8 +15,9 @@ from legalrag.smoke import load_questions
 MODEL_WRITTEN = Path("data/questions/model_written.json")
 SMOKE = Path("tests/smoke_questions.yaml")
 OUT = Path("data/gold/draft.jsonl")
-# Plain questions are lookups (group A); lay ones are the wording gap (group B).
-STYLE_GROUP = {"plain": "A", "lay": "B"}
+# Plain questions are lookups (group A); lay ones are the wording gap (group B); conditions ones
+# ask about a condition or exception (new group H).
+STYLE_GROUP = {"plain": "A", "lay": "B", "conditions": "H"}
 SMOKE_KINDS = {26: "false_premise", 27: "underspecified", 28: "unanswerable", 29: "unanswerable"}
 
 

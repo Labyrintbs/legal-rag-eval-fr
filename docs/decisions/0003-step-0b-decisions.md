@@ -26,6 +26,8 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 14 | Gold file: one JSON line per question (`id`, `question`, `lang`, `group`, `kind` answerable / unanswerable / false_premise / underspecified, `gold` list of article + lang + grade + `content_hash`, `split`, `provenance`, `review`, `answer`), kept in `data/gold/` and checked by `legalrag gold-check` (missing, changed or ambiguous articles). Exported to TREC qrels for `ir_measures`. Identical-body alternatives are computed at evaluation time, not stored. Unanswerable questions have an empty gold list. Formats compared: BEIR/TREC qrels, BSARD CSV, LegalBench-RAG spans; spans may come later for 0d citations | User, 2026-10-28 |
 
+| 15 | Style `conditions.v1` (case with one detail, question on a condition, threshold, deadline or exception) with `reviewer.v5`, used for the replacement batches 4b and 5 and kept as its own group H. Model-written set after the audit: 88 questions, 61 kept (details in `question_batch1_notes.md`). The conditions style errs more often (8 of 16) than plain or lay (2 of 11 each), so its questions are audited one by one | User, 2026-10-28 (numbers and group H to confirm) |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.

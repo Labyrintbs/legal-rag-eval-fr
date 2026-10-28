@@ -96,3 +96,24 @@ styles:
       (« le comité », « ce document ») : nomme la chose.
       La réponse courte reste neutre (ni « tu » ni « vous ») et reprend exactement les
       chiffres, majorités et conditions de l'article.
+  # conditions.v1: a question about a condition, threshold, deadline or exception of the article,
+  # with a concrete situation. Same checks as lay/plain; the short answer must keep the condition.
+  conditions.v1:
+    max_overlap: 0.8
+    context: true
+    text: |
+      Style : une personne décrit sa situation en une ou deux phrases, avec un détail précis
+      (une durée, un effectif, un cas particulier), et demande ce que la règle prévoit pour elle.
+      La question doit porter sur UNE condition, UN seuil, UN délai ou UNE exception de l'article,
+      pas sur le principe général. Trente-cinq mots au plus, une seule question.
+      Exemple : « Mon entreprise a 40 salariés et un seul site : faut-il quand même… ? »
+
+      Le contexte indique la place de l'article dans la loi. Si l'article ne vaut que pour
+      une situation précise (un type de contrat, une catégorie de travailleurs, un risque,
+      une procédure), la question doit nommer cette situation avec des mots courants.
+      Ne recopie pas le titre du contexte et ne cite aucun numéro.
+      N'invente aucun chiffre ni aucun fait que l'article ne permet pas de trancher : le détail
+      choisi doit faire basculer la réponse selon l'article.
+      La question ne contient pas sa propre réponse et ne désigne rien par un mot vague.
+      La réponse courte est neutre (ni « tu » ni « vous »), commence par ce que la règle prévoit
+      dans le cas décrit, et reprend exactement la condition ou l'exception qui s'applique.
