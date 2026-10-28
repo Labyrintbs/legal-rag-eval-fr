@@ -117,3 +117,21 @@ Candidates: section headings in the form of a question, with 1 to 4 cited Code d
 | Dropped (wrong citation and no clear answer article, vague heading, or an answer spread over many articles) | the rest |
 
 Typical citation faults: the cited article is a neighbour or a related penalty (rupture conventionnelle content cites the dismissal indemnity L1234-9; number of delegates cites the central delegate L2143-5; public holidays cite the Alsace-Moselle list), or the sheet cites the exception and not the rule. This is why the ministry gold cannot be used as given. Questions use the heading, shortened or completed with the sheet topic to stand alone. 29 questions result, in group I; 4 gold lists are marked needs_review (CDD d'usage, jours fériés, congé de présence parentale, délai de carence en intérim).
+
+## Source 5 and the DeepSeek second opinion on the gold (2026-10-28)
+
+**Hand-written questions (13, group G except two).** Cross-source or single-source answerable (hw-01 to hw-04), false premise (hw-05 to hw-08: a fixed three-month notice, a two-year seniority for the dismissal indemnity, a GDPR ban on all transfers, a compulsory trial period), unanswerable (hw-09 to hw-11: German minimum wage, Belgian parental leave, limitation of tax fraud), underspecified (hw-12 "Quel est le préavis ?", hw-13 leave for a death in the family). Cross-source questions are rare: the GDPR articles are general, so only hw-01 (surveillance: L1222-4, L2312-38, GDPR art 13) and smoke-25 are really both-source; hw-04 had a GDPR article (art 5) as acceptable, which the judge graded 0 and was dropped.
+
+**The judge.** `judge.v1` then `judge.v2` (adds: an article that corrects a false premise answers the question). Input per question: the gold articles and the first 8 distinct articles of the dense search in the question's language, in random order, texts cut at 3,000 characters, no hint of the gold. Output: a grade 0, 1 or 2 per article with the words that justify it, and a verdict on the question (answerable, false_premise, underspecified, unanswerable, sure or not). Cost: 0.1292 USD (v1, 1,200 characters), 0.132 USD (v1, 3,000), then about 0.13 and 0.17 USD for the two v2 runs; all calls so far 1.27 USD estimated.
+
+Two flaws of mine before the result could be read: the first run cut articles at 1,200 characters, so the judge graded GDPR art 12 (the one-month deadline in paragraph 3) and art 15 as 0; and `judge.v1` graded the correcting article of a false-premise question 0. Both fixed (3,000 characters, `judge.v2`). The thinking mode varies from run to run, so only changes seen in several runs or confirmed by reading the article were adopted.
+
+| Over 51 questions | Result |
+|---|---|
+| Fully agree with the gold (judge.v2) | 12 of 29 sheet, 8 of 22 hand-written and smoke |
+| Real gaps found in the gold | L4121-3-1 (states what the DUERP is for; the ministry cited R4121-1), R2312-8 (BDESE content under 300 employees), the regulatory articles of the congé de présence parentale, L3122-20 (default night work hours), R4624-42 (conditions of the inaptitude finding), recital 59 (one-month deadline), L1221-20 (purpose of the trial period) |
+| Gold lowered or dropped | art 5 (hw-04), art 88 and recital 155 (smoke-25), L1232-1 (smoke-13), L2143-12 (sheet-18), L1237-1 only acceptable (hw-12) |
+| Raised to equal | smoke-21 (art 44, 45, 46, 49 all primary: stable in three runs), recital 23 (smoke-22), D1242-1 (sheet-14) |
+| Kind disagreements | smoke-27 and hw-13 (underspecified): the judge calls them answerable because the corpus covers every case; canicule (sheet-05): the judge calls it unanswerable, not sure |
+
+The judge confirmed the audit's overall shape and found about ten articles the audit had missed, in both directions. Where it and the assistant still differ the list stays needs_review: hw-01, hw-13, smoke-15, smoke-25, smoke-27, sheet-05.

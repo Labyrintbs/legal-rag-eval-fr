@@ -1,6 +1,6 @@
 """Build the draft gold file from the smoke questions and the kept model-written questions.
 
-Reads data/questions/model_written.json, data/questions/sheet_questions.json and tests/smoke_questions.yaml, takes each gold article's
+Reads data/questions/model_written.json, data/questions/sheet_questions.json, data/questions/handwritten.json and tests/smoke_questions.yaml, takes each gold article's
 content hash from the database, and writes data/gold/draft.jsonl. No API call.
 Smoke questions list articles without grades: the assistant's proposed grades (smoke_grades.json,
 null drops an article) are applied and every list of several stays needs_review until the user checks.
@@ -14,6 +14,7 @@ from legalrag.smoke import load_questions
 
 MODEL_WRITTEN = Path("data/questions/model_written.json")
 SHEETS = Path("data/questions/sheet_questions.json")
+HANDWRITTEN = Path("data/questions/handwritten.json")
 SMOKE_GRADES = Path("data/questions/smoke_grades.json")
 SMOKE = Path("tests/smoke_questions.yaml")
 OUT = Path("data/gold/draft.jsonl")
@@ -71,7 +72,7 @@ def smoke(hashes: dict) -> list[gold.GoldQuestion]:
             provenance=gold.Provenance(method="smoke", date="2026-10-22"),
             review=gold.Review(note=" | ".join(filter(None, [q.note, proposal.get("note", "")])),
                                by="assistant" if proposal else None,
-                               status="needs_review" if len(q.expected) > 1 else "checked"),
+                               status=proposal.get("status", "needs_review" if len(q.expected) > 1 else "checked")),
         ))
     return questions
 
@@ -90,10 +91,23 @@ def sheets(hashes: dict) -> list[gold.GoldQuestion]:
     return questions
 
 
+def handwritten(hashes: dict) -> list[gold.GoldQuestion]:
+    """Cross-source, false-premise, unanswerable and underspecified questions written by the assistant."""
+    return [
+        gold.GoldQuestion(
+            id=r["id"], question=r["question"], lang="fr", group=r["group"], kind=r["kind"],
+            gold=[gold_article(g["article"], "fr", hashes, g["grade"]) for g in r["gold"]],
+            provenance=gold.Provenance(method="hand_written", writer="assistant", date="2026-10-28"),
+            review=gold.Review(by="assistant", note=r["note"], status=r["status"]),
+        )
+        for r in json.loads(HANDWRITTEN.read_text())
+    ]
+
+
 def main() -> None:
     with db.connect() as conn:
         hashes = gold.article_hashes(conn)
-    questions = model_written(hashes) + sheets(hashes) + smoke(hashes)
+    questions = model_written(hashes) + sheets(hashes) + handwritten(hashes) + smoke(hashes)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     gold.write_gold(OUT, questions)
     print(f"written {OUT}: {len(questions)} questions")
