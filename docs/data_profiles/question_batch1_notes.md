@@ -137,3 +137,20 @@ Two flaws of mine before the result could be read: the first run cut articles at
 The judge confirmed the audit's overall shape and found about ten articles the audit had missed, in both directions. Where it and the assistant still differ the list stays needs_review: hw-01, hw-13, smoke-15, smoke-25, smoke-27, sheet-05.
 
 **Third opinion (flash, thinking on, judge.v2).** For the 6 lists still needs_review, `deepseek-flash` judged the same candidates (0.0104 USD estimated). Rule fixed before the run: a list passes if the kind agrees, every primary gold article gets at least 1, and the judge gives no 2 to an article outside the gold; a failing question would be dropped. All 6 pass, none dropped. smoke-27 loses L3142-1 (graded 0 in all four runs) and flash agrees it is underspecified; hw-01, hw-13, smoke-15, smoke-25 and sheet-05 become checked. No list is needs_review any more; the user's spot check remains.
+
+## Second reviewer on the model-written questions (2026-10-28)
+
+The 61 kept model-written questions went through the same blind pooled judge as the others (`judge.v2`, `deepseek-v4-pro`, thinking low, the source article plus the top 8 dense-search articles in random order; 0.355 USD, and 0.0065 USD for one rerun after a failed reply). Gold files are in `data/gold/judge_mw.json` and `judge_mw64.json`.
+
+| | Count |
+|---|---|
+| Questions judged | 61 (60 on the first run, mw-064 on a rerun) |
+| Source article confirmed as grade 2 | 60 of 60 on the first run |
+| Questions where the judge adds nothing | 30 |
+| Other articles graded 2 by the judge | 20 question-article pairs (16 distinct articles) |
+| Questions dropped | 2 |
+| Kind disagreement | 1 (mw-061, underspecified) |
+
+What the extra articles are, after reading each: 12 recitals of the GDPR that restate the article (added as acceptable, grade 1), the Code du travail articles that give the same rule for another case or state it again (acceptable), and 3 that answer as well as the source (grade 2): L4624-1 for mw-001, R4623-14 for mw-002 (the nurse refers the worker to the doctor), R1233-31 for mw-023 (the 4 to 12 months of the congé de reclassement, which is the real answer to "durée maximale"), and art 42 for mw-074 (a certification does not reduce responsibility).
+
+The two dropped questions are errors the first reviewer and the assistant's audit both missed: mw-061 (lay) answers "neuf semaines" for a unilateral spread of working hours, but L3121-45 sets 9 weeks under 50 employees and 4 weeks from 50; mw-064 ("les règles ... près des lignes électriques du train") fits three chapters that all exclude rail traction, so the gold would punish the other two. The model-written set is now 59 kept questions; gold file: 130 questions, 183 gold articles, none needs_review.

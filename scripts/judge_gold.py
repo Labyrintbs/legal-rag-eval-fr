@@ -60,12 +60,6 @@ def judge_one(http, budget, tag, model, messages):
     return qg.run_call(http, budget, f"{tag}-judge", model, messages, MAX_TOKENS, thinking=True, reasoning_effort="low")
 
 
-def select(questions: list[GoldQuestion]) -> list[GoldQuestion]:
-    """needs_review lists, hand-written and sheet questions: the ones with no model-written check."""
-    return [q for q in questions
-            if q.review.status == "needs_review" or q.provenance.method in ("hand_written", "ministry_sheet")]
-
-
 def report(path: Path, questions: list[GoldQuestion]) -> None:
     by_id = {q.id: q for q in questions}
     rows = json.loads(path.read_text())
@@ -92,7 +86,7 @@ def main() -> None:
     parser.add_argument("--tag", default="v1")
     parser.add_argument("--judge", default="judge.v1")
     parser.add_argument("--model", default=MODEL)
-    parser.add_argument("--only", nargs="+", default=[], help="question id prefixes to judge, e.g. hw smoke")
+    parser.add_argument("--only", nargs="+", default=[], help="question id prefixes to judge, e.g. hw smoke mw (default: all)")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--run-cap", type=float, default=1.0)
     parser.add_argument("--run", action="store_true", help="spend money; default is a dry run")
@@ -103,7 +97,7 @@ def main() -> None:
     if args.report:
         report(args.report, questions)
         return
-    chosen = [q for q in select(questions) if not args.only or q.id.startswith(tuple(args.only))]
+    chosen = [q for q in questions if not args.only or q.id.startswith(tuple(args.only))]
     prompts = qg.load_prompts(qg.PROMPTS / "gold_judge.yaml")
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = 'default'").fetchone()[0]

@@ -47,7 +47,9 @@ def model_written(hashes: dict) -> list[gold.GoldQuestion]:
         label = r["article"] if r["source"] == "code_travail" else f"art {r['article']}"
         questions.append(gold.GoldQuestion(
             id=r["id"], question=r["question"], lang="fr", group=STYLE_GROUP[r["style"].split(".")[0]],
-            kind="answerable", gold=[gold_article(label, "fr", hashes)],
+            kind="answerable",
+            gold=[gold_article(label, "fr", hashes)]
+            + [gold_article(extra, "fr", hashes, grade) for extra, grade in r.get("extra_gold", {}).items()],
             provenance=gold.Provenance(method="model_written", writer=r["writer"], style=r["style"],
                                        prompt_hash=r["prompt_hash"], reviewer=r["reviewer_id"],
                                        date="2026-10-27"),

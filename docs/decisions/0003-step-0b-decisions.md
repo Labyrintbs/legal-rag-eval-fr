@@ -32,6 +32,8 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 17 | Source 5, 13 hand-written questions written by the assistant (4 answerable, 4 false-premise, 3 unanswerable, 2 underspecified), plus the 29 smoke questions already in the set. A blind second opinion from `deepseek-v4-pro` (thinking on, effort low, `prompts/gold_judge.yaml`, `scripts/judge_gold.py`) grades the gold articles and the top 8 dense-search articles per question in random order, without knowing the gold. Run on the 51 questions with no model-written check (13 hand-written, 9 smoke, 29 sheet). Its additions and the assistant's reading were merged where they held across runs (details in `question_batch1_notes.md`); 6 lists stay needs_review | User, 2026-10-28 (to confirm) |
 
+| 18 | Second reviewer on the kept model-written questions: `deepseek-v4-pro`, `judge.v2`, same blind pooled grading as the sheet and hand-written questions (61 questions, 0.36 USD estimated). It confirmed the source article as primary in all 60 judged questions and found 2 questions to drop (mw-061, mw-064) and 20 extra articles to add as gold (listed in `question_batch1_notes.md`) | User, 2026-10-28 (to confirm) |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.
