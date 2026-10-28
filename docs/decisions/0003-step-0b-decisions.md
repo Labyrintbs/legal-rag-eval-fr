@@ -28,6 +28,8 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 15 | Style `conditions.v1` (case with one detail, question on a condition, threshold, deadline or exception) with `reviewer.v5`, used for the replacement batches 4b and 5 and kept as its own group H. Model-written set after the audit: 88 questions, 61 kept (details in `question_batch1_notes.md`). The conditions style errs more often (8 of 16) than plain or lay (2 of 11 each), so its questions are audited one by one | User, 2026-10-28 (numbers and group H to confirm) |
 
+| 16 | Source 4, questions from the ministry sheet headings (group I): 29 questions. Of 78 headings audited (one per sheet, 1 to 4 cited Code du travail articles all present in the corpus), the ministry citations answered the question for 12; for 17 more the heading is a clean question and the assistant found the right article (`gold_origin: assistant`, 4 marked needs_review); the rest were dropped. The question file stays in `data/` (gitignored) because no reuse licence for the sheet content was found: the repo is Apache-2.0 (code), data.gouv.fr lists the SocialGouv dump as "notspecified", the ministry legal notice could not be read. Details in `question_batch1_notes.md` | User, 2026-10-28 (licence and the assistant-found gold to confirm) |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.

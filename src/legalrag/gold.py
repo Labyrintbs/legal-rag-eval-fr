@@ -33,6 +33,9 @@ class Provenance(BaseModel):
     prompt_hash: str | None = None
     reviewer: str | None = None
     source_url: str | None = None
+    # Ministry sheets: the sheet's own heading, and who chose the gold articles.
+    source_heading: str | None = None
+    gold_origin: Literal["ministry", "assistant"] | None = None
     date: str | None = None
 
 

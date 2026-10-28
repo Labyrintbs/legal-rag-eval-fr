@@ -104,3 +104,16 @@ New style `conditions.v1` (a person describes a case with one detail, the questi
 | Kept | 26 |
 
 Errors by style: plain 2 of 11, lay 2 of 11, conditions 8 of 16 (4 of 11 on the new articles, 4 of 5 on the articles that already failed twice). The conditions style invents or bends a premise more often (an employer that is a public authority; a deadline where the article says "au besoin"; a vague "les activités visées"). Silent errors over the four batches: 15 of 27 real errors were flagged in the first three, 9 of 12 here; the two repeat articles L2315-81-1 and R7343-43 fail again because the question asks for something the article does not fix. With all batches, the model-written set is 88 questions, 61 kept. The conditions questions are kept in a separate group H so their weaker reliability shows in the group tables.
+
+## Source 4: questions from the ministry sheets (2026-10-28)
+
+Candidates: section headings in the form of a question, with 1 to 4 cited Code du travail articles all present in our corpus, none already used as a gold article: 205 headings in 102 sheets (`data/external/fiches-travail.json`, sha256 in `data/drawn/batch1.json`). One heading per sheet in random order (seed 20261030), the assistant read every cited article in the database against the heading, then 46 more single-citation headings.
+
+| Result | Count |
+|---|---|
+| Headings audited | 78 + 46 single-citation |
+| Citations that answer the heading | 12 |
+| Heading kept, right article found by the assistant | 17 |
+| Dropped (wrong citation and no clear answer article, vague heading, or an answer spread over many articles) | the rest |
+
+Typical citation faults: the cited article is a neighbour or a related penalty (rupture conventionnelle content cites the dismissal indemnity L1234-9; number of delegates cites the central delegate L2143-5; public holidays cite the Alsace-Moselle list), or the sheet cites the exception and not the rule. This is why the ministry gold cannot be used as given. Questions use the heading, shortened or completed with the sheet topic to stand alone. 29 questions result, in group I; 4 gold lists are marked needs_review (CDD d'usage, jours fériés, congé de présence parentale, délai de carence en intérim).

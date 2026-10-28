@@ -1,6 +1,6 @@
 """Build the draft gold file from the smoke questions and the kept model-written questions.
 
-Reads data/questions/model_written.json and tests/smoke_questions.yaml, takes each gold article's
+Reads data/questions/model_written.json, data/questions/sheet_questions.json and tests/smoke_questions.yaml, takes each gold article's
 content hash from the database, and writes data/gold/draft.jsonl. No API call.
 Smoke questions list articles without grades: all become primary and a list of several is marked
 needs_review.
@@ -13,6 +13,7 @@ from legalrag import db, gold
 from legalrag.smoke import load_questions
 
 MODEL_WRITTEN = Path("data/questions/model_written.json")
+SHEETS = Path("data/questions/sheet_questions.json")
 SMOKE = Path("tests/smoke_questions.yaml")
 OUT = Path("data/gold/draft.jsonl")
 # Plain questions are lookups (group A); lay ones are the wording gap (group B); conditions ones
@@ -25,14 +26,14 @@ def source_of(label: str) -> str:
     return "rgpd" if label.startswith(("art ", "rct ")) else "code_travail"
 
 
-def gold_article(label: str, lang: str, hashes: dict) -> gold.GoldArticle:
+def gold_article(label: str, lang: str, hashes: dict, grade: int = gold.GRADE_PRIMARY) -> gold.GoldArticle:
     source = source_of(label)
     # Code du travail exists in French only; the GDPR text is taken in the question's language.
     article_lang = lang if source == "rgpd" else "fr"
     found = hashes[(source, label, article_lang)]
     if len(found) != 1:
         raise ValueError(f"{label} ({article_lang}): {len(found)} matching articles")
-    return gold.GoldArticle(source=source, article=label, lang=article_lang, grade=gold.GRADE_PRIMARY,
+    return gold.GoldArticle(source=source, article=label, lang=article_lang, grade=grade,
                             content_hash=next(iter(found)))
 
 
@@ -68,10 +69,24 @@ def smoke(hashes: dict) -> list[gold.GoldQuestion]:
     return questions
 
 
+def sheets(hashes: dict) -> list[gold.GoldQuestion]:
+    """Questions worded from the ministry sheet headings; the audited gold is in SHEETS (not committed)."""
+    questions = []
+    for r in json.loads(SHEETS.read_text()):
+        questions.append(gold.GoldQuestion(
+            id=r["id"], question=r["question"], lang="fr", group="I", kind="answerable",
+            gold=[gold_article(g["article"], "fr", hashes, g["grade"]) for g in r["gold"]],
+            provenance=gold.Provenance(method="ministry_sheet", source_url=r["url"], source_heading=r["heading"],
+                                       gold_origin=r["gold_origin"], date="2026-10-28"),
+            review=gold.Review(audit="accept", by="assistant", note=r["note"], status=r["status"]),
+        ))
+    return questions
+
+
 def main() -> None:
     with db.connect() as conn:
         hashes = gold.article_hashes(conn)
-    questions = model_written(hashes) + smoke(hashes)
+    questions = model_written(hashes) + sheets(hashes) + smoke(hashes)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     gold.write_gold(OUT, questions)
     print(f"written {OUT}: {len(questions)} questions")

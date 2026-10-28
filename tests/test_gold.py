@@ -78,3 +78,10 @@ def test_hash_check_reports_missing_changed_and_ambiguous_articles():
     assert "missing: code_travail A2 (fr) is not in the database" in problems
     assert any(p.startswith("changed:") and "changed since" in p for p in problems)
     assert any(p.startswith("twice:") and "2 different" in p for p in problems)
+
+
+def test_sheet_provenance_records_who_chose_the_gold():
+    p = gold.Provenance(method="ministry_sheet", source_heading="Comment ?", gold_origin="assistant")
+    assert p.gold_origin == "assistant"
+    with pytest.raises(ValidationError):
+        gold.Provenance(method="ministry_sheet", gold_origin="somebody")
