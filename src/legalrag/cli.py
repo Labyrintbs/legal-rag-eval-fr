@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from collections import Counter
@@ -7,7 +8,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import db, dbcheck, embed, fetch, gold, llm, sanity, smoke, store, verify
+from legalrag import db, dbcheck, embed, evaluate, fetch, gold, llm, sanity, smoke, store, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -230,6 +231,41 @@ def smoke_cmd(
     found = sum(ranks[q.id] is not None for q in expected)
     typer.echo(f"Expected article in the top {k}: {found} of {len(expected)} questions that have one.")
     typer.echo("First rank per question: " + ", ".join(f"Q{i}={r or '-'}" for i, r in ranks.items()))
+
+
+@app.command("eval")
+def eval_cmd(
+    name: Annotated[str, typer.Option(help="Run name, used in the output file name")] = "baseline",
+    split: Annotated[str, typer.Option(help="dev or test")] = "dev",
+    final: Annotated[bool, typer.Option(help="Allow the test half (decision 5: once at the end of a stage)")] = False,
+    file: Annotated[Path, typer.Option(help="Gold file")] = Path("eval/gold.jsonl"),
+    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
+) -> None:
+    """Dense baseline on the gold questions of one half: metrics with bootstrap intervals."""
+    if split not in ("dev", "test"):
+        raise typer.BadParameter("split must be dev or test")
+    if split == "test" and not final:
+        raise typer.BadParameter("the test half is for the end of a stage: add --final")
+    questions = [q for q in gold.load_gold(file) if q.split == split]
+    vectors = smoke.embed_questions(
+        [smoke.Question(id=0, group=q.group, lang=q.lang, question=q.question) for q in questions],
+        embed.SentenceTransformerEmbedder(device),
+    )
+    with db.connect() as conn:
+        row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
+        if row is None:
+            raise typer.BadParameter(f"no chunking run named {run!r}")
+        retrieved = {q.id: evaluate.retrieve(conn, row[0], q.lang, v) for q, v in zip(questions, vectors, strict=True)}
+    rows = evaluate.score(questions, retrieved)
+    typer.echo(evaluate.format_summary(f"{name} {split}", evaluate.summarize(rows)))
+    for key in ("group", "kind"):
+        for value, part in evaluate.by(rows, key).items():
+            typer.echo(evaluate.format_summary(f"  {key} {value}", evaluate.summarize(part)))
+    out = Path("data/runs") / f"{name}_{split}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"settings": evaluate.settings(file, split, run), "rows": rows}, ensure_ascii=False, indent=1))
+    typer.echo(f"written {out}")
 
 
 @app.command("gold-check")

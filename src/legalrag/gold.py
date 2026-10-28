@@ -127,10 +127,9 @@ def check_hashes(questions: Iterable[GoldQuestion], hashes: dict[tuple[str, str,
     return problems
 
 
-def assign_split(questions: list[GoldQuestion]) -> dict[str, str]:
-    """Dev/test split (decision 5). Questions that share a primary article, or articles with an
-    identical body, form one cluster that stays in one half. Inside each question group the clusters
-    are ordered by a hash and alternate dev, test (the alternation continues from one group to the next)."""
+def clusters(questions: list[GoldQuestion]) -> dict[str, str]:
+    """Question id -> cluster id. Questions that share a primary article, or primary articles with an
+    identical body, are one cluster: the unit of the split and of the bootstrap."""
     parent: dict[str, str] = {}
 
     def find(x: str) -> str:
@@ -145,12 +144,22 @@ def assign_split(questions: list[GoldQuestion]) -> dict[str, str]:
         for g in q.gold:
             if g.grade == GRADE_PRIMARY:
                 parent[find(q.id)] = find(f"hash:{g.content_hash}")
-    clusters: dict[str, list[GoldQuestion]] = defaultdict(list)
+    members: dict[str, list[str]] = defaultdict(list)
     for q in questions:
-        clusters[find(q.id)].append(q)
+        members[find(q.id)].append(q.id)
+    return {qid: min(ids) for ids in members.values() for qid in ids}
+
+
+def assign_split(questions: list[GoldQuestion]) -> dict[str, str]:
+    """Dev/test split (decision 5). A cluster stays in one half. Inside each question group the
+    clusters are ordered by a hash and alternate dev, test (the alternation continues from one group
+    to the next)."""
+    cluster_of = clusters(questions)
+    groups: dict[str, list[GoldQuestion]] = defaultdict(list)
+    for q in sorted(questions, key=lambda q: q.id):
+        groups[cluster_of[q.id]].append(q)
     by_group: dict[str, list[tuple[str, list[GoldQuestion]]]] = defaultdict(list)
-    for members in clusters.values():
-        members.sort(key=lambda q: q.id)
+    for members in groups.values():
         key = hashlib.sha256(members[0].id.encode()).hexdigest()
         by_group[members[0].group].append((key, members))
     split = {}

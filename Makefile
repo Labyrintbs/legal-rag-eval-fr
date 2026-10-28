@@ -1,4 +1,4 @@
-.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity smoke llm-balance llm-ledger gold-check profile verify test lint fresh-rebuild
+.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
 
 SOURCE ?= legi
 
@@ -34,6 +34,9 @@ llm-ledger:
 
 gold-check:
 	uv run legalrag gold-check
+
+eval:
+	uv run --extra embed legalrag eval $(ARGS)
 
 profile:
 	uv run legalrag profile $(SOURCE)

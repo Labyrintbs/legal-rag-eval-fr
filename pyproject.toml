@@ -24,7 +24,11 @@ dependencies = [
 embed = ["sentence-transformers", "torch"]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = [
+    "ir-measures>=0.4.3",
+    "pytest",
+    "ruff",
+]
 
 [project.scripts]
 legalrag = "legalrag.cli:app"

@@ -48,6 +48,7 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 | `make db-check` | 11 checks: counts, vectors, hashes, index use, cross-language match, index recall |
 | `make smoke` | 29 hand-written questions, nearest 5 chunks each (needs the `embed` extra: PyTorch) |
 | `make gold-check` | Check that every gold article of `eval/gold.jsonl` is in the database with the text it was labelled against, and show the dev/test split per group (`legalrag gold-qrels` exports `eval/gold.qrels`) |
+| `make eval` | Dense baseline on the dev half of `eval/gold.jsonl`: Hit, Recall, MRR, nDCG with bootstrap intervals, per group and per kind (`make eval ARGS="--split test --final"` for the test half, once per stage) |
 | `make llm-balance`, `make llm-ledger` | DeepSeek balance snapshot (needs `DEEPSEEK_API_KEY` in `.env`) and the cost ledger of the question-writing calls |
 | `legalrag delete-run NAME` | Delete a chunking run with its chunks and vectors (asks first) |
 | `make fresh-rebuild` | Rebuild from nothing into a scratch database and compare |
@@ -69,5 +70,5 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 - [EXPERIMENT.md](EXPERIMENT.md): every change to data processing and chunking, and the measurements, newest last.
 - [docs/decisions/](docs/decisions/): design decisions (database design, decisions of step 0a).
 - [docs/data_profiles/](docs/data_profiles/): statistics and spot checks of each source, smoke notes.
-- `src/legalrag/`: `sources/` (readers), `chunking/` (headers, splitting), `ingest.py`, `embed.py`, `store.py`, `dbcheck.py`, `smoke.py`, `gold.py`, `cli.py`. Migrations in `migrations/`, tests in `tests/`.
+- `src/legalrag/`: `sources/` (readers), `chunking/` (headers, splitting), `ingest.py`, `embed.py`, `store.py`, `dbcheck.py`, `smoke.py`, `gold.py`, `metrics.py`, `evaluate.py`, `cli.py`. Migrations in `migrations/`, tests in `tests/`.
 - [CLAUDE.md](CLAUDE.md): rules for working with the AI assistant on this repo.
