@@ -36,6 +36,8 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 19 | The user waives a spot check of the model-written questions: some noise is accepted and will show up in later phases. Gold file committed as `eval/gold.jsonl` (130 questions, 183 gold articles) with its TREC export `eval/gold.qrels`, built by `scripts/build_gold.py` from inputs kept in `data/`. Dev/test split by `gold.assign_split`: questions sharing a primary article, or a primary article with an identical body, form one cluster that stays in one half; clusters are ordered by a hash inside each question group and alternate dev, test, the alternation continuing across groups. Result 65 dev, 65 test; per group within one cluster of balance, except groups F (3 questions: 0 dev, 3 test) and J (1 question) | User, 2026-10-28 |
 
+| 20 | Evaluation code: metrics as decided in 3 and 4 (linear gain, cross-checked against `ir_measures`), bootstrap resamples the clusters of decision 5 with 2000 draws and a 95% percentile interval, paired difference for run comparisons, run files in `data/runs/` with the gold hash, git commit and settings. First dense baseline on dev: nDCG@10 0.738 [0.651-0.821], Recall@10 0.893 [0.815-0.956] (`EXPERIMENT.md`) | User, 2026-10-28 (to confirm) |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.
