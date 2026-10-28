@@ -24,6 +24,8 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 13 | 50 model-written questions from 25 articles (batches 2, 3 and 1c): 15 dropped by the audit, 35 kept, 7 of them borderline. The pipeline flagged 12 of the 15 real errors; the audit found the 3 it missed. Next: the other sources (ministry sheets, hand-written, unanswerable) | User, 2026-10-27 |
 
+| 14 | Gold file: one JSON line per question (`id`, `question`, `lang`, `group`, `kind` answerable / unanswerable / false_premise / underspecified, `gold` list of article + lang + grade + `content_hash`, `split`, `provenance`, `review`, `answer`), kept in `data/gold/` and checked by `legalrag gold-check` (missing, changed or ambiguous articles). Exported to TREC qrels for `ir_measures`. Identical-body alternatives are computed at evaluation time, not stored. Unanswerable questions have an empty gold list. Formats compared: BEIR/TREC qrels, BSARD CSV, LegalBench-RAG spans; spans may come later for 0d citations | User, 2026-10-28 |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.

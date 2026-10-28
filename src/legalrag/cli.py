@@ -7,7 +7,7 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import db, dbcheck, embed, fetch, llm, sanity, smoke, store, verify
+from legalrag import db, dbcheck, embed, fetch, gold, llm, sanity, smoke, store, verify
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -230,6 +230,32 @@ def smoke_cmd(
     found = sum(ranks[q.id] is not None for q in expected)
     typer.echo(f"Expected article in the top {k}: {found} of {len(expected)} questions that have one.")
     typer.echo("First rank per question: " + ", ".join(f"Q{i}={r or '-'}" for i, r in ranks.items()))
+
+
+@app.command("gold-check")
+def gold_check_cmd(
+    file: Annotated[Path, typer.Option(help="Gold file")] = Path("data/gold/draft.jsonl"),
+) -> None:
+    """Check that every gold article is in the database with the text it was labelled against."""
+    questions = gold.load_gold(file)
+    with db.connect() as conn:
+        problems = gold.check_hashes(questions, gold.article_hashes(conn))
+    flagged = sum(q.review.status == "needs_review" for q in questions)
+    typer.echo(f"{len(questions)} questions, {sum(len(q.gold) for q in questions)} gold articles, "
+               f"{flagged} marked needs_review")
+    for p in problems:
+        typer.echo(f"PROBLEM  {p}")
+    raise typer.Exit(1 if problems else 0)
+
+
+@app.command("gold-qrels")
+def gold_qrels_cmd(
+    file: Annotated[Path, typer.Option(help="Gold file")] = Path("data/gold/draft.jsonl"),
+    out: Annotated[Path, typer.Option(help="TREC qrels file")] = Path("data/gold/draft.qrels"),
+) -> None:
+    """Export the gold as TREC qrels (query id, 0, article label, grade), for ir_measures."""
+    out.write_text(gold.format_qrels(gold.to_qrels(gold.load_gold(file))))
+    typer.echo(f"written {out}")
 
 
 @app.command("llm-balance")
