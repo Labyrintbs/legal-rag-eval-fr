@@ -234,7 +234,7 @@ def smoke_cmd(
 
 @app.command("gold-check")
 def gold_check_cmd(
-    file: Annotated[Path, typer.Option(help="Gold file")] = Path("data/gold/draft.jsonl"),
+    file: Annotated[Path, typer.Option(help="Gold file")] = Path("eval/gold.jsonl"),
 ) -> None:
     """Check that every gold article is in the database with the text it was labelled against."""
     questions = gold.load_gold(file)
@@ -243,6 +243,8 @@ def gold_check_cmd(
     flagged = sum(q.review.status == "needs_review" for q in questions)
     typer.echo(f"{len(questions)} questions, {sum(len(q.gold) for q in questions)} gold articles, "
                f"{flagged} marked needs_review")
+    for group, halves in gold.split_counts(questions).items():
+        typer.echo(f"group {group}: dev {halves['dev']}, test {halves['test']}")
     for p in problems:
         typer.echo(f"PROBLEM  {p}")
     raise typer.Exit(1 if problems else 0)
@@ -250,8 +252,8 @@ def gold_check_cmd(
 
 @app.command("gold-qrels")
 def gold_qrels_cmd(
-    file: Annotated[Path, typer.Option(help="Gold file")] = Path("data/gold/draft.jsonl"),
-    out: Annotated[Path, typer.Option(help="TREC qrels file")] = Path("data/gold/draft.qrels"),
+    file: Annotated[Path, typer.Option(help="Gold file")] = Path("eval/gold.jsonl"),
+    out: Annotated[Path, typer.Option(help="TREC qrels file")] = Path("eval/gold.qrels"),
 ) -> None:
     """Export the gold as TREC qrels (query id, 0, article label, grade), for ir_measures."""
     out.write_text(gold.format_qrels(gold.to_qrels(gold.load_gold(file))))

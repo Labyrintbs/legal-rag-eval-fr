@@ -82,7 +82,7 @@ def report(path: Path, questions: list[GoldQuestion]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gold", type=Path, default=OUT / "draft.jsonl")
+    parser.add_argument("--gold", type=Path, default=Path("eval/gold.jsonl"))
     parser.add_argument("--tag", default="v1")
     parser.add_argument("--judge", default="judge.v1")
     parser.add_argument("--model", default=MODEL)

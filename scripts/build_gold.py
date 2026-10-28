@@ -1,7 +1,7 @@
 """Build the draft gold file from the smoke questions and the kept model-written questions.
 
 Reads data/questions/model_written.json, data/questions/sheet_questions.json, data/questions/handwritten.json and tests/smoke_questions.yaml, takes each gold article's
-content hash from the database, and writes data/gold/draft.jsonl. No API call.
+content hash from the database, assigns the dev/test split, and writes eval/gold.jsonl. No API call.
 Smoke questions list articles without grades: the assistant's proposed grades (smoke_grades.json,
 null drops an article) are applied and every list of several stays needs_review until the user checks.
 """
@@ -17,7 +17,7 @@ SHEETS = Path("data/questions/sheet_questions.json")
 HANDWRITTEN = Path("data/questions/handwritten.json")
 SMOKE_GRADES = Path("data/questions/smoke_grades.json")
 SMOKE = Path("tests/smoke_questions.yaml")
-OUT = Path("data/gold/draft.jsonl")
+OUT = Path("eval/gold.jsonl")
 # Plain questions are lookups (group A); lay ones are the wording gap (group B); conditions ones
 # ask about a condition or exception (new group H).
 STYLE_GROUP = {"plain": "A", "lay": "B", "conditions": "H"}
@@ -110,6 +110,9 @@ def main() -> None:
     with db.connect() as conn:
         hashes = gold.article_hashes(conn)
     questions = model_written(hashes) + sheets(hashes) + handwritten(hashes) + smoke(hashes)
+    split = gold.assign_split(questions)
+    for q in questions:
+        q.split = split[q.id]
     OUT.parent.mkdir(parents=True, exist_ok=True)
     gold.write_gold(OUT, questions)
     print(f"written {OUT}: {len(questions)} questions")

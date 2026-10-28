@@ -34,6 +34,8 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 18 | Second reviewer on the kept model-written questions: `deepseek-v4-pro`, `judge.v2`, same blind pooled grading as the sheet and hand-written questions (61 questions, 0.36 USD estimated). It confirmed the source article as primary in all 60 judged questions and found 2 questions to drop (mw-061, mw-064) and 20 extra articles to add as gold (listed in `question_batch1_notes.md`) | User, 2026-10-28 (to confirm) |
 
+| 19 | The user waives a spot check of the model-written questions: some noise is accepted and will show up in later phases. Gold file committed as `eval/gold.jsonl` (130 questions, 183 gold articles) with its TREC export `eval/gold.qrels`, built by `scripts/build_gold.py` from inputs kept in `data/`. Dev/test split by `gold.assign_split`: questions sharing a primary article, or a primary article with an identical body, form one cluster that stays in one half; clusters are ordered by a hash inside each question group and alternate dev, test, the alternation continuing across groups. Result 65 dev, 65 test; per group within one cluster of balance, except groups F (3 questions: 0 dev, 3 test) and J (1 question) | User, 2026-10-28 |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.

@@ -47,7 +47,7 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 | `make migrate`, `make load-chunks`, `make load-embeddings` | Build the database |
 | `make db-check` | 11 checks: counts, vectors, hashes, index use, cross-language match, index recall |
 | `make smoke` | 29 hand-written questions, nearest 5 chunks each (needs the `embed` extra: PyTorch) |
-| `make gold-check` | Check that every gold article of the evaluation set is in the database with the text it was labelled against (`legalrag gold-qrels` exports TREC qrels) |
+| `make gold-check` | Check that every gold article of `eval/gold.jsonl` is in the database with the text it was labelled against, and show the dev/test split per group (`legalrag gold-qrels` exports `eval/gold.qrels`) |
 | `make llm-balance`, `make llm-ledger` | DeepSeek balance snapshot (needs `DEEPSEEK_API_KEY` in `.env`) and the cost ledger of the question-writing calls |
 | `legalrag delete-run NAME` | Delete a chunking run with its chunks and vectors (asks first) |
 | `make fresh-rebuild` | Rebuild from nothing into a scratch database and compare |

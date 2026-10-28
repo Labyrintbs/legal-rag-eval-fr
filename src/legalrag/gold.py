@@ -4,6 +4,7 @@ Article labels follow the smoke output: Code du travail article number (annexes:
 GDPR "art N" or "rct N". Identical-body alternatives are not stored; they are computed at evaluation time.
 """
 
+import hashlib
 from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
@@ -124,3 +125,47 @@ def check_hashes(questions: Iterable[GoldQuestion], hashes: dict[tuple[str, str,
             elif g.content_hash not in found:
                 problems.append(f"{where} changed since it was labelled")
     return problems
+
+
+def assign_split(questions: list[GoldQuestion]) -> dict[str, str]:
+    """Dev/test split (decision 5). Questions that share a primary article, or articles with an
+    identical body, form one cluster that stays in one half. Inside each question group the clusters
+    are ordered by a hash and alternate dev, test (the alternation continues from one group to the next)."""
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for q in questions:
+        find(q.id)
+        for g in q.gold:
+            if g.grade == GRADE_PRIMARY:
+                parent[find(q.id)] = find(f"hash:{g.content_hash}")
+    clusters: dict[str, list[GoldQuestion]] = defaultdict(list)
+    for q in questions:
+        clusters[find(q.id)].append(q)
+    by_group: dict[str, list[tuple[str, list[GoldQuestion]]]] = defaultdict(list)
+    for members in clusters.values():
+        members.sort(key=lambda q: q.id)
+        key = hashlib.sha256(members[0].id.encode()).hexdigest()
+        by_group[members[0].group].append((key, members))
+    split = {}
+    turn = 0  # carried across groups, so the odd cluster of a small group does not always go to dev
+    for name in sorted(by_group):
+        for _, members in sorted(by_group[name], key=lambda c: c[0]):
+            for q in members:
+                split[q.id] = "dev" if turn % 2 == 0 else "test"
+            turn += 1
+    return split
+
+
+def split_counts(questions: list[GoldQuestion]) -> dict[str, dict[str, int]]:
+    """Questions per group and half, for a report."""
+    counts: dict[str, dict[str, int]] = defaultdict(lambda: {"dev": 0, "test": 0})
+    for q in questions:
+        counts[q.group][q.split or "unassigned"] = counts[q.group].get(q.split or "unassigned", 0) + 1
+    return dict(sorted(counts.items()))

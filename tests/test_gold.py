@@ -85,3 +85,50 @@ def test_sheet_provenance_records_who_chose_the_gold():
     assert p.gold_origin == "assistant"
     with pytest.raises(ValidationError):
         gold.Provenance(method="ministry_sheet", gold_origin="somebody")
+
+
+def split_question(qid, group, articles):
+    gold_articles = [article(label, grade, content_hash=hash_) for label, grade, hash_ in articles]
+    return gold.GoldQuestion(
+        id=qid, question="q", lang="fr", group=group, kind="answerable" if gold_articles else "unanswerable",
+        gold=gold_articles, provenance=gold.Provenance(method="hand_written"),
+    )
+
+
+def test_questions_sharing_a_primary_article_or_an_identical_body_stay_in_one_half():
+    questions = [
+        split_question("a", "A", [("X", 2, "h1")]),
+        split_question("b", "B", [("X", 2, "h1")]),
+        split_question("c", "A", [("Y", 2, "h1")]),  # a twin of X with the same body
+        split_question("d", "A", [("Z", 1, "h1"), ("W", 2, "h9")]),  # grade 1 does not link
+    ]
+    split = gold.assign_split(questions)
+    assert split["a"] == split["b"] == split["c"]
+    assert set(split) == {"a", "b", "c", "d"}
+
+
+def test_the_split_is_balanced_inside_each_group_and_is_repeatable():
+    questions = [split_question(f"q{i}", "A" if i < 10 else "B", [(f"L{i}", 2, f"h{i}")]) for i in range(20)]
+    split = gold.assign_split(questions)
+    assert split == gold.assign_split(list(reversed(questions)))
+    for group, ids in (("A", range(10)), ("B", range(10, 20))):
+        halves = [split[f"q{i}"] for i in ids]
+        assert abs(halves.count("dev") - halves.count("test")) <= 1, group
+    assert abs(list(split.values()).count("dev") - list(split.values()).count("test")) <= 1
+
+
+def test_unanswerable_questions_are_split_too_and_counted():
+    questions = [split_question(f"u{i}", "G", []) for i in range(4)]
+    for q in questions:
+        q.split = gold.assign_split(questions)[q.id]
+    assert gold.split_counts(questions) == {"G": {"dev": 2, "test": 2}}
+
+
+def test_the_committed_gold_file_is_valid_and_split_in_two_halves():
+    from pathlib import Path
+
+    questions = gold.load_gold(Path(__file__).parent.parent / "eval" / "gold.jsonl")
+    assert all(q.split in ("dev", "test") for q in questions)
+    assert gold.assign_split(questions) == {q.id: q.split for q in questions}
+    halves = [q.split for q in questions]
+    assert abs(halves.count("dev") - halves.count("test")) <= 5
