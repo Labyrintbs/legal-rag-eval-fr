@@ -220,4 +220,20 @@ Entry template:
 - Measured on the Mac (chunking only, no vectors): chunks default 12,136; header-none 12,117; header-label 12,123; header-full 12,160; header-collapse 12,135; size-512 12,885.
 - Confound: a longer header leaves less token budget, so long articles split at other points: articles split into several chunks are 69 (default), 58, 61, 83, 68 for the four header variants, and 442 for size-512. A header comparison therefore also moves a few chunk boundaries.
 - Tests: 171 pass, ruff clean.
+
+## 2026-10-29: keyword search and fusion against the dense baseline, dev half (step 0c, experiment A)
+- Change: `src/legalrag/keyword.py` (BM25, k1 1.2, b 0.75, over the lexemes Postgres already stores in `chunks.tsv`, query through the same french or english configuration), `evaluate.fuse` (reciprocal rank fusion, k 60, top 100 articles of each list, optional weight on the keyword list), `legalrag eval --search dense|keyword|hybrid --keyword-weight`, `legalrag compare BASE OTHER` (paired difference, decision 3b verdict, per group). No new embeddings.
+- Runs (dev, 61 questions with gold in 40 clusters, chunking run `default`, code commit 3e5ef49, gold sha 78cc06a4). Four settings were tried; they were fixed before the runs except the two weights, chosen after seeing that weight 1 hurt:
+
+| Run | nDCG@10 | Recall@10 | Hit@5 | MRR@10 | nDCG@10 minus baseline [95% paired] |
+|---|---|---|---|---|---|
+| baseline (dense) | 0.738 | 0.893 | 0.902 | 0.670 | |
+| keyword only | 0.548 | 0.697 | 0.656 | 0.505 | -0.190 [-0.300, -0.091] |
+| hybrid, keyword weight 1 | 0.701 | 0.857 | 0.869 | 0.639 | -0.037 [-0.118, +0.036] |
+| hybrid, keyword weight 0.5 | 0.716 | 0.877 | 0.885 | 0.638 | -0.022 [-0.090, +0.038] |
+| hybrid, keyword weight 0.25 | 0.749 | 0.902 | 0.902 | 0.680 | +0.011 [-0.041, +0.060] |
+
+- Verdict by decision 3b: no hybrid is an improvement (nDCG@10 is not clearly up in any); keyword alone is clearly worse (nDCG@10 and Recall@10 both clearly down). Weight 0.25 gives Recall@10 +0.008 [0.000, +0.027] and group A (plain lookups, 17 questions) nDCG@10 +0.053 [+0.006, +0.118]; with weight 1 group I (ministry headings, 15 questions) loses 0.210 [-0.337, -0.085].
+- Where it helps and hurts: keyword alone finds the exact article number "L1221-13" at rank 2 where dense does not find it in the top 20, but fusion with the dense list brings it to rank 10 (weight 1) or loses it (weights 0.5, 0.25), because a list that only one search holds scores too little. GDPR scope question (smoke-22) moves from rank 17 to 2 (weight 1) and 5 (weight 0.25). Hurt: heading-style questions (sheet-14 rank 2 to 11, sheet-22 2 to 12) and hw-04 (5 to 19) with weight 1.
+- Read with care: four comparisons on one 61-question half, the 0.25 gain is inside the noise. The test half has not been opened.
 - Environment: the Mac disk was 94% full and iCloud had replaced compiled files of `.venv` and two files of `data/raw` with `.icloud` stubs (numpy and tokenizers imports broke, 2 tests skipped). The project folder now lives in `~/Downloads/legal-rag-eval-fr` (not synced) with a symlink at the old `~/Documents/2026/` path; `.venv` rebuilt with `uv sync --extra embed --reinstall`; 160 tests pass.
