@@ -267,15 +267,19 @@ def eval_cmd(
     final: Annotated[bool, typer.Option(help="Allow the test half (decision 5: once at the end of a stage)")] = False,
     file: Annotated[Path, typer.Option(help="Gold file")] = Path("eval/gold.jsonl"),
     run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    search: Annotated[str, typer.Option(help="dense, keyword or hybrid")] = "dense",
+    keyword_weight: Annotated[float, typer.Option(help="Weight of the keyword list in the hybrid fusion")] = 1.0,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
 ) -> None:
-    """Dense baseline on the gold questions of one half: metrics with bootstrap intervals."""
+    """Search on the gold questions of one half: metrics with bootstrap intervals."""
     if split not in ("dev", "test"):
         raise typer.BadParameter("split must be dev or test")
     if split == "test" and not final:
         raise typer.BadParameter("the test half is for the end of a stage: add --final")
+    if search not in evaluate.SEARCHES:
+        raise typer.BadParameter(f"search must be one of {', '.join(evaluate.SEARCHES)}")
     questions = [q for q in gold.load_gold(file) if q.split == split]
-    vectors = smoke.embed_questions(
+    vectors = None if search == "keyword" else smoke.embed_questions(
         [smoke.Question(id=0, group=q.group, lang=q.lang, question=q.question) for q in questions],
         embed.SentenceTransformerEmbedder(device),
     )
@@ -283,7 +287,7 @@ def eval_cmd(
         row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
         if row is None:
             raise typer.BadParameter(f"no chunking run named {run!r}")
-        retrieved = {q.id: evaluate.retrieve(conn, row[0], q.lang, v) for q, v in zip(questions, vectors, strict=True)}
+        retrieved = evaluate.retrieve_all(conn, row[0], questions, vectors, search, keyword_weight)
     rows = evaluate.score(questions, retrieved)
     typer.echo(evaluate.format_summary(f"{name} {split}", evaluate.summarize(rows)))
     for key in ("group", "kind"):
@@ -291,8 +295,36 @@ def eval_cmd(
             typer.echo(evaluate.format_summary(f"  {key} {value}", evaluate.summarize(part)))
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"settings": evaluate.settings(file, split, run), "rows": rows}, ensure_ascii=False, indent=1))
+    settings = evaluate.settings(file, split, run, search, keyword_weight)
+    out.write_text(json.dumps({"settings": settings, "rows": rows}, ensure_ascii=False, indent=1))
     typer.echo(f"written {out}")
+
+
+@app.command("compare")
+def compare_cmd(
+    base: Annotated[str, typer.Argument(help="Run name of the reference, e.g. baseline")],
+    other: Annotated[str, typer.Argument(help="Run name to compare with it")],
+    split: Annotated[str, typer.Option(help="dev or test")] = "dev",
+) -> None:
+    """Paired difference (other minus base) of every metric, with the decision 3b verdict."""
+    runs = []
+    for name in (base, other):
+        path = Path("data/runs") / f"{name}_{split}.json"
+        if not path.exists():
+            raise typer.BadParameter(f"no run file {path}")
+        runs.append(json.loads(path.read_text()))
+    try:
+        diff = evaluate.compare(*runs)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    typer.echo(evaluate.format_diff(f"{other} minus {base} ({split})", diff))
+    for group in sorted({r["group"] for r in runs[0]["rows"]}):
+        parts = [{"settings": run["settings"], "rows": [r for r in run["rows"] if r["group"] == group]} for run in runs]
+        if not any(r["metrics"] for r in parts[0]["rows"]):
+            continue
+        mean, low, high = evaluate.compare(*parts)["metrics"]["ndcg@10"]
+        count = sum(bool(r["metrics"]) for r in parts[0]["rows"])
+        typer.echo(f"  group {group}: {count} questions, nDCG@10 {mean:+.3f} [{low:+.3f}, {high:+.3f}]")
 
 
 @app.command("gold-check")
