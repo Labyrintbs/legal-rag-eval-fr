@@ -19,7 +19,7 @@ QUESTIONS = Path(__file__).parent / "smoke_questions.yaml"
 class StubEmbedder:
     """Returns a fixed, deliberately not normalised vector per call."""
 
-    def encode(self, texts, batch_size):
+    def encode_queries(self, texts, batch_size):
         return np.array([[3.0, 4.0]] * len(texts), dtype=np.float32)
 
     def info(self):

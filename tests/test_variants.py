@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from typer.testing import CliRunner
 
-from legalrag import cli, variants
+from legalrag import cli, embed, variants
 from legalrag.chunking.header import STYLES
 from legalrag.ingest import build_chunks
 from legalrag.sources import legi
@@ -38,6 +38,25 @@ def test_each_variant_changes_exactly_one_setting_from_the_default():
 def test_baseline_keeps_its_embeddings_file_name():
     assert variants.embeddings_name(variants.DEFAULT) == "bge-m3-main"
     assert variants.embeddings_name("header-none") == "bge-m3-header-none"
+
+
+def test_file_names_carry_the_model_key():
+    assert variants.embeddings_name(variants.DEFAULT, "qwen3-embedding-0.6b") == "qwen3-embedding-0.6b-main"
+    assert variants.embeddings_name("size-512", "qwen3-embedding-0.6b") == "qwen3-embedding-0.6b-size-512"
+
+
+def test_unknown_model_is_refused():
+    for command in ("embed", "load-embeddings", "sanity", "eval"):
+        option = "--embedding-model" if command == "eval" else "--model"
+        result = runner.invoke(cli.app, [command, option, "nothing"])
+        assert result.exit_code != 0 and "unknown model" in result.output, command
+
+
+def test_registered_models_have_a_hugging_face_name_and_room_for_longer_tokenisation():
+    spec = embed.EMBEDDING_MODELS
+    assert spec[embed.BASELINE_KEY].name == embed.MODEL and spec[embed.BASELINE_KEY].query_prompt is None
+    assert spec["qwen3-embedding-0.6b"].query_prompt == "query"
+    assert all(s.max_seq_length >= embed.MAX_SEQ_LENGTH for s in spec.values())
 
 
 def test_unknown_variant_is_refused():

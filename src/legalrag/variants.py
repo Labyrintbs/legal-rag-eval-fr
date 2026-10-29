@@ -24,6 +24,6 @@ def settings(variant: str) -> dict:
     return VARIANTS[variant]
 
 
-def embeddings_name(variant: str) -> str:
+def embeddings_name(variant: str, model_key: str = "bge-m3") -> str:
     """Stem of the embeddings files: the baseline keeps its original name `bge-m3-main`."""
-    return "bge-m3-main" if variant == DEFAULT else f"bge-m3-{variant}"
+    return f"{model_key}-{'main' if variant == DEFAULT else variant}"

@@ -5,7 +5,7 @@ import json
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
+from typing import NamedTuple, Protocol
 
 import numpy as np
 import pyarrow as pa
@@ -16,6 +16,20 @@ from legalrag.models import Chunk
 MODEL = "BAAI/bge-m3"
 DIM = 1024
 MAX_SEQ_LENGTH = 1100
+BASELINE_KEY = "bge-m3"
+
+
+class ModelSpec(NamedTuple):
+    name: str  # Hugging Face name
+    query_prompt: str | None  # prompt name the model card asks for on queries (documents get none)
+    max_seq_length: int  # chunk lengths are counted in bge-m3 tokens, so other tokenizers need headroom
+
+
+# Key used in file names and options; every model here gives DIM-dimensional vectors.
+EMBEDDING_MODELS = {
+    BASELINE_KEY: ModelSpec(MODEL, None, MAX_SEQ_LENGTH),
+    "qwen3-embedding-0.6b": ModelSpec("Qwen/Qwen3-Embedding-0.6B", "query", 2048),
+}
 SPECIAL_TOKENS = 2  # the model adds a start and an end token to every text
 SHARD_SIZE = 1000
 BATCH_SIZE = 16
@@ -25,6 +39,8 @@ DIRTY = " (uncommitted changes)"  # appended to the git hash when the working tr
 
 class Embedder(Protocol):
     def encode(self, texts: list[str], batch_size: int) -> np.ndarray: ...
+
+    def encode_queries(self, texts: list[str], batch_size: int) -> np.ndarray: ...
 
     def info(self) -> dict: ...
 
@@ -163,9 +179,9 @@ def write_run_json(path: Path, info: dict) -> None:
 
 
 class SentenceTransformerEmbedder:
-    """bge-m3 in fp16 on the GPU, or in float32 on the CPU. Imports torch lazily."""
+    """An embedding model in fp16 on the GPU, or in float32 on the CPU. Imports torch lazily."""
 
-    def __init__(self, device: str = "cuda", max_seq_length: int = MAX_SEQ_LENGTH) -> None:
+    def __init__(self, device: str = "cuda", max_seq_length: int | None = None, model_key: str = BASELINE_KEY) -> None:
         import torch
         from huggingface_hub import model_info
         from sentence_transformers import SentenceTransformer
@@ -177,14 +193,15 @@ class SentenceTransformerEmbedder:
         if device == "cuda" and not torch.cuda.is_available():
             raise RuntimeError("CUDA is not available; use --device cpu or auto")
         self.device = device
-        self.revision = model_info(MODEL).sha
+        self.spec = EMBEDDING_MODELS[model_key]
+        self.revision = model_info(self.spec.name).sha
         self.model = SentenceTransformer(
-            MODEL,
+            self.spec.name,
             device=device,
             revision=self.revision,
             model_kwargs={"torch_dtype": torch.float16 if device == "cuda" else torch.float32},
         )
-        self.model.max_seq_length = max_seq_length
+        self.model.max_seq_length = max_seq_length or self.spec.max_seq_length
         if device == "cuda":
             torch.cuda.reset_peak_memory_stats()
 
@@ -193,12 +210,18 @@ class SentenceTransformerEmbedder:
             texts, batch_size=batch_size, convert_to_numpy=True, show_progress_bar=False
         )
 
+    def encode_queries(self, texts: list[str], batch_size: int) -> np.ndarray:
+        return self.model.encode(
+            texts, batch_size=batch_size, convert_to_numpy=True, show_progress_bar=False,
+            prompt_name=self.spec.query_prompt,
+        )
+
     def info(self) -> dict:
         import sentence_transformers
         import torch
 
         info = {
-            "model": MODEL,
+            "model": self.spec.name,
             "model_revision": self.revision,
             "device": self.device,
             "torch": torch.__version__,

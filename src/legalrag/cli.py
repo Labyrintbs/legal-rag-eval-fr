@@ -35,6 +35,13 @@ EMBEDDINGS = Path("data/embeddings")
 PROFILES = Path("docs/data_profiles")
 SOURCES = ("legi", "gdpr")
 VARIANT_OPTION = typer.Option(help="Chunking variant (names in variants.py)")
+MODEL_OPTION = typer.Option(help="Embedding model key (embed.EMBEDDING_MODELS)")
+
+
+def _model_spec(model: str) -> embed.ModelSpec:
+    if model not in embed.EMBEDDING_MODELS:
+        raise typer.BadParameter(f"unknown model {model!r}; choose from {', '.join(embed.EMBEDDING_MODELS)}")
+    return embed.EMBEDDING_MODELS[model]
 
 
 def _variant_settings(variant: str) -> dict:
@@ -72,12 +79,14 @@ def fetch_cmd(
 @app.command("embed")
 def embed_cmd(
     variant: Annotated[str, VARIANT_OPTION] = variants.DEFAULT,
+    model: Annotated[str, MODEL_OPTION] = embed.BASELINE_KEY,
     limit: Annotated[int | None, typer.Option(help="Trial: embed only about this many chunks")] = None,
     batch_size: Annotated[int, typer.Option(help="Texts per batch")] = embed.BATCH_SIZE,
     shard_size: Annotated[int, typer.Option(help="Chunks per saved shard")] = embed.SHARD_SIZE,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "cuda",
 ) -> None:
-    """Embed all chunks of a variant with bge-m3 (GPU by default); resumes from the shards already saved."""
+    """Embed all chunks of a variant (GPU by default); resumes from the shards already saved."""
+    spec = _model_spec(model)
     chunk_settings = _variant_settings(variant)
     count = token_counter(TOKENIZER)
     chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **chunk_settings)
@@ -87,18 +96,18 @@ def embed_cmd(
         chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
     typer.echo(f"{len(chunks)} chunks")
 
-    embedder = embed.SentenceTransformerEmbedder(device)
-    name = variants.embeddings_name(variant)
+    embedder = embed.SentenceTransformerEmbedder(device, model_key=model)
+    name = variants.embeddings_name(variant, model)
     shard_dir = EMBEDDINGS / name
     started = time.monotonic()
     computed = embed.embed_chunks(
-        chunks, embedder, shard_dir, shard_size, batch_size,
+        chunks, embedder, shard_dir, shard_size, batch_size, spec.max_seq_length,
         progress=lambda done, total: typer.echo(f"embedded {done}/{total}"),
     )
     seconds = round(time.monotonic() - started)
     info = embedder.info()
     rows = embed.merge_shards(
-        chunks, shard_dir, EMBEDDINGS / f"{name}.parquet", embed.MODEL, info["model_revision"]
+        chunks, shard_dir, EMBEDDINGS / f"{name}.parquet", spec.name, info["model_revision"]
     )
     embed.write_run_json(
         EMBEDDINGS / f"{name}.run.json",
@@ -106,10 +115,11 @@ def embed_cmd(
             **info,
             "git_commit": embed.git_commit(),
             "variant": variant,
+            "model_key": model,
             "limit": limit,
             "chunk_settings": chunk_settings,
             "batch_size": batch_size,
-            "max_seq_length": embed.MAX_SEQ_LENGTH,
+            "max_seq_length": spec.max_seq_length,
             "rows": rows,
             "computed_in_this_invocation": computed,
             "seconds_this_invocation": seconds,
@@ -122,13 +132,15 @@ def embed_cmd(
 @app.command("sanity")
 def sanity_cmd(
     run: Annotated[str, typer.Option(help="Run name of the embeddings file")] = "main",
+    model: Annotated[str, MODEL_OPTION] = embed.BASELINE_KEY,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
 ) -> None:
     """Rank the embedded chunks against known questions; exit 1 if an expected article misses."""
-    uids, vectors = sanity.load(EMBEDDINGS / f"bge-m3-{run}.parquet")
+    _model_spec(model)
+    uids, vectors = sanity.load(EMBEDDINGS / f"{model}-{run}.parquet")
     numbers = {a.uid: a.article_num for a in legi.to_articles(legi.read(PARQUET))}
     labels = [numbers.get(u, u) for u in uids]
-    results = sanity.rank(labels, vectors, embed.SentenceTransformerEmbedder(device))
+    results = sanity.rank(labels, vectors, embed.SentenceTransformerEmbedder(device, model_key=model))
     for r in results:
         typer.echo(f"{'PASS' if r.ok else 'FAIL'}  {r.question}  (expected {r.expected})")
         for label, score in r.hits:
@@ -186,12 +198,14 @@ def load_chunks_cmd(
 @app.command("load-embeddings")
 def load_embeddings_cmd(
     variant: Annotated[str, VARIANT_OPTION] = variants.DEFAULT,
-    file: Annotated[Path | None, typer.Option(help="Vectors file from `embed` (default: the variant's file)")] = None,
+    model: Annotated[str, MODEL_OPTION] = embed.BASELINE_KEY,
+    file: Annotated[Path | None, typer.Option(help="Vectors file from `embed` (default: the model's file)")] = None,
     run: Annotated[str | None, typer.Option(help="Chunking run name (default: the variant name)")] = None,
 ) -> None:
-    """Load the vectors of a variant and build the vector index."""
+    """Load the vectors of a variant and model and build the vector index."""
     _variant_settings(variant)
-    file = file or EMBEDDINGS / f"{variants.embeddings_name(variant)}.parquet"
+    _model_spec(model)
+    file = file or EMBEDDINGS / f"{variants.embeddings_name(variant, model)}.parquet"
     run = run or variant
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
@@ -272,6 +286,7 @@ def eval_cmd(
     keyword_weight: Annotated[float, typer.Option(help="Weight of the keyword list in the hybrid fusion")] = 1.0,
     reranker: Annotated[str, typer.Option(help="Cross-encoder model for --search rerank")] = rerank.DEFAULT_MODEL,
     rerank_depth: Annotated[int, typer.Option(help="Dense candidates the reranker re-orders")] = evaluate.RERANK_DEPTH,
+    embedding_model: Annotated[str, MODEL_OPTION] = embed.BASELINE_KEY,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
 ) -> None:
     """Search on the gold questions of one half: metrics with bootstrap intervals."""
@@ -281,10 +296,11 @@ def eval_cmd(
         raise typer.BadParameter("the test half is for the end of a stage: add --final")
     if search not in evaluate.SEARCHES:
         raise typer.BadParameter(f"search must be one of {', '.join(evaluate.SEARCHES)}")
+    model_name = _model_spec(embedding_model).name
     questions = [q for q in gold.load_gold(file) if q.split == split]
     vectors = None if search == "keyword" else smoke.embed_questions(
         [smoke.Question(id=0, group=q.group, lang=q.lang, question=q.question) for q in questions],
-        embed.SentenceTransformerEmbedder(device),
+        embed.SentenceTransformerEmbedder(device, model_key=embedding_model),
     )
     scorer = rerank.make_scorer(reranker, device) if search == "rerank" else None
     with db.connect() as conn:
@@ -292,7 +308,9 @@ def eval_cmd(
         if row is None:
             raise typer.BadParameter(f"no chunking run named {run!r}")
         started = time.monotonic()
-        retrieved = evaluate.retrieve_all(conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth)
+        retrieved = evaluate.retrieve_all(
+            conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name
+        )
         search_seconds = time.monotonic() - started
     rows = evaluate.score(questions, retrieved)
     typer.echo(evaluate.format_summary(f"{name} {split}", evaluate.summarize(rows)))
@@ -301,7 +319,7 @@ def eval_cmd(
             typer.echo(evaluate.format_summary(f"  {key} {value}", evaluate.summarize(part)))
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    settings = evaluate.settings(file, split, run, search, keyword_weight)
+    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name)
     # the search step only: query embedding and model loading are left out
     settings["search_seconds_per_question"] = round(search_seconds / len(questions), 3)
     typer.echo(f"search time {settings['search_seconds_per_question']} s per question")

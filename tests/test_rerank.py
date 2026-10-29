@@ -66,7 +66,7 @@ def test_an_article_without_text_goes_last(monkeypatch):
 
 def test_the_rerank_search_reorders_dense_candidates_to_the_top_20(monkeypatch):
     seen = {}
-    monkeypatch.setattr(evaluate, "retrieve", lambda conn, run, lang, v, keep: seen.update(depth=keep) or [("A", "ha")])
+    monkeypatch.setattr(evaluate, "retrieve", lambda conn, run, lang, v, keep, model: seen.update(depth=keep) or [("A", "ha")])
     monkeypatch.setattr(evaluate.rerank, "rerank",
                         lambda conn, run, lang, text, candidates, scorer, keep: seen.update(keep=keep) or [("Z", "hz")])
     question = gold.GoldQuestion(id="a", question="q", lang="fr", group="A", kind="unanswerable", gold=[], split="dev",

@@ -11,7 +11,7 @@ class StubEmbedder:
     def __init__(self, table):
         self.table = table
 
-    def encode(self, texts, batch_size):
+    def encode_queries(self, texts, batch_size):
         return np.array([self.table[t] for t in texts], dtype=np.float32)
 
     def info(self):

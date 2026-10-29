@@ -55,8 +55,8 @@ def load_questions(path: Path) -> list[Question]:
 
 
 def embed_questions(questions: list[Question], embedder: Embedder, batch_size: int = 16) -> np.ndarray:
-    """One unit-length vector per question; bge-m3 takes queries without an instruction prefix."""
-    vectors = np.asarray(embedder.encode([q.question for q in questions], batch_size), dtype=np.float32)
+    """One unit-length vector per question; bge-m3 takes queries without an instruction prefix, Qwen3 with one."""
+    vectors = np.asarray(embedder.encode_queries([q.question for q in questions], batch_size), dtype=np.float32)
     return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
 
 

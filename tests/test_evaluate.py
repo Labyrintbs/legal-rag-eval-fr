@@ -81,7 +81,7 @@ def test_a_small_weight_lets_the_first_list_dominate_the_fusion():
 
 def test_every_search_asks_for_the_depth_it_needs(monkeypatch):
     calls = []
-    monkeypatch.setattr(evaluate, "retrieve", lambda conn, run, lang, v, keep: calls.append(("dense", keep)) or [("A", "ha")])
+    monkeypatch.setattr(evaluate, "retrieve", lambda conn, run, lang, v, keep, model: calls.append(("dense", keep)) or [("A", "ha")])
     monkeypatch.setattr(evaluate.keyword.Bm25Index, "build", classmethod(lambda cls, conn, run, lang: "index"))
     monkeypatch.setattr(evaluate, "retrieve_keyword",
                         lambda conn, index, lang, text, keep: calls.append(("keyword", keep)) or [("B", "hb")])

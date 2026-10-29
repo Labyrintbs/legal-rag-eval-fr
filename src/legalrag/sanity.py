@@ -43,7 +43,7 @@ def rank(
     top: int = TOP,
 ) -> list[Result]:
     """Rank every vector by cosine with each question; the stored vectors are already unit length."""
-    q = np.asarray(embedder.encode([text for text, _ in questions], len(questions)), np.float32)
+    q = np.asarray(embedder.encode_queries([text for text, _ in questions], len(questions)), np.float32)
     q /= np.linalg.norm(q, axis=1, keepdims=True)
     sims = q @ vectors.T
     return [
