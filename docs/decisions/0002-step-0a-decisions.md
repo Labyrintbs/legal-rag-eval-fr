@@ -60,5 +60,5 @@ All the exit conditions of the spec are met: a fresh rebuild works from the raw 
 | Query-time `ef_search`, or exact search for evaluation | 0b and 0c |
 | Gold answers with a primary article and also-acceptable ones (Q16, Q20, Q21 of the smoke set) | 0b |
 | Index recall check built on stored vectors | revisit when the evaluation code exists |
-| Licences of benchmark data (BSARD: CC BY-NC-SA 4.0; Syntec and ClaimRAG-LAW: none found) | 0b, before publishing numbers |
+| Licences of benchmark data (BSARD: CC BY-NC-SA 4.0; Syntec and ClaimRAG-LAW: none found; see decision 22 in `0003-step-0b-decisions.md`) | 0b, before publishing numbers |
 | CI needs a Postgres service; the database tests skip without one | 0e |

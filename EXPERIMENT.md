@@ -206,3 +206,10 @@ Entry template:
 - By group (dev): A plain lookups nDCG@10 0.806 (17 q); B lay wording 0.685 (15 q); E GDPR in French 0.586 (5 q, interval 0.19-0.96); I ministry headings 0.743 (15 q). Groups C, D, G, H have 1 to 3 questions each: no reading.
 - Six questions have no gold article in the top 5: a cross-border transfer question in lay words (art 15 at rank 13), the CSE delegation size (R2314-1 at rank 7, the ranking is filled with delegate rules), the striking employee (L2511-1 not in the top 20, other strike articles come first), the access-request deadline (art 12 not found, recital 59 at rank 8), the exact article number "L1221-13" (not found), GDPR scope for a non-EU company (art 3 at rank 17, recital 23 not found).
 - Not done: test half (kept for the end of the stage), no comparison between runs yet. The intervals are wide (60 questions): a change smaller than about 0.05 nDCG@10 cannot be told from noise on one half, so 0c comparisons use the paired difference.
+
+## 2026-10-29: Syntec sanity run (step 0b)
+- Change: `scripts/sanity_syntec.py` scores bge-m3 (exact cosine search, no database) on Syntec, 90 articles of a collective agreement and 100 French questions with one gold article each, using `legalrag.metrics`. Files read from outside the repo; Syntec has no stated licence.
+- Measured (CPU, 53 clusters, 2000 resamples): nDCG@10 0.845 [0.788-0.899], nDCG@5 0.841, MRR@10 0.806 [0.738-0.871], Hit@5 0.950, Recall@10 0.960, Recall@20 0.990.
+- Published reference: the MTEB-French paper (arXiv 2405.20468, table 11) seems to list about 0.83 for bge-m3 on Syntec, but the extracted table is garbled and the metric is not stated, so this is unverified. Our 0.845 is in the same range.
+- Not done: BSARD (Windows laptop; paper baselines are R@100 51.3 for BM25 and 74.8 for the best baseline).
+- Environment: the Mac `.venv` had broken compiled files (numpy, tokenizers); fixed with `uv sync --extra embed --reinstall`. Cause not found.

@@ -38,6 +38,10 @@ Draft started 2026-10-27, one decision at a time with the user. Rows are added a
 
 | 20 | Evaluation code: metrics as decided in 3 and 4 (linear gain, cross-checked against `ir_measures`), bootstrap resamples the clusters of decision 5 with 2000 draws and a 95% percentile interval, paired difference for run comparisons, run files in `data/runs/` with the gold hash, git commit and settings. First dense baseline on dev: nDCG@10 0.738 [0.651-0.821], Recall@10 0.893 [0.815-0.956] (`EXPERIMENT.md`) | User, 2026-10-28 (to confirm) |
 
+| 21 | `valid_to` stays as in the source and retrieval does not filter by date: all 11,433 Code du travail articles are in force with 2999-01-01, the 272 GDPR rows have NULL, none has expired, and no question carries an "as of" date. Revisit only if older article versions are ingested | User, 2026-10-29 |
+
+| 22 | Outside sanity runs: Syntec only, run locally with our metric code and bge-m3 (`scripts/sanity_syntec.py`, files kept outside git, licence unknown). ClaimRAG-LAW moves to 0d (answer quality; no download link or licence found, article-level gold not confirmed). BSARD (CC BY-NC-SA 4.0, Belgian law, 22.6k articles) runs on the Windows laptop | User, 2026-10-29 |
+
 ## Not decided yet
 
 How the articles for the 20-question batch are chosen; gold file fields; sources and mix of the question set.
