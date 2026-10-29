@@ -24,6 +24,21 @@ class Conn:
         return self.rows
 
 
+def test_qwen_prompt_follows_the_model_card():
+    assert rerank.QWEN_PREFIX.startswith("<|im_start|>system\nJudge whether the Document meets the requirements")
+    assert rerank.QWEN_PREFIX.endswith('"yes" or "no".<|im_end|>\n<|im_start|>user\n')
+    assert rerank.QWEN_SUFFIX == "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    body = rerank.qwen_body("ma question", "le texte")
+    assert body == f"<Instruct>: {rerank.QWEN_INSTRUCTION}\n<Query>: ma question\n<Document>: le texte"
+
+
+def test_the_scorer_class_follows_the_model_family(monkeypatch):
+    monkeypatch.setattr(rerank, "QwenScorer", lambda model, device: ("qwen", model))
+    monkeypatch.setattr(rerank, "CrossEncoderScorer", lambda model, device: ("cross", model))
+    assert rerank.make_scorer("Qwen/Qwen3-Reranker-0.6B", "cpu") == ("qwen", "Qwen/Qwen3-Reranker-0.6B")
+    assert rerank.make_scorer("BAAI/bge-reranker-v2-m3", "cpu") == ("cross", "BAAI/bge-reranker-v2-m3")
+
+
 def test_chunk_texts_asks_for_the_stored_keys_and_returns_texts_by_label():
     conn = Conn([("code_travail", "article", "L1", "t1"), ("rgpd", "article", "17", "t17"),
                  ("rgpd", "recital", "65", "t65"), ("code_travail", "article", "L1", "t1b")])

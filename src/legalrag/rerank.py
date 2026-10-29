@@ -44,6 +44,66 @@ class CrossEncoderScorer:
                 "max_length": MAX_LENGTH}
 
 
+# Prompt of the Qwen3-Reranker model card (copied verbatim); the instruction is ours, fixed before any run.
+QWEN_PREFIX = (
+    "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct "
+    'provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
+)
+QWEN_SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+QWEN_INSTRUCTION = "Given a French legal question, retrieve the article of the Code du travail or the GDPR that answers it"
+
+
+def qwen_body(query: str, document: str) -> str:
+    return f"<Instruct>: {QWEN_INSTRUCTION}\n<Query>: {query}\n<Document>: {document}"
+
+
+class QwenScorer:
+    """Qwen3-Reranker: a language model asked whether the document answers the query; the score is the
+    probability of "yes" against "no" (needs transformers 4.51 or later). Imports torch lazily."""
+
+    def __init__(self, model: str, device: str = "auto") -> None:
+        import torch
+        from huggingface_hub import model_info
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model_name, self.device = model, device
+        self.revision = model_info(model).sha
+        self.tokenizer = AutoTokenizer.from_pretrained(model, padding_side="left", revision=self.revision)
+        self.model = AutoModelForCausalLM.from_pretrained(model, revision=self.revision).to(device).eval()
+        self.yes = self.tokenizer.convert_tokens_to_ids("yes")
+        self.no = self.tokenizer.convert_tokens_to_ids("no")
+        self.prefix = self.tokenizer.encode(QWEN_PREFIX, add_special_tokens=False)
+        self.suffix = self.tokenizer.encode(QWEN_SUFFIX, add_special_tokens=False)
+
+    def score(self, pairs: list[tuple[str, str]]) -> list[float]:
+        import torch
+
+        scores: list[float] = []
+        room = MAX_LENGTH - len(self.prefix) - len(self.suffix)
+        for start in range(0, len(pairs), BATCH_SIZE):
+            bodies = [qwen_body(q, d) for q, d in pairs[start:start + BATCH_SIZE]]
+            ids = self.tokenizer(bodies, padding=False, truncation="longest_first", max_length=room,
+                                 return_attention_mask=False)["input_ids"]
+            batch = self.tokenizer.pad({"input_ids": [self.prefix + i + self.suffix for i in ids]},
+                                       padding=True, return_tensors="pt").to(self.device)
+            with torch.no_grad():
+                last = self.model(**batch).logits[:, -1, :]
+            two = torch.stack([last[:, self.no], last[:, self.yes]], dim=1)
+            scores += torch.log_softmax(two.float(), dim=1)[:, 1].exp().tolist()
+        return scores
+
+    def info(self) -> dict:
+        return {"model": self.model_name, "model_revision": self.revision, "device": self.device,
+                "max_length": MAX_LENGTH, "instruction": QWEN_INSTRUCTION}
+
+
+def make_scorer(model: str, device: str = "auto") -> Scorer:
+    """The Qwen3 rerankers are language models with their own prompt; the others are cross-encoders."""
+    return QwenScorer(model, device) if model.startswith("Qwen/Qwen3-Reranker") else CrossEncoderScorer(model, device)
+
+
 def chunk_texts(conn: psycopg.Connection, run_id: int, lang: str, labels: list[str]) -> dict[str, list[str]]:
     """Embedded text of every chunk of the given articles, by article label."""
     keys = ["|".join(split_label(label)) for label in labels]

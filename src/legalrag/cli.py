@@ -286,12 +286,14 @@ def eval_cmd(
         [smoke.Question(id=0, group=q.group, lang=q.lang, question=q.question) for q in questions],
         embed.SentenceTransformerEmbedder(device),
     )
-    scorer = rerank.CrossEncoderScorer(reranker, device) if search == "rerank" else None
+    scorer = rerank.make_scorer(reranker, device) if search == "rerank" else None
     with db.connect() as conn:
         row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
         if row is None:
             raise typer.BadParameter(f"no chunking run named {run!r}")
+        started = time.monotonic()
         retrieved = evaluate.retrieve_all(conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth)
+        search_seconds = time.monotonic() - started
     rows = evaluate.score(questions, retrieved)
     typer.echo(evaluate.format_summary(f"{name} {split}", evaluate.summarize(rows)))
     for key in ("group", "kind"):
@@ -300,6 +302,9 @@ def eval_cmd(
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     settings = evaluate.settings(file, split, run, search, keyword_weight)
+    # the search step only: query embedding and model loading are left out
+    settings["search_seconds_per_question"] = round(search_seconds / len(questions), 3)
+    typer.echo(f"search time {settings['search_seconds_per_question']} s per question")
     if scorer:
         settings["reranker"] = {**scorer.info(), "depth": rerank_depth}
     out.write_text(json.dumps({"settings": settings, "rows": rows}, ensure_ascii=False, indent=1))
