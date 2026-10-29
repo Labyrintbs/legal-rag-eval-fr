@@ -5,12 +5,13 @@ Written 2026-10-29 on the Mac. For an agent (or the user) on the Windows laptop.
 ## 1. What this is and why
 Step 0c compares ways to chunk the text before embedding. Each variant changes one setting of the baseline and needs its own vectors. The Mac cannot embed them in reasonable time (about 12,000 chunks per variant); the Loop 3 baseline took 97 seconds on this laptop (RTX 3060, peak VRAM 1.5 GB).
 
-Five variants, defined in `src/legalrag/variants.py` (the baseline is `default` and already exists):
+Six variants, defined in `src/legalrag/variants.py` (the baseline is `default` and already exists):
 
 | Variant | What changes against the baseline | Chunks expected |
 |---|---|---|
 | `header-none` | no heading line before the text | 12,117 |
 | `header-label` | heading with the article label only, no section titles | 12,123 |
+| `header-last2` | heading with the last 2 section titles instead of 3 | 12,134 |
 | `header-full` | heading with the whole section path | 12,160 |
 | `header-collapse` | last 3 section titles, repeated levels merged | 12,135 |
 | `size-512` | articles are split above 512 tokens instead of 1,024 | 12,885 |
@@ -39,7 +40,7 @@ uv run --extra embed legalrag embed --variant header-none --limit 40
 ```
 Expected last line: `40 rows written, 40 computed in …s`. The trial writes small files with the final name; the full run below recomputes and overwrites them (the run record has `"limit": 40` and the publish step refuses it).
 
-Then all five variants (about 2 minutes each plus loading, so roughly 10 to 15 minutes; unverified):
+Then all six variants (about 2 minutes each plus loading, so roughly 12 to 18 minutes; unverified):
 ```
 make embed-variants
 ```
@@ -53,28 +54,28 @@ Output per variant in `data/embeddings/`: `bge-m3-<variant>.parquet` (about 50 M
 
 Quick check of each variant (vector norms and the known questions of the Loop 3 sanity check; reads only the files):
 ```
-for v in header-none header-label header-full header-collapse size-512; do uv run --extra embed legalrag sanity --run $v; done
+for v in header-none header-label header-last2 header-full header-collapse size-512; do uv run --extra embed legalrag sanity --run $v; done
 ```
-Report the output of all five unchanged. A miss on an expected article can be a real effect of the variant (for example without a heading), not a fault, so do not rerun or change anything because of it; a crash or a norm problem is a fault: stop and report.
+Report the output of all six unchanged. A miss on an expected article can be a real effect of the variant (for example without a heading), not a fault, so do not rerun or change anything because of it; a crash or a norm problem is a fault: stop and report.
 
 ## 5. Publish
-Dry run first. It checks that all ten files exist, that every run record names its variant and settings, that none is a trial run or made from a dirty tree, and that all runs share one commit and one model revision; then it prints the notes with the SHA-256 of every file:
+Dry run first. It checks that all twelve files exist, that every run record names its variant and settings, that none is a trial run or made from a dirty tree, and that all runs share one commit and one model revision; then it prints the notes with the SHA-256 of every file:
 ```
 make pack-variants
 ```
-If it prints `dry run; would run: gh release create embeddings-bge-m3-variants-v1 (10 files)`, publish:
+If it prints `dry run; would run: gh release create embeddings-bge-m3-variants-v1 (12 files)`, publish:
 ```
 make pack-variants ARGS=--publish
 ```
 This needs `gh auth status` to show a logged-in account with push access to `Labyrintbs/legal-rag-eval-fr` (`gh auth login` otherwise). The release is public by design.
 
-Then confirm: `gh release view embeddings-bge-m3-variants-v1` lists 10 assets.
+Then confirm: `gh release view embeddings-bge-m3-variants-v1` lists 12 assets.
 
 ## 6. Report back
 Reply to the user with:
 1. `git rev-parse HEAD` of the repo on the laptop.
 2. The `<N> chunks` line and the `rows written` line of each variant.
-3. The unchanged output of the five `sanity` runs.
+3. The unchanged output of the six `sanity` runs.
 4. The dry-run output (the notes with the checksums) and the URL of the release.
 5. Anything that did not match this file.
 
@@ -82,4 +83,4 @@ Reply to the user with:
 `gh release download embeddings-bge-m3-variants-v1 -D data/embeddings`, then for each variant `legalrag load-chunks --variant <v>`, `legalrag load-embeddings --variant <v>`, `legalrag db-check --run <v> --expected-chunks <N>`, and `legalrag eval --run <v> --name <v>` on the dev half. Each is compared with the baseline using the paired difference (decision 3b).
 
 ## 8. Known effect to keep in mind
-A longer heading takes part of the token budget, so the places where long articles are split move a little between header variants (69 split articles in the baseline, 58 with `header-none`, 61 with `header-label`, 83 with `header-full`, 68 with `header-collapse`). The header variants therefore differ in the heading and slightly in the chunk boundaries of those articles. This is recorded in `EXPERIMENT.md`.
+A longer heading takes part of the token budget, so the places where long articles are split move a little between header variants (69 split articles in the baseline, 58 with `header-none`, 61 with `header-label`, 67 with `header-last2`, 83 with `header-full`, 68 with `header-collapse`). The header variants therefore differ in the heading and slightly in the chunk boundaries of those articles. This is recorded in `EXPERIMENT.md`.

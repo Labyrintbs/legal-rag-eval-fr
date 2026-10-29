@@ -11,6 +11,7 @@ VARIANTS = {
     DEFAULT: BASE,
     "header-none": {**BASE, "style": "none"},
     "header-label": {**BASE, "style": "label"},
+    "header-last2": {**BASE, "k": 2},
     "header-full": {**BASE, "style": "full"},
     "header-collapse": {**BASE, "collapse_repeats": True},
     "size-512": {**BASE, "max_tokens": 512},

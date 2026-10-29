@@ -20,7 +20,7 @@ fetch:
 embed:
 	uv run legalrag embed
 
-VARIANTS = header-none header-label header-full header-collapse size-512
+VARIANTS = header-none header-label header-last2 header-full header-collapse size-512
 
 embed-variants:
 	for v in $(VARIANTS); do uv run --extra embed legalrag embed --variant $$v || exit 1; done

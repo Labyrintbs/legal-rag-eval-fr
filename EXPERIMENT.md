@@ -217,7 +217,7 @@ Entry template:
 
 ## 2026-10-29: chunking variants prepared for the Windows laptop (step 0c)
 - Change: `src/legalrag/variants.py` names the variants (`default`, `header-none`, `header-label`, `header-full`, `header-collapse`, `size-512`; each changes one setting). `embed`, `load-chunks` and `load-embeddings` take `--variant`; `make embed-variants` and `make pack-variants` (dry run, `ARGS=--publish` creates the release `embeddings-bge-m3-variants-v1`). Handoff: `docs/handoff/variants_windows.md`. The baseline keeps its names (`bge-m3-main`, chunking run `default`). Overlap between chunks is not implemented, so it is not a variant.
-- Measured on the Mac (chunking only, no vectors): chunks default 12,136; header-none 12,117; header-label 12,123; header-full 12,160; header-collapse 12,135; size-512 12,885.
+- Measured on the Mac (chunking only, no vectors): chunks default 12,136; header-none 12,117; header-label 12,123; header-last2 12,134 (added the same day, the plan D6 lists "last 2"); header-full 12,160; header-collapse 12,135; size-512 12,885.
 - Confound: a longer header leaves less token budget, so long articles split at other points: articles split into several chunks are 69 (default), 58, 61, 83, 68 for the four header variants, and 442 for size-512. A header comparison therefore also moves a few chunk boundaries.
 - Tests: 171 pass, ruff clean.
 
