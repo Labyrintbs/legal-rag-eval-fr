@@ -15,7 +15,7 @@ NAMES = [n for n in variants.VARIANTS if n != variants.DEFAULT]
 
 def write_run(folder: Path, name: str, **changes) -> None:
     record = {"variant": name, "chunk_settings": variants.settings(name), "git_commit": "a" * 40,
-              "model_revision": "r" * 40, "limit": None, "rows": 12000, "gpu": "test"} | changes
+              "model_revision": "r" * 40, "limit": None, "rows": 12000, "gpu": "test", "model": "BAAI/bge-m3"} | changes
     stem = variants.embeddings_name(name)
     (folder / f"{stem}.parquet").write_bytes(b"vectors")
     (folder / f"{stem}.run.json").write_text(json.dumps(record))
@@ -61,3 +61,22 @@ def test_record_for_another_variant_is_refused(folder):
     write_run(folder, "header-full", variant="header-none")
     with pytest.raises(SystemExit, match="does not match"):
         pack.check(NAMES)
+
+
+def test_a_run_record_of_another_model_is_refused(folder):
+    write_run(folder, "header-full", model_key="qwen3-embedding-0.6b")
+    with pytest.raises(SystemExit, match="not 'bge-m3'"):
+        pack.check(NAMES)
+
+
+def test_other_models_are_packed_on_the_default_chunking_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(pack, "FOLDER", tmp_path)
+    key = "qwen3-embedding-0.6b"
+    record = {"variant": variants.DEFAULT, "chunk_settings": variants.settings(variants.DEFAULT), "git_commit": "a" * 40,
+              "model_revision": "r" * 40, "limit": None, "rows": 12136, "model": "Qwen/Qwen3-Embedding-0.6B",
+              "model_key": key}
+    (tmp_path / f"{key}-main.parquet").write_bytes(b"vectors")
+    (tmp_path / f"{key}-main.run.json").write_text(json.dumps(record))
+    records = pack.check([variants.DEFAULT], key)
+    body = pack.notes(records, key)
+    assert "Qwen/Qwen3-Embedding-0.6B vectors" in body and f"{key}-main.parquet" in body

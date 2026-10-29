@@ -1,4 +1,4 @@
-.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed embed-variants pack-variants sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
+.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed embed-variants pack-variants embed-qwen pack-qwen sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
 
 SOURCE ?= legi
 
@@ -27,6 +27,12 @@ embed-variants:
 
 pack-variants:
 	uv run python scripts/pack_variants.py $(ARGS)
+
+embed-qwen:
+	uv run --extra embed legalrag embed --model qwen3-embedding-0.6b
+
+pack-qwen:
+	uv run python scripts/pack_variants.py --model qwen3-embedding-0.6b $(ARGS)
 
 sanity:
 	uv run legalrag sanity
