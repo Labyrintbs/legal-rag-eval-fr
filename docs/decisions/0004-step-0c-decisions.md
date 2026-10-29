@@ -15,10 +15,10 @@ Written here on 2026-10-29; before that the list existed only in the master plan
 |---|---|---|---|
 | Dense baseline | bge-m3, heading `last_k` k=3, 1,024-token limit | no | done, nDCG@10 0.738 |
 | Keyword search and rank fusion | BM25 over Postgres lexemes alone and fused with dense (weights 1, 0.5, 0.25); Postgres `ts_rank` and bge-m3 sparse are untried | no | done for BM25, no improvement |
-| Reranker | bge-reranker-v2-m3 against Qwen3-Reranker-0.6B against none, with CPU latency per question (P5); Jina excluded (CC-BY-NC) | no | bge-reranker-v2-m3 running; latency not recorded yet |
+| Reranker | bge-reranker-v2-m3 against Qwen3-Reranker-0.6B against none, with CPU latency per question (P5); Jina excluded (CC-BY-NC) | no | bge-reranker-v2-m3 (top 50): nDCG@10 +0.038 [-0.038, +0.109], not clearly better; latency and Qwen3-Reranker still to run |
 | Query rewriting | questions rewritten before the search | no | not started |
-| Heading style (D6) | none, label only, last 2, last 3 (baseline), full path, repeated levels merged, LLM-written sentence | yes, laptop | six variants ready for the laptop; the LLM-written sentence is not built (about 12,000 DeepSeek calls, ask first) |
-| Chunk limit | 1,024 against 512 tokens; overlap is not implemented | yes, laptop | `size-512` ready for the laptop |
+| Heading style (D6) | none, label only, last 2, last 3 (baseline), full path, repeated levels merged, LLM-written sentence | yes, laptop | done: none -0.071 and label only -0.060 clearly worse; last 2, whole path, merged levels no difference; baseline last 3 stays. The LLM-written sentence is not built (about 12,000 DeepSeek calls, ask first) |
+| Chunk limit | 1,024 against 512 tokens; overlap is not implemented | yes, laptop | done: 512 gives +0.002 [-0.031, +0.042], no difference; baseline 1,024 stays |
 | Embedding model (D7) | bge-m3 against Qwen3-Embedding-0.6B (1,024 dimensions, Apache-2.0) | yes, laptop | not started; needs a handoff and a model-aware search |
 | Annexes | searchable as they are, excluded, or summarised | excluded: no | not started |
 | Language handling | filter on the question's language against no filter with merged translations; index scan with filter | no | not started |

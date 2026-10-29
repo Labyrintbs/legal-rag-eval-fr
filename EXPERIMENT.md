@@ -236,4 +236,21 @@ Entry template:
 - Verdict by decision 3b: no hybrid is an improvement (nDCG@10 is not clearly up in any); keyword alone is clearly worse (nDCG@10 and Recall@10 both clearly down). Weight 0.25 gives Recall@10 +0.008 [0.000, +0.027] and group A (plain lookups, 17 questions) nDCG@10 +0.053 [+0.006, +0.118]; with weight 1 group I (ministry headings, 15 questions) loses 0.210 [-0.337, -0.085].
 - Where it helps and hurts: keyword alone finds the exact article number "L1221-13" at rank 2 where dense does not find it in the top 20, but fusion with the dense list brings it to rank 10 (weight 1) or loses it (weights 0.5, 0.25), because a list that only one search holds scores too little. GDPR scope question (smoke-22) moves from rank 17 to 2 (weight 1) and 5 (weight 0.25). Hurt: heading-style questions (sheet-14 rank 2 to 11, sheet-22 2 to 12) and hw-04 (5 to 19) with weight 1.
 - Read with care: four comparisons on one 61-question half, the 0.25 gain is inside the noise. The test half has not been opened.
+
+## 2026-10-29: reranker, heading styles and chunk limit against the baseline, dev half (step 0c)
+- Vectors of the six variants come from the Windows laptop (Release `embeddings-bge-m3-variants-v1`, commit 6c7b6cb, all 12 SHA-256 equal to the release notes, chunk counts equal to the Mac's). Each variant is its own chunking run; `db-check` passes except the approximate-index recall check (97.4% header-none, 96.5% header-label, 95.1% header-collapse against 98%), which does not touch evaluation (exact search) but matters for the production index settings. Evaluated with `legalrag eval --run V --name V` at commit 9dbdeeb, clean tree, same gold (sha 78cc06a4), same dense exact search and embeddings model.
+- Heading style and chunk limit (dev, 61 questions in 40 clusters; difference to the baseline `last_k` k=3, 1,024 tokens):
+
+| Variant | nDCG@10 | Recall@10 | Hit@5 | nDCG@10 minus baseline [95% paired] |
+|---|---|---|---|---|
+| baseline (last 3 levels, 1,024) | 0.738 | 0.893 | 0.902 | |
+| header-none | 0.667 | 0.852 | 0.820 | -0.071 [-0.129, -0.013] |
+| header-label (article label only) | 0.678 | 0.829 | 0.770 | -0.060 [-0.115, -0.003] |
+| header-last2 | 0.731 | 0.869 | 0.869 | -0.007 [-0.045, +0.031] |
+| header-full (whole path) | 0.712 | 0.885 | 0.885 | -0.026 [-0.066, +0.015] |
+| header-collapse (repeated levels merged) | 0.740 | 0.869 | 0.885 | +0.003 [-0.021, +0.028] |
+| size-512 | 0.740 | 0.885 | 0.885 | +0.002 [-0.031, +0.042] |
+
+- Reading: without section titles the dense search is clearly worse (header-none and header-label); between 2 levels, 3 levels, the whole path, merged levels and a 512-token limit no difference can be told from noise. None is an improvement by decision 3b, so the baseline settings stay. The header variants also move a few chunk boundaries (see the 2026-10-29 entry on variants). Not tried: the LLM-written heading sentence.
+- Reranker `BAAI/bge-reranker-v2-m3` (Apache-2.0) re-ordering the top 50 dense articles, article score = best chunk, CPU: nDCG@10 0.776 [0.686-0.854], Recall@10 0.885, MRR@10 0.731, Hit@5 0.885; minus baseline: nDCG@10 +0.038 [-0.038, +0.109], MRR@10 +0.062 [-0.044, +0.164], Recall@10 -0.008 [-0.067, +0.053]. Not clearly better, not an improvement by decision 3b. Group A +0.083, B +0.073, E +0.192 (5 questions), C -0.540 and D -0.264 (2 and 1 questions). The run took about 45 minutes with the model download and other jobs on the same CPU, so it is not a latency measurement; the run file records commit 9dbdeeb although the run started on an earlier commit (settings are written at the end; the bge reranker path did not change). Rerun for latency still to do.
 - Environment: the Mac disk was 94% full and iCloud had replaced compiled files of `.venv` and two files of `data/raw` with `.icloud` stubs (numpy and tokenizers imports broke, 2 tests skipped). The project folder now lives in `~/Downloads/legal-rag-eval-fr` (not synced) with a symlink at the old `~/Documents/2026/` path; `.venv` rebuilt with `uv sync --extra embed --reinstall`; 160 tests pass.
