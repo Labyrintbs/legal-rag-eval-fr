@@ -16,20 +16,12 @@ from pathlib import Path
 from legalrag import db, embed, goldjudge, llm
 from legalrag import questiongen as qg
 from legalrag.gold import GoldQuestion, load_gold
-from legalrag.smoke import Question, embed_questions, nearest
+from legalrag.smoke import Question, embed_questions, nearest, split_label
 
 MODEL = "deepseek-v4-pro"  # --model overrides
 MAX_TOKENS = 8000
 POOL = 8
 OUT = Path("data/gold")
-
-
-def split_label(label: str) -> tuple[str, str, str]:
-    if label.startswith("art "):
-        return "rgpd", "article", label[4:]
-    if label.startswith("rct "):
-        return "rgpd", "recital", label[4:]
-    return "code_travail", "article", label
 
 
 def article_texts(conn, labels: set[str], lang: str) -> dict[str, tuple[str, str]]:

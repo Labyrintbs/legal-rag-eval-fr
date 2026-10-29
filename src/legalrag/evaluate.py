@@ -13,20 +13,22 @@ from pathlib import Path
 
 import psycopg
 
-from legalrag import gold, keyword, metrics
+from legalrag import gold, keyword, metrics, rerank
 from legalrag.dbcheck import _exact_scan
 from legalrag.embed import MODEL
 from legalrag.smoke import article_label
 
 ARTICLES_KEPT = 20  # the deepest cut-off reported (Recall@20)
 CHUNKS_SEARCHED = 400  # enough chunks to find 20 distinct articles when some are split in many chunks
-SEARCHES = ("dense", "keyword", "hybrid")
+SEARCHES = ("dense", "keyword", "hybrid", "rerank")
 FUSION_DEPTH = 100  # articles each search hands to the fusion
+RERANK_DEPTH = 50  # dense candidates the reranker re-orders by default
 RRF_K = 60  # reciprocal rank fusion constant (Cormack et al., SIGIR 2009; unverified from memory)
 SEARCH_TEXT = {
     "dense": "dense, exact (no vector index)",
     "keyword": f"keyword, BM25 (k1={keyword.K1}, b={keyword.B}) on the Postgres lexemes of the chunk text",
     "hybrid": f"dense + keyword, reciprocal rank fusion (k={RRF_K}) of the top {FUSION_DEPTH} articles of each",
+    "rerank": "dense, then a cross-encoder re-orders the top articles (model and depth in the run record)",
 }
 EXACT_SEARCH = (
     "SELECT a.source_code, a.kind, a.article_num, a.content_hash "
@@ -79,16 +81,21 @@ def fuse(
 
 def retrieve_all(
     conn: psycopg.Connection, run_id: int, questions: list[gold.GoldQuestion], vectors, search: str,
-    keyword_weight: float = 1.0,
+    keyword_weight: float = 1.0, scorer: rerank.Scorer | None = None, rerank_depth: int = RERANK_DEPTH,
 ) -> dict[str, list[tuple[str, str]]]:
     """Ranked articles for every question with the chosen search (vectors are needed unless keyword).
-    keyword_weight is the weight of the keyword list in the fusion (the dense list has weight 1)."""
-    indexes = {} if search == "dense" else {
+    keyword_weight is the weight of the keyword list in the fusion (the dense list has weight 1);
+    scorer and rerank_depth are used by the rerank search."""
+    indexes = {} if search in ("dense", "rerank") else {
         lang: keyword.Bm25Index.build(conn, run_id, lang) for lang in {q.lang for q in questions}
     }
-    depth = FUSION_DEPTH if search == "hybrid" else ARTICLES_KEPT
+    depth = {"hybrid": FUSION_DEPTH, "rerank": rerank_depth}.get(search, ARTICLES_KEPT)
     retrieved = {}
     for i, q in enumerate(questions):
+        if search == "rerank":
+            candidates = retrieve(conn, run_id, q.lang, vectors[i], depth)
+            retrieved[q.id] = rerank.rerank(conn, run_id, q.lang, q.question, candidates, scorer, ARTICLES_KEPT)
+            continue
         rankings = []
         if search in ("dense", "hybrid"):
             rankings.append(retrieve(conn, run_id, q.lang, vectors[i], depth))

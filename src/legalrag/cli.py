@@ -16,6 +16,7 @@ from legalrag import (
     fetch,
     gold,
     llm,
+    rerank,
     sanity,
     smoke,
     store,
@@ -269,6 +270,8 @@ def eval_cmd(
     run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
     search: Annotated[str, typer.Option(help="dense, keyword or hybrid")] = "dense",
     keyword_weight: Annotated[float, typer.Option(help="Weight of the keyword list in the hybrid fusion")] = 1.0,
+    reranker: Annotated[str, typer.Option(help="Cross-encoder model for --search rerank")] = rerank.DEFAULT_MODEL,
+    rerank_depth: Annotated[int, typer.Option(help="Dense candidates the reranker re-orders")] = evaluate.RERANK_DEPTH,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
 ) -> None:
     """Search on the gold questions of one half: metrics with bootstrap intervals."""
@@ -283,11 +286,12 @@ def eval_cmd(
         [smoke.Question(id=0, group=q.group, lang=q.lang, question=q.question) for q in questions],
         embed.SentenceTransformerEmbedder(device),
     )
+    scorer = rerank.CrossEncoderScorer(reranker, device) if search == "rerank" else None
     with db.connect() as conn:
         row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
         if row is None:
             raise typer.BadParameter(f"no chunking run named {run!r}")
-        retrieved = evaluate.retrieve_all(conn, row[0], questions, vectors, search, keyword_weight)
+        retrieved = evaluate.retrieve_all(conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth)
     rows = evaluate.score(questions, retrieved)
     typer.echo(evaluate.format_summary(f"{name} {split}", evaluate.summarize(rows)))
     for key in ("group", "kind"):
@@ -296,6 +300,8 @@ def eval_cmd(
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     settings = evaluate.settings(file, split, run, search, keyword_weight)
+    if scorer:
+        settings["reranker"] = {**scorer.info(), "depth": rerank_depth}
     out.write_text(json.dumps({"settings": settings, "rows": rows}, ensure_ascii=False, indent=1))
     typer.echo(f"written {out}")
 

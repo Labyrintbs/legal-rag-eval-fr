@@ -66,6 +66,15 @@ def article_label(source_code: str, kind: str, article_num: str) -> str:
     return f"{'art' if kind == 'article' else 'rct'} {article_num}"
 
 
+def split_label(label: str) -> tuple[str, str, str]:
+    """Inverse of article_label: (source_code, kind, article_num)."""
+    if label.startswith("art "):
+        return "rgpd", "article", label[4:]
+    if label.startswith("rct "):
+        return "rgpd", "recital", label[4:]
+    return "code_travail", "article", label
+
+
 def nearest(conn: psycopg.Connection, run_id: int, vector: np.ndarray, k: int = 5) -> list[Hit]:
     conn.execute("SELECT set_config('hnsw.ef_search', %s, true)", (str(EF_SEARCH),))
     rows = conn.execute(NEAREST, (vector, run_id, vector, k)).fetchall()
