@@ -8,7 +8,20 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import db, dbcheck, embed, evaluate, fetch, gold, llm, sanity, smoke, store, verify
+from legalrag import (
+    db,
+    dbcheck,
+    embed,
+    evaluate,
+    fetch,
+    gold,
+    llm,
+    sanity,
+    smoke,
+    store,
+    variants,
+    verify,
+)
 from legalrag.ingest import build_chunks, token_counter
 from legalrag.sources import gdpr, legi
 
@@ -20,10 +33,14 @@ TOKENIZER = RAW / "bge-m3-tokenizer.json"
 EMBEDDINGS = Path("data/embeddings")
 PROFILES = Path("docs/data_profiles")
 SOURCES = ("legi", "gdpr")
-# The decided defaults (EXPERIMENT.md); they define the chunk set that gets embedded.
-# style "last_k": header shows only the last k section titles; max_tokens: split above it;
-# collapse_repeats: merge consecutive same-label levels (see chunking/header.py).
-CHUNK_SETTINGS = {"style": "last_k", "k": 3, "max_tokens": 1024, "collapse_repeats": False}
+VARIANT_OPTION = typer.Option(help="Chunking variant (names in variants.py)")
+
+
+def _variant_settings(variant: str) -> dict:
+    try:
+        return variants.settings(variant)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
 
 
 def _check_source(source: str) -> None:
@@ -53,23 +70,24 @@ def fetch_cmd(
 
 @app.command("embed")
 def embed_cmd(
-    run: Annotated[str, typer.Option(help="Run name, used in the output file names")] = "main",
+    variant: Annotated[str, VARIANT_OPTION] = variants.DEFAULT,
     limit: Annotated[int | None, typer.Option(help="Trial: embed only about this many chunks")] = None,
     batch_size: Annotated[int, typer.Option(help="Texts per batch")] = embed.BATCH_SIZE,
     shard_size: Annotated[int, typer.Option(help="Chunks per saved shard")] = embed.SHARD_SIZE,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "cuda",
 ) -> None:
-    """Embed all chunks with bge-m3 (GPU by default); resumes from the shards already saved."""
+    """Embed all chunks of a variant with bge-m3 (GPU by default); resumes from the shards already saved."""
+    chunk_settings = _variant_settings(variant)
     count = token_counter(TOKENIZER)
-    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **CHUNK_SETTINGS)
+    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **chunk_settings)
     for lang in ("fr", "en"):
-        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **CHUNK_SETTINGS)
+        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **chunk_settings)
     if limit:
         chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
     typer.echo(f"{len(chunks)} chunks")
 
     embedder = embed.SentenceTransformerEmbedder(device)
-    name = f"bge-m3-{run}"
+    name = variants.embeddings_name(variant)
     shard_dir = EMBEDDINGS / name
     started = time.monotonic()
     computed = embed.embed_chunks(
@@ -86,7 +104,9 @@ def embed_cmd(
         {
             **info,
             "git_commit": embed.git_commit(),
-            "chunk_settings": CHUNK_SETTINGS,
+            "variant": variant,
+            "limit": limit,
+            "chunk_settings": chunk_settings,
             "batch_size": batch_size,
             "max_seq_length": embed.MAX_SEQ_LENGTH,
             "rows": rows,
@@ -132,12 +152,15 @@ def migrate_cmd() -> None:
 
 @app.command("load-chunks")
 def load_chunks_cmd(
-    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    variant: Annotated[str, VARIANT_OPTION] = variants.DEFAULT,
+    run: Annotated[str | None, typer.Option(help="Chunking run name (default: the variant name)")] = None,
     allow_dirty: Annotated[
         bool, typer.Option(help="Load from a tree with uncommitted changes (recorded as such)")
     ] = False,
 ) -> None:
-    """Load articles and chunks (default chunk settings) into Postgres; safe to re-run."""
+    """Load articles and the chunks of a variant into Postgres; safe to re-run."""
+    chunk_settings = _variant_settings(variant)
+    run = run or variant
     commit = embed.git_commit()
     # A stored run is never changed, so its code_version must name the exact code that made it.
     if commit.endswith(embed.DIRTY) and not allow_dirty:
@@ -150,21 +173,25 @@ def load_chunks_cmd(
             corpus_id = store.register_corpus(conn, code, lang, RAW, len(articles))
             store.load_articles(conn, articles, corpus_id)
         run_id = store.get_or_create_run(
-            conn, run, CHUNK_SETTINGS, "BAAI/bge-m3",
+            conn, run, chunk_settings, "BAAI/bge-m3",
             "code_travail: sentences; rgpd: paragraphs, then points, then sentences",
             commit,
         )
-        chunks = [c for arts in corpora.values() for c in build_chunks(arts, count, **CHUNK_SETTINGS)]
+        chunks = [c for arts in corpora.values() for c in build_chunks(arts, count, **chunk_settings)]
         inserted = store.load_chunks(conn, run_id, chunks)
     typer.echo(f"{sum(len(a) for a in corpora.values())} articles, {inserted} new chunks of {len(chunks)}")
 
 
 @app.command("load-embeddings")
 def load_embeddings_cmd(
-    file: Annotated[Path, typer.Option(help="Vectors file from `embed`")] = EMBEDDINGS / "bge-m3-main.parquet",
-    run: Annotated[str, typer.Option(help="Chunking run name")] = "default",
+    variant: Annotated[str, VARIANT_OPTION] = variants.DEFAULT,
+    file: Annotated[Path | None, typer.Option(help="Vectors file from `embed` (default: the variant's file)")] = None,
+    run: Annotated[str | None, typer.Option(help="Chunking run name (default: the variant name)")] = None,
 ) -> None:
-    """Load the vectors and build the vector index."""
+    """Load the vectors of a variant and build the vector index."""
+    _variant_settings(variant)
+    file = file or EMBEDDINGS / f"{variants.embeddings_name(variant)}.parquet"
+    run = run or variant
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
         if run_id is None:

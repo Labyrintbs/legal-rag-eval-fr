@@ -44,6 +44,7 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 | `make fetch` | Download the raw files and check their checksums |
 | `make profile SOURCE=legi\|gdpr`, `make verify SOURCE=legi\|gdpr` | Data profile and checks per source |
 | `make embed`, `make sanity` | Compute the vectors, and a quick check of them (GPU recommended) |
+| `make embed-variants`, `make pack-variants` | Embed the chunking variants of step 0c and publish them as a Release (`docs/handoff/variants_windows.md`) |
 | `make migrate`, `make load-chunks`, `make load-embeddings` | Build the database |
 | `make db-check` | 11 checks: counts, vectors, hashes, index use, cross-language match, index recall |
 | `make smoke` | 29 hand-written questions, nearest 5 chunks each (needs the `embed` extra: PyTorch) |

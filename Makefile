@@ -1,4 +1,4 @@
-.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
+.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed embed-variants pack-variants sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
 
 SOURCE ?= legi
 
@@ -19,6 +19,14 @@ fetch:
 
 embed:
 	uv run legalrag embed
+
+VARIANTS = header-none header-label header-full header-collapse size-512
+
+embed-variants:
+	for v in $(VARIANTS); do uv run --extra embed legalrag embed --variant $$v || exit 1; done
+
+pack-variants:
+	uv run python scripts/pack_variants.py $(ARGS)
 
 sanity:
 	uv run legalrag sanity
