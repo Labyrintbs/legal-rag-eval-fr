@@ -72,6 +72,8 @@ def split_label(label: str) -> tuple[str, str, str]:
         return "rgpd", "article", label[4:]
     if label.startswith("rct "):
         return "rgpd", "recital", label[4:]
+    if label.startswith("Annexe"):
+        return "code_travail", "annex", label
     return "code_travail", "article", label
 
 

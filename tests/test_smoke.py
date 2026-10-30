@@ -11,6 +11,7 @@ from legalrag.smoke import (
     first_hit_rank,
     format_result,
     load_questions,
+    split_label,
 )
 
 QUESTIONS = Path(__file__).parent / "smoke_questions.yaml"
@@ -50,6 +51,14 @@ def test_labels_follow_the_smoke_output_names():
     assert article_label("code_travail", "annex", "Annexe III") == "Annexe III"
     assert article_label("rgpd", "article", "17") == "art 17"
     assert article_label("rgpd", "recital", "65") == "rct 65"
+
+
+@pytest.mark.parametrize("key", [
+    ("code_travail", "article", "L1237-1"), ("code_travail", "annex", "Annexe III"),
+    ("code_travail", "annex", "Annexe à l'article R1422-4"), ("rgpd", "article", "17"), ("rgpd", "recital", "65"),
+])
+def test_split_label_inverts_article_label(key):
+    assert split_label(article_label(*key)) == key
 
 
 def test_question_vectors_have_unit_length():
