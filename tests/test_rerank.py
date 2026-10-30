@@ -32,6 +32,12 @@ def test_qwen_prompt_follows_the_model_card():
     assert body == f"<Instruct>: {rerank.QWEN_INSTRUCTION}\n<Query>: ma question\n<Document>: le texte"
 
 
+def test_fit_cuts_the_end_and_counts_the_lists_that_were_cut():
+    ids, cut = rerank.fit([[1, 2, 3], [4, 5], [6, 7, 8, 9]], room=3)
+    assert ids == [[1, 2, 3], [4, 5], [6, 7, 8]]
+    assert cut == 1
+
+
 def test_the_scorer_class_follows_the_model_family(monkeypatch):
     monkeypatch.setattr(rerank, "QwenScorer", lambda model, device: ("qwen", model))
     monkeypatch.setattr(rerank, "CrossEncoderScorer", lambda model, device: ("cross", model))

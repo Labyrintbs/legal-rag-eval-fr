@@ -9,7 +9,10 @@ import psycopg
 from legalrag.smoke import article_label, split_label
 
 DEFAULT_MODEL = "BAAI/bge-reranker-v2-m3"
-MAX_LENGTH = 1024  # tokens of question and chunk together
+# Tokens of question and chunk (and for Qwen the prompt) together. Sized so the longest default-run chunk fits
+# with the longest gold question; pairs cut anyway are counted as truncated_pairs in the run record.
+CROSS_ENCODER_MAX_LENGTH = 1152
+QWEN_MAX_LENGTH = 1700
 BATCH_SIZE = 16
 CANDIDATE_TEXTS = (
     "SELECT a.source_code, a.kind, a.article_num, c.embed_text FROM chunks c "
@@ -34,14 +37,20 @@ class CrossEncoderScorer:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_name, self.device = model, device
         self.revision = model_info(model).sha
-        self.model = CrossEncoder(model, device=device, max_length=MAX_LENGTH, revision=self.revision)
+        self.model = CrossEncoder(model, device=device, max_length=CROSS_ENCODER_MAX_LENGTH, revision=self.revision)
+        self.truncated = 0
 
     def score(self, pairs: list[tuple[str, str]]) -> list[float]:
+        if not pairs:
+            return []
+        questions, chunks = zip(*pairs, strict=True)
+        lengths = self.model.tokenizer(list(questions), list(chunks))["input_ids"]
+        self.truncated += sum(len(ids) > CROSS_ENCODER_MAX_LENGTH for ids in lengths)
         return [float(s) for s in self.model.predict(pairs, batch_size=BATCH_SIZE, show_progress_bar=False)]
 
     def info(self) -> dict:
         return {"model": self.model_name, "model_revision": self.revision, "device": self.device,
-                "max_length": MAX_LENGTH}
+                "max_length": CROSS_ENCODER_MAX_LENGTH, "truncated_pairs": self.truncated}
 
 
 # Prompt of the Qwen3-Reranker model card (copied verbatim); the instruction is ours, fixed before any run.
@@ -55,6 +64,11 @@ QWEN_INSTRUCTION = "Given a French legal question, retrieve the article of the C
 
 def qwen_body(query: str, document: str) -> str:
     return f"<Instruct>: {QWEN_INSTRUCTION}\n<Query>: {query}\n<Document>: {document}"
+
+
+def fit(token_ids: list[list[int]], room: int) -> tuple[list[list[int]], int]:
+    """Every token list cut to `room` tokens, and how many lists were cut."""
+    return [ids[:room] for ids in token_ids], sum(len(ids) > room for ids in token_ids)
 
 
 class QwenScorer:
@@ -76,16 +90,17 @@ class QwenScorer:
         self.no = self.tokenizer.convert_tokens_to_ids("no")
         self.prefix = self.tokenizer.encode(QWEN_PREFIX, add_special_tokens=False)
         self.suffix = self.tokenizer.encode(QWEN_SUFFIX, add_special_tokens=False)
+        self.truncated = 0
 
     def score(self, pairs: list[tuple[str, str]]) -> list[float]:
         import torch
 
         scores: list[float] = []
-        room = MAX_LENGTH - len(self.prefix) - len(self.suffix)
+        room = QWEN_MAX_LENGTH - len(self.prefix) - len(self.suffix)
         for start in range(0, len(pairs), BATCH_SIZE):
             bodies = [qwen_body(q, d) for q, d in pairs[start:start + BATCH_SIZE]]
-            ids = self.tokenizer(bodies, padding=False, truncation="longest_first", max_length=room,
-                                 return_attention_mask=False)["input_ids"]
+            ids, cut = fit(self.tokenizer(bodies, padding=False, return_attention_mask=False)["input_ids"], room)
+            self.truncated += cut
             batch = self.tokenizer.pad({"input_ids": [self.prefix + i + self.suffix for i in ids]},
                                        padding=True, return_tensors="pt").to(self.device)
             with torch.no_grad():
@@ -96,7 +111,7 @@ class QwenScorer:
 
     def info(self) -> dict:
         return {"model": self.model_name, "model_revision": self.revision, "device": self.device,
-                "max_length": MAX_LENGTH, "instruction": QWEN_INSTRUCTION}
+                "max_length": QWEN_MAX_LENGTH, "truncated_pairs": self.truncated, "instruction": QWEN_INSTRUCTION}
 
 
 def make_scorer(model: str, device: str = "auto") -> Scorer:
