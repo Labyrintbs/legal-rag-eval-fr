@@ -280,3 +280,20 @@ Entry template:
 | Qwen3-Embedding-0.6B | 0.770 | 0.870 | 0.880 | 0.885 | 0.732 | +0.033 [-0.036, +0.106] |
 
 - Verdict by decision 3b: not an improvement (nDCG@10 not clearly up). Recall@10 -0.024 [-0.094, +0.044] and Recall@20 -0.046 [-0.122, +0.018] are not clearly down either, but both point down while MRR@10 points up (+0.062 [-0.020, +0.147]): Qwen puts hits higher and misses more of them at depth. Groups: E +0.200 (5 questions), A +0.062, I -0.040, all inside the noise. Search time 0.052 s per question (query embedding time not included). The baseline model stays.
+
+## 2026-10-31: full matrix of embedding model and reranker, dev half (step 0c)
+- The two missing cells were run on the Qwen3-Embedding candidates (top 50 articles), same code and windows as above, `truncated_pairs` 0 in both run records. Dev half, Mac CPU.
+
+| Embedding model | Reranker | nDCG@10 | Recall@10 | Recall@20 | Hit@5 | MRR@10 | nDCG@10 minus baseline [95% paired] | Seconds per question |
+|---|---|---|---|---|---|---|---|---|
+| bge-m3 | none (baseline) | 0.738 | 0.893 | 0.926 | 0.902 | 0.670 | | 0.3 to 0.4 |
+| bge-m3 | bge-reranker-v2-m3 | 0.793 | 0.902 | | 0.902 | 0.748 | +0.055 [-0.006, +0.120] | 36.1 |
+| bge-m3 | Qwen3-Reranker-0.6B | 0.799 | 0.943 | | 0.918 | 0.752 | +0.061 [+0.003, +0.125] | 91.2 (upper bound) |
+| Qwen3-Embedding | none | 0.770 | 0.870 | 0.880 | 0.885 | 0.732 | +0.033 [-0.036, +0.106] | 0.05 |
+| Qwen3-Embedding | bge-reranker-v2-m3 | 0.799 | 0.923 | 0.934 | 0.918 | 0.743 | +0.062 [-0.002, +0.128] | 35.3 |
+| Qwen3-Embedding | Qwen3-Reranker-0.6B | 0.792 | 0.918 | 0.934 | 0.885 | 0.746 | +0.054 [-0.004, +0.120] | 77.2 |
+
+- Verdict by decision 3b: only bge-m3 with Qwen3-Reranker is an improvement, and its lower bound is +0.003. The two new cells are not (intervals touch 0).
+- On the Qwen3-Embedding candidates, Qwen3-Reranker minus bge-reranker is -0.007 [-0.064, +0.049]: not distinguishable, as on the bge-m3 candidates (+0.006). With a reranker, the choice of embedding model makes no clear difference.
+- Six cells on one 61-question half make a lucky result likely; the single cell that passes is not evidence of a real gain.
+- Decision for the retrieval default: dense bge-m3 without reranker. The reranker stays a measured option; its cost is 100 to 250 times the dense search on this CPU, and no clean GPU latency exists yet. Candidate depth (fewer than 50 candidates) is still unchecked; the test half is not opened.
