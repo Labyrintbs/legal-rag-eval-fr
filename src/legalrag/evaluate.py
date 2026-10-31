@@ -35,6 +35,7 @@ EXACT_SEARCH = (
     "FROM chunk_embeddings e JOIN chunks c ON c.id = e.chunk_id JOIN articles a ON a.uid = c.article_uid "
     "WHERE e.model = %s AND c.run_id = %s AND c.lang = %s ORDER BY e.embedding <=> %s LIMIT %s"
 )
+EXACT_SEARCH_ANY_LANGUAGE = EXACT_SEARCH.replace("AND c.lang = %s ", "")
 
 
 def merge_chunks(rows: list[tuple[str, str, str, str]], keep: int = ARTICLES_KEPT) -> list[tuple[str, str]]:
@@ -48,10 +49,14 @@ def merge_chunks(rows: list[tuple[str, str, str, str]], keep: int = ARTICLES_KEP
 
 
 def retrieve(
-    conn: psycopg.Connection, run_id: int, lang: str, vector, keep: int = ARTICLES_KEPT, model: str = MODEL
+    conn: psycopg.Connection, run_id: int, lang: str | None, vector, keep: int = ARTICLES_KEPT, model: str = MODEL
 ) -> list[tuple[str, str]]:
+    """lang None searches the chunks of every language; translations of an article merge into one result."""
     with _exact_scan(conn):
-        rows = conn.execute(EXACT_SEARCH, (model, run_id, lang, vector, CHUNKS_SEARCHED)).fetchall()
+        if lang is None:
+            rows = conn.execute(EXACT_SEARCH_ANY_LANGUAGE, (model, run_id, vector, CHUNKS_SEARCHED)).fetchall()
+        else:
+            rows = conn.execute(EXACT_SEARCH, (model, run_id, lang, vector, CHUNKS_SEARCHED)).fetchall()
     return merge_chunks(rows, keep)
 
 
@@ -82,11 +87,12 @@ def fuse(
 def retrieve_all(
     conn: psycopg.Connection, run_id: int, questions: list[gold.GoldQuestion], vectors, search: str,
     keyword_weight: float = 1.0, scorer: rerank.Scorer | None = None, rerank_depth: int = RERANK_DEPTH,
-    embedding_model: str = MODEL,
+    embedding_model: str = MODEL, language_filter: bool = True,
 ) -> dict[str, list[tuple[str, str]]]:
     """Ranked articles for every question with the chosen search (vectors are needed unless keyword,
     and come from embedding_model). keyword_weight is the weight of the keyword list in the fusion (the
-    dense list has weight 1); scorer and rerank_depth are used by the rerank search."""
+    dense list has weight 1); scorer and rerank_depth are used by the rerank search. language_filter
+    False lets the dense search see every language (dense search only)."""
     indexes = {} if search in ("dense", "rerank") else {
         lang: keyword.Bm25Index.build(conn, run_id, lang) for lang in {q.lang for q in questions}
     }
@@ -99,7 +105,7 @@ def retrieve_all(
             continue
         rankings = []
         if search in ("dense", "hybrid"):
-            rankings.append(retrieve(conn, run_id, q.lang, vectors[i], depth, embedding_model))
+            rankings.append(retrieve(conn, run_id, q.lang if language_filter else None, vectors[i], depth, embedding_model))
         if search in ("keyword", "hybrid"):
             rankings.append(retrieve_keyword(conn, indexes[q.lang], q.lang, q.question, depth))
         retrieved[q.id] = fuse(rankings, weights=[1.0, keyword_weight]) if search == "hybrid" else rankings[0]
@@ -183,7 +189,7 @@ def format_diff(title: str, diff: dict) -> str:
 
 def settings(
     gold_path: Path, split: str, chunking_run: str, search: str = "dense", keyword_weight: float = 1.0,
-    embedding_model: str = MODEL,
+    embedding_model: str = MODEL, language_filter: bool = True,
 ) -> dict:
     try:
         commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
@@ -195,7 +201,7 @@ def settings(
         "split": split,
         "gold_sha256": hashlib.sha256(gold_path.read_bytes()).hexdigest(), "chunking_run": chunking_run,
         "embedding_model": embedding_model, "search": SEARCH_TEXT[search], "keyword_weight": keyword_weight if search == "hybrid" else None,
-        "language_filter": True,
+        "language_filter": language_filter,
         "unit": "article (best chunk), top 20", "ndcg_gain": "linear (the grade)",
         "bootstrap": "2000 resamples of clusters, 95% percentile interval",
     }

@@ -92,6 +92,26 @@ def test_every_search_asks_for_the_depth_it_needs(monkeypatch):
     assert calls == [("dense", 20), ("keyword", 20), ("dense", 100), ("keyword", 100)]
 
 
+def test_without_the_language_filter_the_dense_search_gets_no_language(monkeypatch):
+    seen = []
+    monkeypatch.setattr(evaluate, "retrieve", lambda conn, run, lang, v, keep, model: seen.append(lang) or [("A", "ha")])
+    questions = [question("a", "A", [("A", 2, "ha")])]
+    evaluate.retrieve_all(None, 1, questions, [None], "dense")
+    evaluate.retrieve_all(None, 1, questions, [None], "dense", language_filter=False)
+    assert seen == ["fr", None]
+    assert evaluate.settings(Path(__file__), "dev", "default", language_filter=False)["language_filter"] is False
+
+
+def test_the_any_language_query_drops_only_the_language_condition():
+    assert "c.lang" not in evaluate.EXACT_SEARCH_ANY_LANGUAGE
+    assert evaluate.EXACT_SEARCH_ANY_LANGUAGE.count("%s") == evaluate.EXACT_SEARCH.count("%s") - 1
+
+
+def test_the_language_filter_can_only_be_dropped_for_the_dense_search():
+    result = runner.invoke(cli.app, ["eval", "--search", "rerank", "--no-language-filter"])
+    assert result.exit_code != 0 and "dense" in result.output
+
+
 def run_file(rows, gold_sha="g", split="dev"):
     return {"settings": {"gold_sha256": gold_sha, "split": split},
             "rows": [{"id": i, "cluster": c, "group": "A", "metrics": m} for i, c, m in rows]}

@@ -288,8 +288,11 @@ def eval_cmd(
     rerank_depth: Annotated[int, typer.Option(help="Dense candidates the reranker re-orders")] = evaluate.RERANK_DEPTH,
     embedding_model: Annotated[str, MODEL_OPTION] = embed.BASELINE_KEY,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
+    language_filter: Annotated[bool, typer.Option(help="Keep only chunks in the question's language (dense only)")] = True,
 ) -> None:
     """Search on the gold questions of one half: metrics with bootstrap intervals."""
+    if not language_filter and search != "dense":
+        raise typer.BadParameter("--no-language-filter works with --search dense only")
     if split not in ("dev", "test"):
         raise typer.BadParameter("split must be dev or test")
     if split == "test" and not final:
@@ -309,7 +312,7 @@ def eval_cmd(
             raise typer.BadParameter(f"no chunking run named {run!r}")
         started = time.monotonic()
         retrieved = evaluate.retrieve_all(
-            conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name
+            conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name, language_filter
         )
         search_seconds = time.monotonic() - started
     rows = evaluate.score(questions, retrieved)
@@ -319,7 +322,7 @@ def eval_cmd(
             typer.echo(evaluate.format_summary(f"  {key} {value}", evaluate.summarize(part)))
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name)
+    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name, language_filter)
     # the search step only: query embedding and model loading are left out
     settings["search_seconds_per_question"] = round(search_seconds / len(questions), 3)
     typer.echo(f"search time {settings['search_seconds_per_question']} s per question")
