@@ -272,3 +272,11 @@ Entry template:
 - Groups: Qwen against the baseline, group A +0.097 [+0.012, +0.200] (17 questions), C -0.185 (2 questions), D -0.046 (1 question); the others inside the noise.
 - Time per question on the Mac CPU: bge 36.1 s; Qwen 91.2 s. The Qwen run shared the CPU with a heavily swapping Mac (9 to 10 GB of swap), so it is an upper bound, not a clean latency. Dense search alone takes about 0.3 to 0.4 s.
 - Read with care: several comparisons on one 61-question half, the Qwen gain barely clears zero. Candidate depth (fewer than 50 candidates for some questions) is not yet checked. The test half has not been opened.
+- Embedding model `Qwen/Qwen3-Embedding-0.6B` (Apache-2.0) instead of bge-m3, same chunks (default chunking, 12,136), same exact dense search; vectors from the Windows laptop (Release `embeddings-qwen3-embedding-0.6b-v1`, commit 835464e, RTX 3060, 933 s, both SHA-256 equal to the release notes); questions embedded with the model's `query` prompt, chunks without an instruction. Dev half, run `qwen3` at a clean commit:
+
+| Run | nDCG@10 | Recall@10 | Recall@20 | Hit@5 | MRR@10 | nDCG@10 minus baseline [95% paired] |
+|---|---|---|---|---|---|---|
+| baseline (bge-m3) | 0.738 | 0.893 | 0.926 | 0.902 | 0.670 | |
+| Qwen3-Embedding-0.6B | 0.770 | 0.870 | 0.880 | 0.885 | 0.732 | +0.033 [-0.036, +0.106] |
+
+- Verdict by decision 3b: not an improvement (nDCG@10 not clearly up). Recall@10 -0.024 [-0.094, +0.044] and Recall@20 -0.046 [-0.122, +0.018] are not clearly down either, but both point down while MRR@10 points up (+0.062 [-0.020, +0.147]): Qwen puts hits higher and misses more of them at depth. Groups: E +0.200 (5 questions), A +0.062, I -0.040, all inside the noise. Search time 0.052 s per question (query embedding time not included). The baseline model stays.
