@@ -298,3 +298,15 @@ Entry template:
 - Six cells on one 61-question half make a lucky result likely; the single cell that passes is not evidence of a real gain.
 - Decision for the retrieval default: dense bge-m3 without reranker. The reranker stays a measured option; its cost is 100 to 250 times the dense search on this CPU, and no clean GPU latency exists yet.
 - Candidate depth checked: the 400 chunks searched hold at least 363 distinct articles per dev question with bge-m3 (median 398) and at least 367 with Qwen3-Embedding (median 399), so the 50 candidates are always available. The test half is not opened.
+
+## 2026-10-31: annexes and language handling, dev half (step 0c)
+- Annexes: ablation closed without a run (user decision). The corpus has 8 annexes; among the dev questions only smoke-12 has an annex in its baseline top 20 (it is the gold article, rank 1, nDCG@10 1.0), so excluding annexes could only lower the dev score and the summarised arm could change one question. Annexes stay searchable as they are. `scripts/judge_gold.py` is not affected by the earlier label bug: the two annex gold questions (smoke-11 test, smoke-12 dev) are in none of the judge outputs.
+- Language handling: `legalrag eval --no-language-filter` searches the chunks of every language and merges the translations of an article into one result (dense only). Same embeddings and chunks, no new vectors. Dev half, run `nolang`:
+
+| Run | nDCG@10 | Recall@10 | Recall@20 | Hit@5 | MRR@10 | nDCG@10 minus baseline [95% paired] |
+|---|---|---|---|---|---|---|
+| baseline (filter on the question's language) | 0.738 | 0.893 | 0.926 | 0.902 | 0.670 | |
+| no language filter | 0.735 | 0.893 | 0.926 | 0.885 | 0.660 | -0.002 [-0.009, +0.003] |
+
+- Verdict by decision 3b: not an improvement. 11 of 65 rankings differ (the GDPR questions, where English chunks join the results); nDCG@10 changes by at most -0.144 on one question (smoke-21) and +0.106 on another (mw-073). The filter stays.
+- Limits: all 65 dev questions are French, so the dev half cannot show what the filter does for English questions (2 English questions are in the test half). Not tried: the approximate index with an iterative scan under the filter, because evaluation uses the exact scan.

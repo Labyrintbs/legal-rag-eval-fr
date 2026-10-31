@@ -20,8 +20,8 @@ Written here on 2026-10-29; before that the list existed only in the master plan
 | Heading style (D6) | none, label only, last 2, last 3 (baseline), full path, repeated levels merged, LLM-written sentence | yes, laptop | done: none -0.071 and label only -0.060 clearly worse; last 2, whole path, merged levels no difference; baseline last 3 stays. The LLM-written sentence is not built (about 12,000 DeepSeek calls, ask first) |
 | Chunk limit | 1,024 against 512 tokens; overlap is not implemented | yes, laptop | done: 512 gives +0.002 [-0.031, +0.042], no difference; baseline 1,024 stays |
 | Embedding model (D7) | bge-m3 against Qwen3-Embedding-0.6B (1,024 dimensions, Apache-2.0) | yes, laptop | done on dev: Qwen3-Embedding-0.6B nDCG@10 +0.033 [-0.036, +0.106], Recall@10 -0.024, not an improvement by 3b; bge-m3 stays |
-| Annexes | searchable as they are, excluded, or summarised | excluded: no | not started |
-| Language handling | filter on the question's language against no filter with merged translations; index scan with filter | no | not started |
+| Annexes | searchable as they are, excluded, or summarised | excluded: no | closed without a run (user, 2026-10-31): annexes stay as they are; one dev question depends on an annex (`EXPERIMENT.md` 2026-10-31) |
+| Language handling | filter on the question's language against no filter with merged translations; index scan with filter | no | done on dev for the filter: no filter -0.002 [-0.009, +0.003] nDCG@10, not an improvement; the filter stays. All dev questions are French, so English is untested; the index scan with filter is not tried |
 | Article-number rule | queries naming an article go to keyword search | no | not started; the dev set has one such question |
 
 ## Not decided yet
