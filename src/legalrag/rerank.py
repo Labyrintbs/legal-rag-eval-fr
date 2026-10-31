@@ -71,6 +71,12 @@ def fit(token_ids: list[list[int]], room: int) -> tuple[list[list[int]], int]:
     return [ids[:room] for ids in token_ids], sum(len(ids) > room for ids in token_ids)
 
 
+def length_batches(lengths: list[int], size: int) -> list[list[int]]:
+    """Indices in batches of similar length, longest first, so a batch is padded little."""
+    order = sorted(range(len(lengths)), key=lambda i: -lengths[i])
+    return [order[start:start + size] for start in range(0, len(order), size)]
+
+
 class QwenScorer:
     """Qwen3-Reranker: a language model asked whether the document answers the query; the score is the
     probability of "yes" against "no" (needs transformers 4.51 or later). Imports torch lazily."""
@@ -85,7 +91,8 @@ class QwenScorer:
         self.model_name, self.device = model, device
         self.revision = model_info(model).sha
         self.tokenizer = AutoTokenizer.from_pretrained(model, padding_side="left", revision=self.revision)
-        self.model = AutoModelForCausalLM.from_pretrained(model, revision=self.revision).to(device).eval()
+        dtype = torch.float16 if device == "cuda" else torch.float32  # the checkpoint's bfloat16 is very slow on CPU
+        self.model = AutoModelForCausalLM.from_pretrained(model, revision=self.revision, dtype=dtype).to(device).eval()
         self.yes = self.tokenizer.convert_tokens_to_ids("yes")
         self.no = self.tokenizer.convert_tokens_to_ids("no")
         self.prefix = self.tokenizer.encode(QWEN_PREFIX, add_special_tokens=False)
@@ -95,18 +102,21 @@ class QwenScorer:
     def score(self, pairs: list[tuple[str, str]]) -> list[float]:
         import torch
 
-        scores: list[float] = []
+        if not pairs:
+            return []
         room = QWEN_MAX_LENGTH - len(self.prefix) - len(self.suffix)
-        for start in range(0, len(pairs), BATCH_SIZE):
-            bodies = [qwen_body(q, d) for q, d in pairs[start:start + BATCH_SIZE]]
-            ids, cut = fit(self.tokenizer(bodies, padding=False, return_attention_mask=False)["input_ids"], room)
-            self.truncated += cut
-            batch = self.tokenizer.pad({"input_ids": [self.prefix + i + self.suffix for i in ids]},
+        bodies = [qwen_body(q, d) for q, d in pairs]
+        ids, cut = fit(self.tokenizer(bodies, padding=False, return_attention_mask=False)["input_ids"], room)
+        self.truncated += cut
+        scores = [0.0] * len(pairs)
+        for chosen in length_batches([len(i) for i in ids], BATCH_SIZE):
+            batch = self.tokenizer.pad({"input_ids": [self.prefix + ids[i] + self.suffix for i in chosen]},
                                        padding=True, return_tensors="pt").to(self.device)
             with torch.no_grad():
-                last = self.model(**batch).logits[:, -1, :]
+                last = self.model(**batch, logits_to_keep=1).logits[:, -1, :]  # only the last position is read
             two = torch.stack([last[:, self.no], last[:, self.yes]], dim=1)
-            scores += torch.log_softmax(two.float(), dim=1)[:, 1].exp().tolist()
+            for i, p in zip(chosen, torch.log_softmax(two.float(), dim=1)[:, 1].exp().tolist(), strict=True):
+                scores[i] = p
         return scores
 
     def info(self) -> dict:

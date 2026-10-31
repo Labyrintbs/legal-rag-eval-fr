@@ -38,6 +38,12 @@ def test_fit_cuts_the_end_and_counts_the_lists_that_were_cut():
     assert cut == 1
 
 
+def test_length_batches_group_similar_lengths_and_cover_every_index_once():
+    batches = rerank.length_batches([5, 90, 7, 80, 6], size=2)
+    assert batches == [[1, 3], [2, 4], [0]]
+    assert rerank.length_batches([], size=2) == []
+
+
 def test_the_scorer_class_follows_the_model_family(monkeypatch):
     monkeypatch.setattr(rerank, "QwenScorer", lambda model, device: ("qwen", model))
     monkeypatch.setattr(rerank, "CrossEncoderScorer", lambda model, device: ("cross", model))
