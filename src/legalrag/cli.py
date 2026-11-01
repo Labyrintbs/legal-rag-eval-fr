@@ -289,6 +289,7 @@ def eval_cmd(
     embedding_model: Annotated[str, MODEL_OPTION] = embed.BASELINE_KEY,
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
     language_filter: Annotated[bool, typer.Option(help="Keep only chunks in the question's language (dense only)")] = True,
+    article_lookup: Annotated[bool, typer.Option(help="Put the articles the question names by number first")] = False,
 ) -> None:
     """Search on the gold questions of one half: metrics with bootstrap intervals."""
     if not language_filter and search != "dense":
@@ -312,7 +313,8 @@ def eval_cmd(
             raise typer.BadParameter(f"no chunking run named {run!r}")
         started = time.monotonic()
         retrieved = evaluate.retrieve_all(
-            conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name, language_filter
+            conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name, language_filter,
+            article_lookup,
         )
         search_seconds = time.monotonic() - started
     rows = evaluate.score(questions, retrieved)
@@ -322,7 +324,7 @@ def eval_cmd(
             typer.echo(evaluate.format_summary(f"  {key} {value}", evaluate.summarize(part)))
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name, language_filter)
+    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name, language_filter, article_lookup)
     # the search step only: query embedding and model loading are left out
     settings["search_seconds_per_question"] = round(search_seconds / len(questions), 3)
     typer.echo(f"search time {settings['search_seconds_per_question']} s per question")
