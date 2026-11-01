@@ -22,7 +22,7 @@ Written here on 2026-10-29; before that the list existed only in the master plan
 | Embedding model (D7) | bge-m3 against Qwen3-Embedding-0.6B (1,024 dimensions, Apache-2.0) | yes, laptop | done on dev: Qwen3-Embedding-0.6B nDCG@10 +0.033 [-0.036, +0.106], Recall@10 -0.024, not an improvement by 3b; bge-m3 stays |
 | Annexes | searchable as they are, excluded, or summarised | excluded: no | closed without a run (user, 2026-10-31): annexes stay as they are; one dev question depends on an annex (`EXPERIMENT.md` 2026-10-31) |
 | Language handling | filter on the question's language against no filter with merged translations; index scan with filter | no | done on dev for the filter: no filter -0.002 [-0.009, +0.003] nDCG@10, not an improvement; the filter stays. All dev questions are French, so English is untested; the index scan with filter is not tried |
-| Article-number rule | queries naming an article go to keyword search | no | not started; the dev set has one such question |
+| Article-number rule | queries naming an article go to keyword search; chosen instead: direct lookup by article number, named articles first | no | done on dev (`--article-lookup`, off by default): +0.016 [+0.000, +0.056] from one question (smoke-08, rank outside top 5 to rank 1), not an improvement by 3b; kept as a design choice for a known failure class (user, 2026-11-01). Whether it is on in the final setup is decided at the end of 0c |
 
 ## Not decided yet
 
