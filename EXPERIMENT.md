@@ -357,3 +357,9 @@ Entry template:
 - Output depends on the server setup: 4-bit one slot against four slots, 26 of 50 sentences differ; 8-bit one against two slots, 16 of 50.
 - Time for the corpus at 0.47 s (4-bit, four slots) to 0.59 s (8-bit, two slots) per article: about 1.5 to 1.9 hours, from a sample with longer texts than the corpus average.
 - Verdict against the rule set before the run (at least 48 questions, no "tu/ton", no invented persons, no cited article numbers): neither local model passes. The sentences will be written with DeepSeek (decision of the user, 2026-11-03, conditional on this quality result).
+
+## 2026-11-03: heading sentences for the whole corpus, header-llm chunks (step 0c, in progress)
+- Decision of the user (2026-11-03): option B, the sentence is added after the section titles ("Code du travail, article L1221-13. T1 > T2 > T3. <question>"); the sentences are written with DeepSeek because neither local model passed (entry above); the file may be published.
+- `scripts/heading_sentences_all.py`, `deepseek-flash`, prompts `sentence.v3` (French) and `sentence.v3.en` (English GDPR; 12 English articles: 12 questions, no flag). 11,977 of 11,977 articles written, 0 failed, 26 minutes, 0.73 USD in the ledger (the first 200 articles cost 0.0156 USD). All 11,977 are questions, 21.6 words on average (longest 41); 14 cite an article number and are not used (the articles keep the plain heading), so 11,963 are used; "patron" in 40 of 11,524 French sentences, no "tu/ton". The 8 annexes got plausible questions.
+- Published as the Release `heading-sentences-v3` (SHA-256 d77bf4c7...afb8, 2.9 MB).
+- Chunks, variant `header-llm` (`variants.py`: the baseline settings plus `sentences`): 12,150 chunks against 12,136, 76 split articles against 69, none over the 1,024-token limit (longest 1,023), mean heading 339 characters against 206. Embedding on the laptop: `docs/handoff/header_llm_windows.md`. Not evaluated yet.
