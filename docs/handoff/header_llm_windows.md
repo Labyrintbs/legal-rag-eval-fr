@@ -42,7 +42,7 @@ Expected last line: `40 rows written, 40 computed in …s`. The trial writes sma
 ```
 make embed-llm
 ```
-- Prints `12150 chunks` first (the baseline has 12,136; 14 more because 7 more articles are split once the heading is longer). Any other number means different raw files, code or sentences: stop and report.
+- Prints `12150 chunks` first (the baseline has 12,136; the longer heading splits 76 articles against 69). Any other number means different raw files, code or sentences: stop and report.
 - Prints `embedded K/N` per shard of 1,000, longest chunks first.
 - Ends with `12150 rows written, 12150 computed in …s`. Expect about two minutes (unverified; the baseline took 97 s).
 - If it stops, run `make embed-llm` again: finished shards in `data/embeddings/bge-m3-header-llm/` are kept and skipped.
