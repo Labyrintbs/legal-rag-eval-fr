@@ -21,7 +21,7 @@ from legalrag import questiongen as qg
 from legalrag.sources import gdpr, legi
 
 RAW = Path("data/raw")
-PROMPT_IDS = ("sentence.v1", "sentence.v2")
+PROMPT_IDS = ("sentence.v1", "sentence.v2", "sentence.v3")
 SEED = 20261101
 
 

@@ -129,3 +129,46 @@ Do not commit the `vram_*.csv` files or the trial files; paste the peak memory n
 1. The user and the Mac session read the 50 sentences of each model side by side: accuracy to the article text, everyday wording, invented content (for example a "patron" that the article does not mention), article numbers, length.
 2. Decision: local model, API, or a mix, with measured speed and cost. If local: the full run is about 11,700 articles at the measured speed; GDPR English needs its own prompt version.
 3. The sentence then enters a new chunking run `header-llm` and is embedded on this laptop later (a separate handoff).
+
+## 13. Round 2 (2026-11-03): the 8-bit model and prompt v3
+Round 1 (sections 4 to 11) is done and read on the Mac: the 4-bit model runs here at 55 to 59 tokens/s for one request and 25 s for 50 articles with 4 slots, no thinking text, and the same input gives the same sentences on a rerun with one slot. Its weakness is prompt following: with prompt v2 only 14 or 15 of 50 outputs are questions, the rest are statements that often address the reader as "tu" or "ton". The user asked to try the 8-bit version. Because that changes two things at once if run with v2 alone, round 2 is a 2 by 2: model precision (4-bit, 8-bit) against prompt (`sentence.v2`, new `sentence.v3`). v3 asks for a first-person question ending with "?", forbids adding a person the article does not mention, and has one invented example. `git pull` first (the script now accepts `--prompt sentence.v3`); `uv run pytest -q tests/test_headsentence.py` must pass.
+
+Already measured, do not redo: 4-bit + v2 (files `heading_qwen35-4b-q4km-v2-*.jsonl`), 4-bit + v1.
+
+### 13.1 Download the 8-bit file
+Same repository as 6.1 (`bartowski/Qwen_Qwen3.5-4B-GGUF`), file probably `Qwen_Qwen3.5-4B-Q8_0.gguf` (unverified), expected 4 to 5 GB (my estimate from one byte per parameter; unverified). Put it next to the other file in `C:\models`; record size and SHA-256. Keep the 4-bit file: it is needed again in 13.3.
+
+### 13.2 Will it fit in 6 GB?
+The 8-bit weights alone may fill most of the 6 GB, and Windows itself uses some. Measure, do not assume. Free VRAM from `nvidia-smi` before starting (close browsers and other GPU programs). Start the server in this order and stop at the first failure:
+1. **Q8-A**: `C:\llama.cpp\llama-server.exe -m C:\models\<q8 file> --host 127.0.0.1 --port 8080 -ngl 99 -c 4096 -np 1 --jinja`.
+2. **Q8-B2**: same with `-c 8192 -np 2`.
+3. **Q8-B4**: same with `-c 16384 -np 4`, only if Q8-B2's peak memory left at least 1 GB of the 6 GB free.
+All layers must be offloaded (the startup log says how many). If not even Q8-A offloads every layer, **stop and report**; do not lower `-ngl`, do not add KV-cache quantization flags, do not close the display driver: partial offloading makes the speed numbers incomparable and these are decisions for the user.
+
+### 13.3 Runs (50 articles each, one tag per run; memory log as in 8.2 for every server start)
+| # | Server | Command tail (after `--backend local --model <name> --base-url http://<address>:8080`) | Tag |
+|---|---|---|---|
+| 1 | Q8-A | `--prompt sentence.v2 --workers 1` | `qwen35-4b-q8-v2-np1` |
+| 2 | Q8-A | `--prompt sentence.v3 --workers 1` | `qwen35-4b-q8-v3-np1` |
+| 3 | Q8-B2 or Q8-B4 (the larger that fit) | `--prompt sentence.v3 --workers <its slots>` | `qwen35-4b-q8-v3-np2` or `...-np4` |
+| 4 | the 4-bit server, config A (restart with the 4-bit file) | `--prompt sentence.v3 --workers 1` | `qwen35-4b-q4km-v3-np1` |
+| 5 | the 4-bit server, config B | `--prompt sentence.v3 --workers 4` | `qwen35-4b-q4km-v3-np4` |
+Run a 3-article trial (`--n 3`, tag `win-trial2`) with v3 before run 2 and look at the three sentences: they must be questions ending with "?". Do not rerun anything that already exists. Run 1 twice (second tag `qwen35-4b-q8-v2-np1-again`) only if the first finished within 10 minutes.
+
+### 13.4 Do not
+Download any other model or quantization, run the full corpus, change the prompts or the script, or compare the sentences yourself beyond the first look: the Mac reads and counts them.
+
+### 13.5 Report back
+1. `git rev-parse HEAD`; the 8-bit file name, size and SHA-256; the licence line is the same as in 11.
+2. For each server start: the exact command, the number of offloaded layers, the peak GPU memory from the log (the largest `memory.used`, and the total).
+3. For each run: the summary the script prints (answered count, flags, wall time, tokens/s).
+4. Which runs you could not do, with the exact error.
+Commit the outputs as in section 11, with the new file names:
+```
+cp data/pilot/heading_qwen35-4b-q8-*.jsonl data/pilot/heading_qwen35-4b-q4km-v3-*.jsonl docs/pilots/
+grep -ci "users" docs/pilots/*.jsonl      # must print 0 for every file
+git add docs/pilots && git commit -m "Add 8-bit and prompt v3 heading-sentence pilot outputs" && git push
+```
+
+### 13.6 What the Mac will do with them
+Count questions, "tu/ton" addressing, invented persons, article numbers and flags per run; count the sentences that differ between the 4-bit and 8-bit model for the same prompt; read twelve sentences side by side with DeepSeek's (`docs/pilots/heading_deepseek-flash-v3.jsonl`). The decision is the user's.

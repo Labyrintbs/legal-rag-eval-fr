@@ -65,8 +65,8 @@ def test_ask_local_posts_one_chat_with_thinking_off_and_returns_usage_and_timing
 
 def test_both_prompts_have_the_fields_the_script_reads():
     prompts = load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"]
-    assert set(prompts) == {"sentence.v1", "sentence.v2"}
+    assert set(prompts) == {"sentence.v1", "sentence.v2", "sentence.v3"}
     for prompt in prompts.values():
         assert {"system", "user", "max_body_chars", "max_words", "max_tokens"} <= set(prompt)
         assert "{body}" in prompt["user"] and "{doc}" in prompt["user"] and "{context}" in prompt["user"]
-    assert "la question" in prompts["sentence.v2"]["system"]
+    assert "la question" in prompts["sentence.v2"]["system"] and "point d.interrogation" in prompts["sentence.v3"]["system"]

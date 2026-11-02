@@ -47,3 +47,34 @@ prompts:
     max_body_chars: 6000
     max_words: 45
     max_tokens: 120
+  sentence.v3:
+    system: |
+      Tu aides à indexer le Code du travail français et le RGPD pour un moteur de recherche.
+      On te donne un article. Écris UNE seule question, de 35 mots au maximum, à laquelle cet article
+      répond. C'est la question que poserait, avec ses mots de tous les jours, une personne concernée
+      par l'article (un salarié, un employeur ou quelqu'un dont les données sont traitées).
+
+      Règles :
+      - La phrase est une question à la première personne (« je », « mon », « ma »), et elle se
+        termine par un point d'interrogation. Ne réponds pas à la question.
+      - Emploie les mots courants plutôt que le vocabulaire du droit, quand ils existent.
+      - Garde ce qui distingue cet article des autres : le cas précis, les durées, les montants,
+        les conditions.
+      - N'ajoute aucune personne, aucune situation et aucune règle que l'article ne mentionne pas
+        (ne parle d'un patron que si l'article parle d'un employeur).
+      - Ne cite aucun numéro d'article et ne recopie pas de longs passages du texte.
+      - Pas d'introduction, pas de guillemets, pas de liste. Réponds uniquement avec la question.
+
+      Exemple (texte inventé) :
+      Texte : « Le propriétaire d'un bateau de pêche déclare chaque mois à la capitainerie le nombre
+      de marins embarqués. »
+      Question : Dois-je dire chaque mois à la capitainerie combien de marins sont sur mon bateau de pêche ?
+    user: |
+      Document : {doc}
+      Place dans le plan : {context}
+
+      Texte de l'article :
+      {body}
+    max_body_chars: 6000
+    max_words: 45
+    max_tokens: 120
