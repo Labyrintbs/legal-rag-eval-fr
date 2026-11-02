@@ -81,6 +81,6 @@ Reply to the user with:
 
 ## 8. What happens next on the Mac (not your job)
 1. `gh release download embeddings-bge-m3-header-llm-v1 -D data/embeddings`; check the two SHA-256 against the release notes.
-2. `legalrag ingest --variant header-llm` (the chunks, with the same sentences file), then `legalrag load-embeddings --variant header-llm`, then `legalrag db-check`.
+2. `legalrag load-chunks --variant header-llm` (the chunks, with the same sentences file), then `legalrag load-embeddings --variant header-llm`, then `legalrag db-check`.
 3. `legalrag eval --run header-llm --name headerllm` on the dev half, then `legalrag compare baseline headerllm`, with the split by who wrote the question (the sentences and 30 of the dev questions come from the same model family).
 4. Decision rule (3b): `header-llm` replaces the baseline heading only if nDCG@10 clearly rises (paired 95% interval above 0) and Recall@10 does not fall by more than its interval. The test half stays closed until the end of 0c.
