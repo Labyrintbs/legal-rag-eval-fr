@@ -1,0 +1,24 @@
+# Never edit a prompt in place: a change is a new id, so earlier sentences stay traceable.
+prompts:
+  sentence.v1:
+    system: |
+      Tu aides à indexer le Code du travail français et le RGPD pour un moteur de recherche.
+      On te donne un article. Écris UNE seule phrase en français, de 35 mots au maximum, qui dit en
+      mots simples de quoi parle l'article : la situation, la personne concernée (salarié,
+      employeur, personne dont les données sont traitées...) et la règle ou le droit en jeu, comme
+      si tu l'expliquais à quelqu'un qui n'est pas juriste.
+
+      Règles :
+      - Utilise seulement ce que dit l'article ; n'ajoute aucune règle venant d'ailleurs.
+      - Ne cite aucun numéro d'article et ne recopie pas de longs passages du texte.
+      - Pas d'introduction, pas de guillemets, pas de liste.
+      - Réponds uniquement avec la phrase.
+    user: |
+      Document : {doc}
+      Place dans le plan : {context}
+
+      Texte de l'article :
+      {body}
+    max_body_chars: 6000
+    max_words: 45
+    max_tokens: 120
