@@ -2,7 +2,8 @@
 (EXPERIMENT.md); every other variant changes one setting and is embedded as its own run.
 
 style: how much of the section path the header shows (see chunking/header.py);
-collapse_repeats: merge consecutive same-label levels; max_tokens: split an article above it.
+collapse_repeats: merge consecutive same-label levels; max_tokens: split an article above it;
+sentences: name of the file of LLM-written sentences added to the header.
 """
 
 DEFAULT = "default"
@@ -15,6 +16,9 @@ VARIANTS = {
     "header-full": {**BASE, "style": "full"},
     "header-collapse": {**BASE, "collapse_repeats": True},
     "size-512": {**BASE, "max_tokens": 512},
+    # BASE header plus one LLM-written question per article (scripts/heading_sentences_all.py); the value names
+    # the file data/sentences/<name>.jsonl
+    "header-llm": {**BASE, "sentences": "heading-sentences-v3"},
 }
 
 

@@ -58,7 +58,9 @@ def build_chunks(
     k: int = 3,
     max_tokens: int = MAX_TOKENS,
     collapse_repeats: bool = False,
+    sentences: dict[str, str] | None = None,
 ) -> list[Chunk]:
+    """sentences: article uid -> LLM-written sentence for the header; an article without one keeps the plain header."""
     chunks = []
     for a in articles:
         doc_label, unit_label, is_article = header_inputs(a)
@@ -70,6 +72,7 @@ def build_chunks(
             k=k,
             is_article=is_article,
             collapse_repeats=collapse_repeats,
+            sentence=(sentences or {}).get(a.uid, ""),
         )
         prefix = header + "\n" if header else ""
         whole = prefix + a.body_text

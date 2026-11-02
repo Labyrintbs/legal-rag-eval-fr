@@ -26,12 +26,12 @@ def articles():
 def test_every_variant_is_accepted_by_the_chunker():
     for settings in variants.VARIANTS.values():
         assert settings["style"] in STYLES
-        assert set(settings) == set(variants.BASE)
+        assert set(settings) - {"sentences"} == set(variants.BASE)
 
 
 def test_each_variant_changes_exactly_one_setting_from_the_default():
     for name, settings in variants.VARIANTS.items():
-        changed = {key for key in settings if settings[key] != variants.BASE[key]}
+        changed = {key for key in settings if settings[key] != variants.BASE.get(key)}
         assert len(changed) == (0 if name == variants.DEFAULT else 1), name
 
 
@@ -76,7 +76,8 @@ def single_chunks(chunks):
 
 def test_header_variants_change_the_embedded_text_only_in_the_header(articles):
     # a longer header leaves less room, so the split points of long articles may move: compare whole articles
-    one = {name: single_chunks(build_chunks(articles, words, **variants.settings(name))) for name in variants.VARIANTS}
+    plain = [name for name in variants.VARIANTS if "sentences" not in variants.settings(name)]
+    one = {name: single_chunks(build_chunks(articles, words, **variants.settings(name))) for name in plain}
     kept = set.intersection(*(set(chunks) for chunks in one.values()))
     assert kept
     for uid in kept:
@@ -90,3 +91,24 @@ def test_a_smaller_limit_splits_more_articles(articles):
     base = build_chunks(articles, words, **variants.settings(variants.DEFAULT))
     small = build_chunks(articles, words, **{**variants.BASE, "max_tokens": 40})
     assert len(small) > len(base)
+
+
+def test_a_sentence_is_added_after_the_section_titles_and_only_for_its_article(articles):
+    a, b = articles[0], articles[1]
+    plain = build_chunks([a, b], words, **variants.BASE)
+    with_sentence = build_chunks([a, b], words, sentences={a.uid: "Une question simple ?"}, **variants.BASE)
+    assert with_sentence[0].header_text == plain[0].header_text + " Une question simple ?"
+    assert with_sentence[0].embed_text.startswith(with_sentence[0].header_text + "\n")
+    assert [c.header_text for c in with_sentence if c.article_uid == b.uid] == [c.header_text for c in plain if c.article_uid == b.uid]
+    assert build_chunks([a], words, **{**variants.BASE, "style": "none"}, sentences={a.uid: "x ?"})[0].header_text == ""
+
+
+def test_the_llm_variant_names_its_sentences_file_and_needs_it(tmp_path, monkeypatch):
+    settings = variants.settings("header-llm")
+    assert settings["sentences"] == "heading-sentences-v3" and {k: v for k, v in settings.items() if k != "sentences"} == variants.BASE
+    monkeypatch.setattr(cli, "SENTENCES", tmp_path)
+    with pytest.raises(Exception, match="missing"):
+        cli._chunk_kwargs(settings)
+    (tmp_path / "heading-sentences-v3.jsonl").write_text(json.dumps({"uid": "u", "sentence": "Q ?", "flags": []}))
+    assert cli._chunk_kwargs(settings)["sentences"] == {"u": "Q ?"}
+    assert len(cli._sentences_sha256(settings)) == 64 and cli._sentences_sha256(variants.settings("size-512")) is None

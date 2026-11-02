@@ -3,6 +3,7 @@ This module builds the prompt, draws the pilot sample and checks an answer; the 
 scripts/heading_sentence_pilot.py.
 """
 
+import json
 import random
 import time
 
@@ -18,12 +19,18 @@ CONTEXT_LEVELS = 3
 SAMPLE_PLAN = (("code_travail", "article", 40), ("rgpd", "article", 4), ("rgpd", "recital", 4), ("code_travail", "annex", 2))
 
 
-def sample(articles: list[Article], seed: int, plan=SAMPLE_PLAN) -> list[Article]:
+SAMPLE_PLAN_EN = (("rgpd", "article", 6), ("rgpd", "recital", 6))
+# A sentence with one of these flags is not put in a heading.
+UNUSABLE = {"empty", "article_number"}
+PROMPT_BY_LANG = {"fr": "sentence.v3", "en": "sentence.v3.en"}
+
+
+def sample(articles: list[Article], seed: int, plan=SAMPLE_PLAN, lang: str = "fr") -> list[Article]:
     """The same articles for every backend: a seeded draw per (source, kind) from the uid-sorted pool."""
     rng = random.Random(seed)
     drawn = []
     for source, kind, count in plan:
-        pool = sorted((a for a in articles if a.source_code == source and a.kind == kind and a.lang == "fr"),
+        pool = sorted((a for a in articles if a.source_code == source and a.kind == kind and a.lang == lang),
                       key=lambda a: a.uid)
         drawn += rng.sample(pool, count)
     return drawn
@@ -32,7 +39,7 @@ def sample(articles: list[Article], seed: int, plan=SAMPLE_PLAN) -> list[Article
 def messages(prompt: dict, article: Article) -> list[dict]:
     """The model sees the document name, the last section titles and the (cut) body; never the article number."""
     doc = header_inputs(article)[0]
-    context = context_of(article.section_path, CONTEXT_LEVELS) or "(non indiqué)"
+    context = context_of(article.section_path, CONTEXT_LEVELS) or prompt.get("no_context", "(non indiqué)")
     body = article.body_text[: prompt["max_body_chars"]]
     return [{"role": "system", "content": prompt["system"].strip()},
             {"role": "user", "content": prompt["user"].format(doc=doc, context=context, body=body).strip()}]
@@ -66,3 +73,11 @@ def ask_local(http: httpx.Client, model: str, chat: list[dict], max_tokens: int)
     data = response.json()
     return {"text": data["choices"][0]["message"].get("content") or "", "seconds": round(time.monotonic() - started, 3),
             "usage": data.get("usage"), "timings": data.get("timings")}
+
+
+def load_sentences(path) -> dict[str, str]:
+    """article uid -> sentence, from a file written by scripts/heading_sentences_all.py; sentences with an
+    unusable flag are left out, so those articles keep the plain heading."""
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    return {r["uid"]: r["sentence"] for r in rows if r.get("type") != "run" and r.get("sentence")
+            and not UNUSABLE & set(r["flags"])}

@@ -21,11 +21,13 @@ from legalrag import questiongen as qg
 from legalrag.sources import gdpr, legi
 
 RAW = Path("data/raw")
-PROMPT_IDS = ("sentence.v1", "sentence.v2", "sentence.v3")
+PROMPT_IDS = ("sentence.v1", "sentence.v2", "sentence.v3", "sentence.v3.en")
 SEED = 20261101
 
 
-def load_articles():
+def load_articles(lang: str = "fr"):
+    if lang == "en":
+        return gdpr.parse(RAW / "gdpr_en.xhtml", "en")
     return legi.to_articles(legi.read(RAW / "legi_vincegx33_train.parquet")) + gdpr.parse(RAW / "gdpr_fr.xhtml", "fr")
 
 
@@ -80,6 +82,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--backend", choices=("local", "deepseek"), required=True)
     parser.add_argument("--prompt", choices=PROMPT_IDS, default="sentence.v1")
+    parser.add_argument("--lang", choices=("fr", "en"), default="fr", help="en: 12 GDPR articles in English")
     parser.add_argument("--model", required=True, help="local: the name the server reports; deepseek: deepseek-flash")
     parser.add_argument("--base-url", default="http://127.0.0.1:8080", help="local server")
     parser.add_argument("--n", type=int, default=None, help="use only the first N of the 50 (trial)")
@@ -90,7 +93,8 @@ def main() -> None:
     args = parser.parse_args()
 
     prompt = qg.load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"][args.prompt]
-    articles = headsentence.sample(load_articles(), SEED)[: args.n]
+    plan = headsentence.SAMPLE_PLAN_EN if args.lang == "en" else headsentence.SAMPLE_PLAN
+    articles = headsentence.sample(load_articles(args.lang), SEED, plan, args.lang)[: args.n]
     jobs = [(a, headsentence.messages(prompt, a)) for a in articles]
     print(f"{len(jobs)} articles, prompt {args.prompt}, backend {args.backend}, workers {args.workers}")
 

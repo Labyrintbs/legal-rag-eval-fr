@@ -16,6 +16,7 @@ from legalrag import (
     evaluate,
     fetch,
     gold,
+    headsentence,
     llm,
     rerank,
     rewrite,
@@ -34,6 +35,7 @@ RAW = Path("data/raw")
 PARQUET = RAW / "legi_vincegx33_train.parquet"
 TOKENIZER = RAW / "bge-m3-tokenizer.json"
 EMBEDDINGS = Path("data/embeddings")
+SENTENCES = Path("data/sentences")
 PROFILES = Path("docs/data_profiles")
 SOURCES = ("legi", "gdpr")
 VARIANT_OPTION = typer.Option(help="Chunking variant (names in variants.py)")
@@ -51,6 +53,25 @@ def _variant_settings(variant: str) -> dict:
         return variants.settings(variant)
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
+
+
+def _sentences_path(settings: dict) -> Path | None:
+    return SENTENCES / f"{settings['sentences']}.jsonl" if "sentences" in settings else None
+
+
+def _chunk_kwargs(settings: dict) -> dict:
+    """build_chunks arguments of a variant: a sentences name becomes the sentences of its file."""
+    path = _sentences_path(settings)
+    if path is None:
+        return settings
+    if not path.exists():
+        raise typer.BadParameter(f"{path} is missing: write it with scripts/heading_sentences_all.py or download it")
+    return {**settings, "sentences": headsentence.load_sentences(path)}
+
+
+def _sentences_sha256(settings: dict) -> str | None:
+    path = _sentences_path(settings)
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path else None
 
 
 def _check_source(source: str) -> None:
@@ -90,10 +111,11 @@ def embed_cmd(
     """Embed all chunks of a variant (GPU by default); resumes from the shards already saved."""
     spec = _model_spec(model)
     chunk_settings = _variant_settings(variant)
+    kwargs = _chunk_kwargs(chunk_settings)
     count = token_counter(TOKENIZER)
-    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **chunk_settings)
+    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **kwargs)
     for lang in ("fr", "en"):
-        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **chunk_settings)
+        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **kwargs)
     if limit:
         chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
     typer.echo(f"{len(chunks)} chunks")
@@ -120,6 +142,7 @@ def embed_cmd(
             "model_key": model,
             "limit": limit,
             "chunk_settings": chunk_settings,
+            "sentences_sha256": _sentences_sha256(chunk_settings),
             "batch_size": batch_size,
             "max_seq_length": spec.max_seq_length,
             "rows": rows,
@@ -175,6 +198,7 @@ def load_chunks_cmd(
 ) -> None:
     """Load articles and the chunks of a variant into Postgres; safe to re-run."""
     chunk_settings = _variant_settings(variant)
+    kwargs = _chunk_kwargs(chunk_settings)
     run = run or variant
     commit = embed.git_commit()
     # A stored run is never changed, so its code_version must name the exact code that made it.
@@ -192,7 +216,7 @@ def load_chunks_cmd(
             "code_travail: sentences; rgpd: paragraphs, then points, then sentences",
             commit,
         )
-        chunks = [c for arts in corpora.values() for c in build_chunks(arts, count, **chunk_settings)]
+        chunks = [c for arts in corpora.values() for c in build_chunks(arts, count, **kwargs)]
         inserted = store.load_chunks(conn, run_id, chunks)
     typer.echo(f"{sum(len(a) for a in corpora.values())} articles, {inserted} new chunks of {len(chunks)}")
 

@@ -30,8 +30,10 @@ def build_header(
     k: int = 3,
     is_article: bool = True,
     collapse_repeats: bool = False,
+    sentence: str = "",
 ) -> str:
-    """Heading line placed before the body in the text that is embedded."""
+    """Heading line placed before the body in the text that is embedded. A sentence (LLM-written, one per
+    article) is added after the section titles (not with the style none)."""
     if style not in STYLES:
         raise ValueError(f"unknown header style: {style}")
     if style == "none":
@@ -47,4 +49,5 @@ def build_header(
         titles = []
     if titles:
         header += ". " + " > ".join(titles)
-    return header if header.endswith(".") else header + "."
+    header = header if header.endswith(".") else header + "."
+    return f"{header} {normalize_text(sentence)}" if sentence else header

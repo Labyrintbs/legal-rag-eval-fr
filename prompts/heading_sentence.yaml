@@ -78,3 +78,35 @@ prompts:
     max_body_chars: 6000
     max_words: 45
     max_tokens: 120
+  sentence.v3.en:
+    system: |
+      You help index the French Labour Code and the GDPR for a search engine. You are given one article.
+      Write ONE single question, at most 35 words, that this article answers. It is the question a person
+      concerned by the article would ask in everyday words (an employee, an employer, or someone whose
+      data is processed).
+
+      Rules:
+      - The sentence is a question in the first person ("I", "my"), and it ends with a question mark.
+        Do not answer the question.
+      - Use everyday words rather than legal vocabulary when they exist.
+      - Keep what sets this article apart from others: the specific case, the durations, the amounts,
+        the conditions.
+      - Do not add any person, situation or rule that the article does not mention (mention an
+        employer only if the article speaks of one).
+      - Do not cite any article number and do not copy long passages of the text.
+      - No introduction, no quotation marks, no list. Reply with the question only.
+
+      Example (invented text):
+      Text: "The owner of a fishing boat reports the number of crew on board to the harbour office every
+      month."
+      Question: Do I have to tell the harbour office every month how many crew are on my fishing boat?
+    user: |
+      Document: {doc}
+      Place in the plan: {context}
+
+      Text of the article:
+      {body}
+    no_context: "(not given)"
+    max_body_chars: 6000
+    max_words: 45
+    max_tokens: 120

@@ -65,8 +65,33 @@ def test_ask_local_posts_one_chat_with_thinking_off_and_returns_usage_and_timing
 
 def test_every_prompt_has_the_fields_the_script_reads():
     prompts = load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"]
-    assert set(prompts) == {"sentence.v1", "sentence.v2", "sentence.v3"}
+    assert set(prompts) == {"sentence.v1", "sentence.v2", "sentence.v3", "sentence.v3.en"}
     for prompt in prompts.values():
         assert {"system", "user", "max_body_chars", "max_words", "max_tokens"} <= set(prompt)
         assert "{body}" in prompt["user"] and "{doc}" in prompt["user"] and "{context}" in prompt["user"]
     assert "la question" in prompts["sentence.v2"]["system"] and "point d'interrogation" in prompts["sentence.v3"]["system"]
+
+
+def test_the_english_prompt_has_its_own_missing_context_text():
+    prompts = load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"]
+    chat = headsentence.messages(prompts["sentence.v3.en"], article("a", path=""))
+    assert "(not given)" in chat[1]["content"] and "(non indiqué)" not in chat[1]["content"]
+    assert set(headsentence.PROMPT_BY_LANG.values()) <= set(prompts)
+
+
+def test_sample_can_draw_english_articles():
+    pool = [Article(uid=f"e{i}", source_code="rgpd", lang="en", kind=kind, native_id="x", article_num=str(i),
+                    section_path="", body_text="t", content_hash="h", source_url="x")
+            for i in range(8) for kind in ("article", "recital")] + [article("fr1", "rgpd", "article", "1")]
+    drawn = headsentence.sample(pool, 1, (("rgpd", "article", 3), ("rgpd", "recital", 2)), "en")
+    assert len(drawn) == 5 and {a.lang for a in drawn} == {"en"}
+
+
+def test_load_sentences_keeps_only_usable_ones(tmp_path):
+    path = tmp_path / "s.jsonl"
+    rows = [{"type": "run"}, {"uid": "a", "sentence": "Une question ?", "flags": []},
+            {"uid": "b", "sentence": "Voir l'article L1221-13 ?", "flags": ["article_number"]},
+            {"uid": "c", "sentence": "", "flags": ["empty"]},
+            {"uid": "d", "sentence": "Une longue ?", "flags": ["too_long"]}]
+    path.write_text("\n".join(json.dumps(r) for r in rows))
+    assert headsentence.load_sentences(path) == {"a": "Une question ?", "d": "Une longue ?"}
