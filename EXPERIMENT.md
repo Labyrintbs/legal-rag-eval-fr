@@ -340,7 +340,7 @@ Entry template:
 - Prompt following of the 4-bit model: with v2 only 14 or 15 of 50 outputs are questions (DeepSeek 50), many statements address the reader as "tu" or "ton"; with v1, 2 of 50 cite an article number. Both models invent content for the two annexes (one is a table of correspondences). The 8-bit model and prompt v3 on the laptop are the next measurement (`docs/handoff/local_llm_windows.md` section 13).
 
 ## 2026-11-03: heading sentence pilot, 8-bit model and prompt v3 (step 0c, in progress)
-- Laptop round 2 (`docs/handoff/local_llm_windows.md` section 13), same 50 articles, `Qwen3.5-4B` Q4_K_M and Q8_0, prompts v2 and v3, outputs in `docs/pilots/`. The laptop's own report (GPU memory, file hashes) went to the user, not to the repository, so it is not recorded here. No 8-bit run with four slots exists.
+- Laptop round 2 (`docs/handoff/local_llm_windows.md` section 13), same 50 articles, `Qwen3.5-4B` Q4_K_M and Q8_0, prompts v2 and v3, outputs in `docs/pilots/`. The laptop's own report (GPU memory, file hashes) went to the user, not to the repository, so it is not recorded here. No 8-bit run with four slots exists: it ran out of CUDA memory on the 6 GB card (told by the user), so two slots is the most the 8-bit model can serve here.
 
 | Run | Questions of 50 | "tu/ton" | Article number cited | "patron" | Wall s for 50 | Decode tokens/s per request |
 |---|---|---|---|---|---|---|
