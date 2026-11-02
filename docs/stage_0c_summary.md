@@ -48,7 +48,7 @@ The reranker's dev pass did not repeat. Rewriting passes 3b nominally but moved 
 - The dev half is small (61 questions) and was used for about forty comparisons; the test half has 64 gradable questions. Intervals are unadjusted.
 - Almost all questions are French (2 English, in the test half); English behaviour is untested.
 - DeepSeek wrote both the heading sentences and part of the questions: results for `header-llm` are split by who wrote the question, and the gain is not confined to the DeepSeek-written ones.
-- The eval set itself was checked by a model and by the owner on a sample (decisions of 0b).
+- The eval set: a model reviewed the generated questions; the doubtful ones and a random audit sample of the accepted ones were reviewed by the owner and the assistant (decisions 9 to 13 of `0003`). The audit found errors the reviewer had missed, so some wrong or weak questions may remain.
 
 ## Costs
 LLM 2.55 USD in total (question work 1.78, sentences 0.75, other 0.02). The laptop GPU did the vectors (a few minutes per variant). The Mac CPU did the reranker runs (about 100 minutes each).
