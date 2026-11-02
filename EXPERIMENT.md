@@ -338,3 +338,22 @@ Entry template:
 - Local `Qwen3.5-4B` Q4_K_M (bartowski GGUF) on the RTX 3060 Laptop, llama.cpp build b12034, server context 4,096 tokens per slot, longest prompt 3,182 tokens: one request alone 55 to 59 output tokens/s, 0.83 to 0.99 s per article, 42 to 50 s for 50 articles; four requests at once 26.5 tokens/s each, 25 s for 50 articles (about 0.5 s per article). The corpus would take roughly 1.6 hours (four slots) to 3 hours (one slot); the pilot sample has longer texts than the corpus average (1,029 against about 570 characters), so this is an order of magnitude. No thinking text; completion 39 tokens on average.
 - Same input, same sentences on a rerun with one slot (0 of 50 differ); one slot against four slots: 26 of 50 sentences differ, so outputs depend on the server configuration and it must be recorded.
 - Prompt following of the 4-bit model: with v2 only 14 or 15 of 50 outputs are questions (DeepSeek 50), many statements address the reader as "tu" or "ton"; with v1, 2 of 50 cite an article number. Both models invent content for the two annexes (one is a table of correspondences). The 8-bit model and prompt v3 on the laptop are the next measurement (`docs/handoff/local_llm_windows.md` section 13).
+
+## 2026-11-03: heading sentence pilot, 8-bit model and prompt v3 (step 0c, in progress)
+- Laptop round 2 (`docs/handoff/local_llm_windows.md` section 13), same 50 articles, `Qwen3.5-4B` Q4_K_M and Q8_0, prompts v2 and v3, outputs in `docs/pilots/`. The laptop's own report (GPU memory, file hashes) went to the user, not to the repository, so it is not recorded here. No 8-bit run with four slots exists.
+
+| Run | Questions of 50 | "tu/ton" | Article number cited | "patron" | Wall s for 50 | Decode tokens/s per request |
+|---|---|---|---|---|---|---|
+| DeepSeek v3 | 50 | 0 | 0 | 0 | 8.8 | |
+| 4-bit v2, one slot | 15 | 7 | 0 | 14 | 49.6 | 54.6 |
+| 8-bit v2, one slot | 28 | 2 | 0 | 13 | 44.2 | 52.9 |
+| 4-bit v3, one slot | 48 | 1 | 4 | 0 | 35.5 | 69.9 |
+| 4-bit v3, four slots | 48 | 0 | 4 | 0 | 23.5 | 26.2 |
+| 8-bit v3, one slot | 50 | 0 | 3 | 0 | 50.8 | 46.3 |
+| 8-bit v3, two slots | 50 | 0 | 3 | 0 | 29.7 | 39.1 |
+
+- The prompt is the lever, not the precision: v2 gives 15 (4-bit) and 28 (8-bit) questions of 50, v3 gives 48 and 50. Between 4-bit and 8-bit with v3, 44 of 50 sentences differ in wording; format and accuracy look alike.
+- Content, read against DeepSeek v3 on 14 articles: both local models often answer another question than the article settles (a recital on groups of companies, one on data subject rights, the GDPR transfer article), act a role ("Je suis agent inspecteur du travail..."), make grammar slips ("Mon certification", "Si je détenez") and copy the article's own references to other texts ("l'article L. 262-28 du code de l'action sociale", "l'article 50-0 du code général des impôts", 3 or 4 of 50). DeepSeek v3 has none of these on the same 50.
+- Output depends on the server setup: 4-bit one slot against four slots, 26 of 50 sentences differ; 8-bit one against two slots, 16 of 50.
+- Time for the corpus at 0.47 s (4-bit, four slots) to 0.59 s (8-bit, two slots) per article: about 1.5 to 1.9 hours, from a sample with longer texts than the corpus average.
+- Verdict against the rule set before the run (at least 48 questions, no "tu/ton", no invented persons, no cited article numbers): neither local model passes. The sentences will be written with DeepSeek (decision of the user, 2026-11-03, conditional on this quality result).
