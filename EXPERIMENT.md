@@ -395,3 +395,17 @@ Entry template:
 - Questions not written by the sentence's model family (31): mean nDCG@10 change against the baseline +0.019 dense, +0.038 hybrid weight 0.25, +0.024 hybrid weight 1; model-written (30): +0.052, +0.058, +0.072. The same-family bias applies to keyword matching as well (shared wording).
 - Counting: this adds eight comparisons to the many already made on one 61-question half; the within-method gains for keyword and weight 1 and 0.5 clear zero, the rest does not.
 - Decision of the user (2026-11-03): the heading with the LLM-written question stays a measured option and is not part of the final setup; the final setup keeps the baseline heading. It may be raised again if keyword search becomes part of the retrieval.
+
+## 2026-11-03: Postgres ts_rank as the word-matching search, dev half (step 0c)
+- Same protocol as the BM25 entry of 2026-10-29: the question's lexemes (same French/English text-search configuration as the chunks) joined by OR and matched against `chunks.tsv`; chunks ordered by `ts_rank(tsv, query, flag)`, best chunk per article, top 400 chunks; alone and fused with dense by reciprocal rank fusion (k 60, top 100 each, keyword weight 1, 0.5, 0.25). `--lexical tsrank` is ts_rank with its defaults (flag 0, no length normalisation); `--lexical tsrank-len` divides by 1 + log(length) (flag 1). Default chunking, baseline heading, runs `tsrank-*` and `tsranklen-*`.
+
+| Search | nDCG@10 | Recall@10 | MRR@10 | nDCG@10 minus dense baseline [95% paired] | minus BM25, same weight |
+|---|---|---|---|---|---|
+| dense baseline | 0.738 | 0.893 | 0.670 | | |
+| BM25 alone | 0.548 | 0.697 | 0.505 | -0.190 | |
+| ts_rank alone | 0.426 | 0.600 | 0.383 | -0.312 [-0.427, -0.204], Recall@10 -0.294 | -0.122 [-0.203, -0.044] |
+| ts_rank-len alone | 0.491 | 0.637 | 0.460 | -0.246 [-0.360, -0.142], Recall@10 -0.256 | -0.056 [-0.105, -0.009] |
+| ts_rank fused, weight 1 / 0.5 / 0.25 | 0.674 / 0.714 / 0.735 | 0.826 / 0.891 / 0.891 | 0.615 / 0.649 / 0.681 | -0.064 / -0.024 / -0.003 | weight 0.25: -0.014 [-0.058, +0.034] |
+| ts_rank-len fused, weight 1 / 0.5 / 0.25 | 0.682 / 0.694 / 0.704 | 0.842 / 0.861 / 0.861 | 0.626 / 0.621 / 0.624 | -0.055 / -0.044 / -0.033 | weight 0.25: -0.045 [-0.083, -0.008] |
+
+- Verdict by decision 3b: no setting is an improvement; every nDCG@10 interval against the dense baseline includes 0 or lies below it, and the two ts_rank searches alone are clearly worse than BM25. As expected, ts_rank does not weigh rare words more (no inverse document frequency), which BM25 does. Dense stays the retrieval default.
