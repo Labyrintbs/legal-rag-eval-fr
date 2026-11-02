@@ -28,6 +28,12 @@ embed-variants:
 pack-variants:
 	uv run python scripts/pack_variants.py $(ARGS)
 
+embed-llm:
+	uv run --extra embed legalrag embed --variant header-llm
+
+pack-llm:
+	uv run python scripts/pack_variants.py --variant header-llm $(ARGS)
+
 embed-qwen:
 	uv run --extra embed legalrag embed --model qwen3-embedding-0.6b
 

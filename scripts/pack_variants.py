@@ -14,6 +14,10 @@ from pathlib import Path
 from legalrag import embed, variants
 
 FOLDER = Path("data/embeddings")
+SENTENCES = Path("data/sentences")
+
+
+SENTENCE_VARIANTS = [n for n, s in variants.VARIANTS.items() if "sentences" in s]
 
 
 def sha256(path: Path) -> str:
@@ -37,6 +41,12 @@ def check(names: list[str], model: str = embed.BASELINE_KEY) -> dict[str, dict]:
             raise SystemExit(f"{stem}: a trial run (--limit {record['limit']}); rerun without --limit")
         if embed.DIRTY in record["git_commit"]:
             raise SystemExit(f"{stem}: made from a tree with uncommitted changes")
+        if sentences := variants.settings(name).get("sentences"):
+            path = SENTENCES / f"{sentences}.jsonl"
+            if not path.exists():
+                raise SystemExit(f"missing {path}; download it from its Release")
+            if record.get("sentences_sha256") != sha256(path):
+                raise SystemExit(f"{stem}: made with another sentences file than {path}")
         records[name] = record
     commits = {r["git_commit"] for r in records.values()}
     revisions = {r["model_revision"] for r in records.values()}
@@ -68,14 +78,21 @@ def notes(records: dict[str, dict], model: str = embed.BASELINE_KEY) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default=embed.BASELINE_KEY, choices=list(embed.EMBEDDING_MODELS))
+    parser.add_argument("--variant", choices=sorted(SENTENCE_VARIANTS),
+                        help="a variant built with a sentences file: published alone, as its own Release")
     parser.add_argument("--publish", action="store_true", help="create the GitHub Release (default: dry run)")
     args = parser.parse_args()
 
     # the baseline model is compared across chunking variants; other models only on the default chunking
     baseline = args.model == embed.BASELINE_KEY
-    names = [n for n in variants.VARIANTS if n != variants.DEFAULT] if baseline else [variants.DEFAULT]
-    tag = "embeddings-bge-m3-variants-v1" if baseline else f"embeddings-{args.model}-v1"
-    title = "bge-m3 embeddings, chunking variants" if baseline else f"{args.model} embeddings, default chunking"
+    if args.variant:
+        names, tag = [args.variant], f"embeddings-{args.model}-{args.variant}-v1"
+        title = f"{args.model} embeddings, variant {args.variant}"
+    else:
+        names = [n for n in variants.VARIANTS if n != variants.DEFAULT and n not in SENTENCE_VARIANTS] if baseline \
+            else [variants.DEFAULT]
+        tag = "embeddings-bge-m3-variants-v1" if baseline else f"embeddings-{args.model}-v1"
+        title = "bge-m3 embeddings, chunking variants" if baseline else f"{args.model} embeddings, default chunking"
     records = check(names, args.model)
     body = notes(records, args.model)
     files = [str(FOLDER / f"{variants.embeddings_name(n, args.model)}{s}")

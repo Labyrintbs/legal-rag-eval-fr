@@ -10,7 +10,7 @@ spec = importlib.util.spec_from_file_location("pack_variants", Path(__file__).pa
 pack = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pack)
 
-NAMES = [n for n in variants.VARIANTS if n != variants.DEFAULT]
+NAMES = [n for n in variants.VARIANTS if n != variants.DEFAULT and n not in pack.SENTENCE_VARIANTS]
 
 
 def write_run(folder: Path, name: str, **changes) -> None:
@@ -80,3 +80,21 @@ def test_other_models_are_packed_on_the_default_chunking_only(tmp_path, monkeypa
     records = pack.check([variants.DEFAULT], key)
     body = pack.notes(records, key)
     assert "Qwen/Qwen3-Embedding-0.6B vectors" in body and f"{key}-main.parquet" in body
+
+
+def test_the_sentence_variant_is_left_out_of_the_shared_release_and_published_alone():
+    assert pack.SENTENCE_VARIANTS == ["header-llm"] and "header-llm" not in NAMES
+
+
+def test_the_sentence_variant_needs_the_sentences_file_it_was_built_with(folder, tmp_path, monkeypatch):
+    sentences = tmp_path / "sentences"
+    sentences.mkdir()
+    monkeypatch.setattr(pack, "SENTENCES", sentences)
+    write_run(folder, "header-llm")
+    with pytest.raises(SystemExit, match="missing"):
+        pack.check(["header-llm"])
+    (sentences / "heading-sentences-v3.jsonl").write_text('{"uid": "u"}\n')
+    with pytest.raises(SystemExit, match="another sentences file"):
+        pack.check(["header-llm"])
+    write_run(folder, "header-llm", sentences_sha256=pack.sha256(sentences / "heading-sentences-v3.jsonl"))
+    assert "header-llm" in pack.check(["header-llm"])
