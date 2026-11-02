@@ -378,3 +378,20 @@ Entry template:
 - Groups against the baseline: E +0.207 (5 questions), H +0.168 (3), B +0.068 (15), A +0.022, I +0.031; D -0.286 (1), G -0.281 (3), C -0.061 (2); all inside the noise.
 - Cost: 0.73 USD for the sentences, 113 s of GPU for the vectors; search time unchanged (0.455 s per question including the db round trip).
 - Decision: the baseline heading stays; `header-llm` is a measured option. Left open for the user: use it in the final setup on the strength of the MRR hint, or keep it only as a pre-registered comparison on the test half.
+
+## 2026-11-03: do the sentences help keyword search? header-llm with BM25 and fusion, dev half (step 0c)
+- Same keyword search (BM25 on the lexemes of `chunks.tsv`, which now contain the question) and the same fusion with dense (k 60, top 100 each, keyword weight 1, 0.5, 0.25), run on the chunking run `header-llm`; runs `llm-keyword`, `llm-hybrid-w10`, `llm-hybrid-w05`, `llm-hybrid-w025`. Compared with the same method on the plain heading, and with the dense baseline (rule 3b).
+
+| Search | plain heading nDCG@10 | header-llm nDCG@10 | header-llm minus plain heading [95% paired] | MRR@10 change | header-llm minus dense baseline |
+|---|---|---|---|---|---|
+| dense | 0.738 | 0.773 | +0.035 [-0.025, +0.097] | +0.088 [+0.000, +0.180] | |
+| keyword alone | 0.548 | 0.677 | +0.129 [+0.054, +0.210] | +0.150 [+0.067, +0.242] | -0.061 [-0.154, +0.026], Recall@10 -0.128 [-0.218, -0.037] |
+| hybrid, weight 1 | 0.701 | 0.785 | +0.085 [+0.035, +0.145] | +0.123 [+0.063, +0.197] | +0.048 [-0.031, +0.118] |
+| hybrid, weight 0.5 | 0.716 | 0.773 | +0.057 [+0.005, +0.118] | +0.107 [+0.045, +0.183] | |
+| hybrid, weight 0.25 | 0.749 | 0.786 | +0.037 [-0.019, +0.100] | +0.102 [+0.026, +0.183] | +0.048 [-0.016, +0.112], MRR@10 +0.111 [+0.017, +0.203], Recall@10 -0.008 |
+
+- The sentences help keyword search clearly: the question puts everyday words into the text the keyword search reads (nDCG@10 +0.13 alone, +0.09 to +0.04 fused; MRR@10 +0.10 to +0.15 in every row). Keyword alone stays worse than dense (Recall@10 clearly down).
+- They do not make fusion better than dense on the same chunks: hybrid minus dense header-llm is +0.013 [-0.023, +0.047] (weight 0.25), +0.013 [-0.060, +0.083] (weight 1), +0.000 [-0.050, +0.053] (weight 0.5). The fused runs are not improvements over the dense baseline by 3b (nDCG@10 intervals include 0); their gain over the baseline is the dense effect of the sentence.
+- Questions not written by the sentence's model family (31): mean nDCG@10 change against the baseline +0.019 dense, +0.038 hybrid weight 0.25, +0.024 hybrid weight 1; model-written (30): +0.052, +0.058, +0.072. The same-family bias applies to keyword matching as well (shared wording).
+- Counting: this adds eight comparisons to the many already made on one 61-question half; the within-method gains for keyword and weight 1 and 0.5 clear zero, the rest does not.
+- Decision of the user (2026-11-03): the heading with the LLM-written question stays a measured option and is not part of the final setup; the final setup keeps the baseline heading. It may be raised again if keyword search becomes part of the retrieval.
