@@ -17,11 +17,13 @@ from legalrag import (
     fetch,
     gold,
     headsentence,
+    keyword,
     llm,
     rerank,
     rewrite,
     sanity,
     smoke,
+    sparse,
     store,
     variants,
     verify,
@@ -74,6 +76,34 @@ def _sentences_sha256(settings: dict) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path else None
 
 
+def _variant_chunks(variant: str, limit: int | None) -> tuple[list, dict]:
+    """The chunks of a variant (Code du travail, GDPR French and English) and its recorded settings; a limit
+    takes an even sample of about that many."""
+    chunk_settings = _variant_settings(variant)
+    kwargs = _chunk_kwargs(chunk_settings)
+    count = token_counter(TOKENIZER)
+    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **kwargs)
+    for lang in ("fr", "en"):
+        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **kwargs)
+    if limit:
+        chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
+    return chunks, chunk_settings
+
+
+def _progress(done: int, total: int) -> None:
+    typer.echo(f"encoded {done}/{total}")
+
+
+def _sparse_search(conn, run_id: int, questions: list, sparse_file: Path, device: str) -> tuple:
+    """(index, one sparse query vector per question, record for the run file) of the bge-m3 sparse search."""
+    if not sparse_file.exists():
+        raise typer.BadParameter(f"{sparse_file} is missing: download it from its Release (docs/handoff/bge_sparse_windows.md)")
+    index = sparse.SparseIndex(pd.read_parquet(sparse_file), conn.execute(sparse.RUN_CHUNKS, (run_id,)).fetchall())
+    encoder = sparse.SparseEncoder(device)
+    queries = encoder.encode([q.question for q in questions])
+    return index, queries, {"file_sha256": hashlib.sha256(sparse_file.read_bytes()).hexdigest(), **encoder.info()}
+
+
 def _check_source(source: str) -> None:
     if source not in SOURCES:
         raise typer.BadParameter(f"source must be one of {SOURCES}")
@@ -110,14 +140,7 @@ def embed_cmd(
 ) -> None:
     """Embed all chunks of a variant (GPU by default); resumes from the shards already saved."""
     spec = _model_spec(model)
-    chunk_settings = _variant_settings(variant)
-    kwargs = _chunk_kwargs(chunk_settings)
-    count = token_counter(TOKENIZER)
-    chunks = build_chunks(legi.to_articles(legi.read(PARQUET)), count, **kwargs)
-    for lang in ("fr", "en"):
-        chunks += build_chunks(gdpr.parse(RAW / f"gdpr_{lang}.xhtml", lang), count, **kwargs)
-    if limit:
-        chunks = chunks[:: max(1, len(chunks) // limit)][:limit]
+    chunks, chunk_settings = _variant_chunks(variant, limit)
     typer.echo(f"{len(chunks)} chunks")
 
     embedder = embed.SentenceTransformerEmbedder(device, model_key=model)
@@ -152,6 +175,31 @@ def embed_cmd(
         },
     )
     typer.echo(f"{rows} rows written, {computed} computed in {seconds}s")
+
+
+@app.command("sparse-embed")
+def sparse_embed_cmd(
+    variant: Annotated[str, VARIANT_OPTION] = variants.DEFAULT,
+    limit: Annotated[int | None, typer.Option(help="Trial: only about this many chunks")] = None,
+    batch_size: Annotated[int, typer.Option(help="Texts per batch")] = sparse.BATCH_SIZE,
+    device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "cuda",
+) -> None:
+    """Write the bge-m3 sparse (word weight) vector of every chunk of a variant (GPU by default)."""
+    chunks, chunk_settings = _variant_chunks(variant, limit)
+    typer.echo(f"{len(chunks)} chunks")
+    encoder = sparse.SparseEncoder(device)
+    started = time.monotonic()
+    encoded = encoder.encode([c.embed_text for c in chunks], batch_size, progress=_progress)
+    seconds = round(time.monotonic() - started)
+    path = EMBEDDINGS / f"bge-m3-sparse-{variant}.parquet"
+    sparse.write(path, chunks, encoded)
+    embed.write_run_json(path.with_suffix(".run.json"), {
+        **encoder.info(), "git_commit": embed.git_commit(), "variant": variant, "limit": limit,
+        "chunk_settings": chunk_settings, "batch_size": batch_size, "rows": len(chunks), "seconds": seconds,
+        "tokens_per_chunk_mean": round(sum(len(ids) for ids, _ in encoded) / len(encoded), 1),
+        "rows_by_corpus": dict(Counter(c.article_uid.rpartition(":")[0] for c in chunks)),
+    })
+    typer.echo(f"{len(chunks)} rows written in {seconds}s")
 
 
 @app.command("sanity")
@@ -326,8 +374,12 @@ def eval_cmd(
     article_lookup: Annotated[bool, typer.Option(help="Put the articles the question names by number first")] = False,
     rewrites: Annotated[Path | None, typer.Option(help="Rewrite file of scripts/rewrite_questions.py (dense only)")] = None,
     rewrite_mode: Annotated[str, typer.Option(help="replace: search the rewrite; fuse: rewrite and original fused")] = "replace",
+    lexical: Annotated[str, typer.Option(help="Word matching of keyword and hybrid: bm25, tsrank, tsrank-len or sparse")] = "bm25",
+    sparse_file: Annotated[Path, typer.Option(help="Sparse vectors for --lexical sparse")] = sparse.DEFAULT_FILE,
 ) -> None:
     """Search on the gold questions of one half: metrics with bootstrap intervals."""
+    if lexical not in ("bm25", "sparse", *keyword.TSRANK_NORMALIZATION):
+        raise typer.BadParameter("lexical must be bm25, tsrank, tsrank-len or sparse")
     if not language_filter and search != "dense":
         raise typer.BadParameter("--no-language-filter works with --search dense only")
     if rewrites and search != "dense":
@@ -359,10 +411,14 @@ def eval_cmd(
         row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
         if row is None:
             raise typer.BadParameter(f"no chunking run named {run!r}")
+        sparse_index, sparse_queries, sparse_record = (
+            _sparse_search(conn, row[0], questions, sparse_file, device)
+            if lexical == "sparse" and search in ("keyword", "hybrid") else (None, None, None)
+        )
         started = time.monotonic()
         retrieved = evaluate.retrieve_all(
             conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name, language_filter,
-            article_lookup, rewrite_vectors,
+            article_lookup, rewrite_vectors, lexical, sparse_index, sparse_queries,
         )
         search_seconds = time.monotonic() - started
     rows = evaluate.score(questions, retrieved)
@@ -373,7 +429,7 @@ def eval_cmd(
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     settings = evaluate.settings(file, split, run, search, keyword_weight, model_name, language_filter, article_lookup,
-                                rewrite_record)
+                                rewrite_record, lexical, sparse_record)
     # the search step only: query embedding and model loading are left out
     settings["search_seconds_per_question"] = round(search_seconds / len(questions), 3)
     typer.echo(f"search time {settings['search_seconds_per_question']} s per question")

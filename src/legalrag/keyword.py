@@ -58,3 +58,31 @@ class Bm25Index:
 
 def query_lexemes(conn: psycopg.Connection, lang: str, text: str) -> list[str]:
     return [row[0] for row in conn.execute(QUERY_LEXEMES, (CONFIG[lang], text)).fetchall()]
+
+
+# Postgres's own ranking function. "tsrank" is ts_rank with its defaults (no length normalisation);
+# "tsrank-len" divides by 1 + log(length of the chunk) (normalisation flag 1).
+TSRANK_NORMALIZATION = {"tsrank": 0, "tsrank-len": 1}
+TSRANK_SEARCH = (
+    "SELECT a.source_code, a.kind, a.article_num, a.content_hash FROM chunks c "
+    "JOIN articles a ON a.uid = c.article_uid, to_tsquery('simple', %s) q "
+    "WHERE c.run_id = %s AND c.lang = %s AND c.tsv @@ q ORDER BY ts_rank(c.tsv, q, %s) DESC, c.id LIMIT %s"
+)
+
+
+def tsrank_query(lexemes: list[str]) -> str:
+    """The lexemes of the question joined by OR, each quoted; the 'simple' configuration leaves them as they
+    are, since they were already stemmed by the configuration of the chunk."""
+    return " | ".join("'" + lexeme.replace("\\", "\\\\").replace("'", "''") + "'" for lexeme in dict.fromkeys(lexemes))
+
+
+def search_tsrank(
+    conn: psycopg.Connection, run_id: int, lang: str, text: str, method: str, top: int
+) -> list[tuple[str, str, str, str]]:
+    """(source, kind, article number, content hash) of the best chunks by ts_rank, best first."""
+    lexemes = query_lexemes(conn, lang, text)
+    if not lexemes:
+        return []
+    return conn.execute(
+        TSRANK_SEARCH, (tsrank_query(lexemes), run_id, lang, TSRANK_NORMALIZATION[method], top)
+    ).fetchall()

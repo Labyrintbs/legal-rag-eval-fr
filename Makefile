@@ -78,3 +78,9 @@ test:
 
 lint:
 	uv run ruff check .
+
+sparse-embed:
+	uv run --extra embed legalrag sparse-embed
+
+pack-sparse:
+	uv run python scripts/pack_sparse.py $(ARGS)
