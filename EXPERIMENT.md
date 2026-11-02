@@ -363,3 +363,18 @@ Entry template:
 - `scripts/heading_sentences_all.py`, `deepseek-flash`, prompts `sentence.v3` (French) and `sentence.v3.en` (English GDPR; 12 English articles: 12 questions, no flag). 11,977 of 11,977 articles written, 0 failed, 26 minutes, 0.73 USD in the ledger (the first 200 articles cost 0.0156 USD). All 11,977 are questions, 21.6 words on average (longest 41); 14 cite an article number and are not used (the articles keep the plain heading), so 11,963 are used; "patron" in 40 of 11,524 French sentences, no "tu/ton". The 8 annexes got plausible questions.
 - Published as the Release `heading-sentences-v3` (SHA-256 d77bf4c7...afb8, 2.9 MB).
 - Chunks, variant `header-llm` (`variants.py`: the baseline settings plus `sentences`): 12,150 chunks against 12,136, 76 split articles against 69, none over the 1,024-token limit (longest 1,023), mean heading 339 characters against 206. Embedding on the laptop: `docs/handoff/header_llm_windows.md`. Not evaluated yet.
+
+## 2026-11-03: LLM-written heading sentence, dev half (step 0c)
+- Vectors: bge-m3, variant `header-llm` (12,150 chunks), embedded on the laptop (RTX 3060 Laptop, 113 s, peak 1,490 MB, same model revision as the baseline) from commit a80d28e with the sentences file of the Release `heading-sentences-v3`; Release `embeddings-bge-m3-header-llm-v1`, both SHA-256 equal to the notes, `sentences_sha256` in the run file equal to the file's. Loaded into the chunking run `header-llm`; `db-check` passes on the default run except the approximate-index recall check (84.9%), which does not touch the evaluation (exact scan); I did not check whether it changed since the extra vectors were added.
+- Dense search, exact scan, same questions and settings, run `headerllm`:
+
+| Run | nDCG@10 | Recall@10 | Recall@20 | Hit@5 | MRR@10 | nDCG@10 minus baseline [95% paired] |
+|---|---|---|---|---|---|---|
+| baseline (heading: section titles) | 0.738 | 0.893 | 0.926 | 0.902 | 0.670 | |
+| header-llm (section titles + question) | 0.773 | 0.893 | 0.943 | 0.902 | 0.758 | +0.035 [-0.025, +0.097] |
+
+- Verdict by decision 3b: not an improvement (nDCG@10 interval includes 0; Recall@10 unchanged). Other differences: MRR@10 +0.088 [+0.000, +0.180], Recall@20 +0.016 [-0.040, +0.076], Hit@5 +0.000. The first gold article is at rank 1 for 42 questions against 39; 17 questions improve, 13 get worse, 31 are unchanged.
+- By who wrote the question (mean nDCG@10 change; per-question bootstrap, not the cluster bootstrap of `compare`, so only indicative): model-written +0.052 (30 questions, the same model family as the sentences), ministry sheets +0.031 (15), smoke +0.031 (12), hand-written -0.059 (4). The 31 questions that do not share the sentence writer's family move by about +0.02 on average. The gain is concentrated where the questions and the sentences come from the same family, which is what the same-family bias would produce; this does not prove it.
+- Groups against the baseline: E +0.207 (5 questions), H +0.168 (3), B +0.068 (15), A +0.022, I +0.031; D -0.286 (1), G -0.281 (3), C -0.061 (2); all inside the noise.
+- Cost: 0.73 USD for the sentences, 113 s of GPU for the vectors; search time unchanged (0.455 s per question including the db round trip).
+- Decision: the baseline heading stays; `header-llm` is a measured option. Left open for the user: use it in the final setup on the strength of the MRR hint, or keep it only as a pre-registered comparison on the test half.
