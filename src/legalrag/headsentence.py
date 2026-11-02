@@ -4,7 +4,6 @@ scripts/heading_sentence_pilot.py.
 """
 
 import random
-import re
 import time
 
 import httpx
@@ -17,7 +16,6 @@ from legalrag.questiongen import context_of
 CONTEXT_LEVELS = 3
 # Pilot sample: how many articles of each kind, drawn with a fixed seed from the sorted uids.
 SAMPLE_PLAN = (("code_travail", "article", 40), ("rgpd", "article", 4), ("rgpd", "recital", 4), ("code_travail", "annex", 2))
-ARTICLE_NUMBER = re.compile(r"\b[LRD]\.?\s?\d{3,4}-\d|\barticles?\s+\d+", re.IGNORECASE)
 
 
 def sample(articles: list[Article], seed: int, plan=SAMPLE_PLAN) -> list[Article]:
@@ -51,7 +49,7 @@ def clean(answer: str, max_words: int) -> tuple[str, list[str]]:
         flags.append("several_lines")
     if len(sentence.split()) > max_words:
         flags.append("too_long")
-    if ARTICLE_NUMBER.search(sentence) or articlenum.CODE_NUMBER.search(sentence):
+    if articlenum.mentions_article(sentence):
         flags.append("article_number")
     return sentence, flags
 

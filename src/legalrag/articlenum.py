@@ -12,11 +12,17 @@ CODE_NUMBER = re.compile(r"(?<![\w*-])([LRD]\*?\d{4}(?:-\d+)+)(?![\w-])")
 GDPR_ARTICLE = re.compile(r"\b(?:article|art\.?)\s+(\d{1,3})\b", re.IGNORECASE)
 GDPR_RECITAL = re.compile(r"\b(?:considérant|recital)\s+(\d{1,3})\b", re.IGNORECASE)
 GDPR_NAME = re.compile(r"\b(?:RGPD|GDPR)\b", re.IGNORECASE)
+MENTION = re.compile(r"\b[LRD]\.?\s?\d{3,4}-\d|\barticles?\s+\d+", re.IGNORECASE)
 NAMED_ARTICLES = (
     "SELECT source_code, kind, article_num, content_hash FROM articles "
     "WHERE lang = CASE WHEN source_code = 'code_travail' THEN 'fr' ELSE %s END "
     "AND source_code || '|' || kind || '|' || article_num = ANY(%s)"
 )
+
+
+def mentions_article(text: str) -> bool:
+    """True when the text names an article by number, in any of the ways a model might write it."""
+    return bool(MENTION.search(text) or CODE_NUMBER.search(text))
 
 
 def named_articles(question: str) -> list[tuple[str, str, str]]:

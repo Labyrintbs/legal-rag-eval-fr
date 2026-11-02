@@ -88,12 +88,14 @@ def retrieve_all(
     conn: psycopg.Connection, run_id: int, questions: list[gold.GoldQuestion], vectors, search: str,
     keyword_weight: float = 1.0, scorer: rerank.Scorer | None = None, rerank_depth: int = RERANK_DEPTH,
     embedding_model: str = MODEL, language_filter: bool = True, article_lookup: bool = False,
+    rewrite_vectors=None,
 ) -> dict[str, list[tuple[str, str]]]:
     """Ranked articles for every question with the chosen search (vectors are needed unless keyword,
     and come from embedding_model). keyword_weight is the weight of the keyword list in the fusion (the
     dense list has weight 1); scorer and rerank_depth are used by the rerank search. language_filter
     False lets the dense search see every language (dense search only). article_lookup puts the articles
-    a question names by number first (any search)."""
+    a question names by number first (any search). rewrite_vectors (dense search) fuses the search on the
+    rewritten question with the search on the original."""
     indexes = {} if search in ("dense", "rerank") else {
         lang: keyword.Bm25Index.build(conn, run_id, lang) for lang in {q.lang for q in questions}
     }
@@ -103,6 +105,11 @@ def retrieve_all(
         if search == "rerank":
             candidates = retrieve(conn, run_id, q.lang, vectors[i], depth, embedding_model)
             retrieved[q.id] = rerank.rerank(conn, run_id, q.lang, q.question, candidates, scorer, ARTICLES_KEPT)
+            continue
+        if search == "dense" and rewrite_vectors is not None:
+            lang = q.lang if language_filter else None
+            both = [retrieve(conn, run_id, lang, v, FUSION_DEPTH, embedding_model) for v in (vectors[i], rewrite_vectors[i])]
+            retrieved[q.id] = fuse(both)
             continue
         rankings = []
         if search in ("dense", "hybrid"):
@@ -194,6 +201,7 @@ def format_diff(title: str, diff: dict) -> str:
 def settings(
     gold_path: Path, split: str, chunking_run: str, search: str = "dense", keyword_weight: float = 1.0,
     embedding_model: str = MODEL, language_filter: bool = True, article_lookup: bool = False,
+    rewrites: dict | None = None,
 ) -> dict:
     try:
         commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
@@ -205,7 +213,7 @@ def settings(
         "split": split,
         "gold_sha256": hashlib.sha256(gold_path.read_bytes()).hexdigest(), "chunking_run": chunking_run,
         "embedding_model": embedding_model, "search": SEARCH_TEXT[search], "keyword_weight": keyword_weight if search == "hybrid" else None,
-        "language_filter": language_filter, "article_lookup": article_lookup,
+        "language_filter": language_filter, "article_lookup": article_lookup, "rewrites": rewrites,
         "unit": "article (best chunk), top 20", "ndcg_gain": "linear (the grade)",
         "bootstrap": "2000 resamples of clusters, 95% percentile interval",
     }

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import time
@@ -17,6 +18,7 @@ from legalrag import (
     gold,
     llm,
     rerank,
+    rewrite,
     sanity,
     smoke,
     store,
@@ -275,6 +277,14 @@ def smoke_cmd(
     typer.echo("First rank per question: " + ", ".join(f"Q{i}={r or '-'}" for i, r in ranks.items()))
 
 
+def _embed_texts(questions: list[gold.GoldQuestion], texts: list[str], embedder) -> list:
+    """One unit-length vector per text, in the language and group of the question it stands for."""
+    return smoke.embed_questions(
+        [smoke.Question(id=0, group=q.group, lang=q.lang, question=t) for q, t in zip(questions, texts, strict=True)],
+        embedder,
+    )
+
+
 @app.command("eval")
 def eval_cmd(
     name: Annotated[str, typer.Option(help="Run name, used in the output file name")] = "baseline",
@@ -290,10 +300,16 @@ def eval_cmd(
     device: Annotated[str, typer.Option(help="cuda, cpu or auto")] = "auto",
     language_filter: Annotated[bool, typer.Option(help="Keep only chunks in the question's language (dense only)")] = True,
     article_lookup: Annotated[bool, typer.Option(help="Put the articles the question names by number first")] = False,
+    rewrites: Annotated[Path | None, typer.Option(help="Rewrite file of scripts/rewrite_questions.py (dense only)")] = None,
+    rewrite_mode: Annotated[str, typer.Option(help="replace: search the rewrite; fuse: rewrite and original fused")] = "replace",
 ) -> None:
     """Search on the gold questions of one half: metrics with bootstrap intervals."""
     if not language_filter and search != "dense":
         raise typer.BadParameter("--no-language-filter works with --search dense only")
+    if rewrites and search != "dense":
+        raise typer.BadParameter("--rewrites works with --search dense only")
+    if rewrite_mode not in ("replace", "fuse"):
+        raise typer.BadParameter("rewrite mode must be replace or fuse")
     if split not in ("dev", "test"):
         raise typer.BadParameter("split must be dev or test")
     if split == "test" and not final:
@@ -302,10 +318,18 @@ def eval_cmd(
         raise typer.BadParameter(f"search must be one of {', '.join(evaluate.SEARCHES)}")
     model_name = _model_spec(embedding_model).name
     questions = [q for q in gold.load_gold(file) if q.split == split]
-    vectors = None if search == "keyword" else smoke.embed_questions(
-        [smoke.Question(id=0, group=q.group, lang=q.lang, question=q.question) for q in questions],
-        embed.SentenceTransformerEmbedder(device, model_key=embedding_model),
-    )
+    embedder = None if search == "keyword" else embed.SentenceTransformerEmbedder(device, model_key=embedding_model)
+    vectors = None if search == "keyword" else _embed_texts(questions, [q.question for q in questions], embedder)
+    rewrite_vectors, rewrite_record = None, None
+    if rewrites:
+        used = rewrite.load_used(rewrites)
+        if missing := [q.id for q in questions if q.id not in used]:
+            raise typer.BadParameter(f"no rewrite for {len(missing)} questions, e.g. {missing[:3]}")
+        texts = [used[q.id] for q in questions]
+        embedded = _embed_texts(questions, texts, embedder)
+        vectors, rewrite_vectors = (embedded, None) if rewrite_mode == "replace" else (vectors, embedded)
+        rewrite_record = {"file_sha256": hashlib.sha256(rewrites.read_bytes()).hexdigest(), "mode": rewrite_mode,
+                          "searched_with_rewrite": sum(t != q.question for t, q in zip(texts, questions, strict=True))}
     scorer = rerank.make_scorer(reranker, device) if search == "rerank" else None
     with db.connect() as conn:
         row = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (run,)).fetchone()
@@ -314,7 +338,7 @@ def eval_cmd(
         started = time.monotonic()
         retrieved = evaluate.retrieve_all(
             conn, row[0], questions, vectors, search, keyword_weight, scorer, rerank_depth, model_name, language_filter,
-            article_lookup,
+            article_lookup, rewrite_vectors,
         )
         search_seconds = time.monotonic() - started
     rows = evaluate.score(questions, retrieved)
@@ -324,7 +348,8 @@ def eval_cmd(
             typer.echo(evaluate.format_summary(f"  {key} {value}", evaluate.summarize(part)))
     out = Path("data/runs") / f"{name}_{split}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name, language_filter, article_lookup)
+    settings = evaluate.settings(file, split, run, search, keyword_weight, model_name, language_filter, article_lookup,
+                                rewrite_record)
     # the search step only: query embedding and model loading are left out
     settings["search_seconds_per_question"] = round(search_seconds / len(questions), 3)
     typer.echo(f"search time {settings['search_seconds_per_question']} s per question")
