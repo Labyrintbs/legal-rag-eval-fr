@@ -1,6 +1,6 @@
 # Handoff: embed the `header-llm` chunks with bge-m3 on the Windows laptop and publish them
 
-Written 2026-11-03 on the Mac. For an agent (or the user) on the Windows laptop. Self-contained. Facts marked "unverified" come from memory, not from a check. Read `CLAUDE.md` first (working rules). The setup is the same as for the earlier embedding jobs (`variants_windows.md`, `qwen_embedding_windows.md`).
+Written 2026-11-02 on the Mac. For an agent (or the user) on the Windows laptop. Self-contained. Facts marked "unverified" come from memory, not from a check. Read `CLAUDE.md` first (working rules). The setup is the same as for the earlier embedding jobs (`variants_windows.md`, `qwen_embedding_windows.md`).
 
 ## 1. What this is and why
 Step 0c tests a heading with one LLM-written question per article. The heading of the baseline is "Code du travail, article L1221-13. T1 > T2 > T3." and the new variant `header-llm` adds the question after it: "Code du travail, article L1221-13. T1 > T2 > T3. Puis-je ...?". Only the heading text changes; the chunking limit (1,024 tokens), the search and the questions stay the same. The sentences were written on the Mac by `deepseek-flash` (11,963 of 11,977 articles; 14 sentences that cite an article number are left out and keep the plain heading) and are published as the Release `heading-sentences-v3`. The Mac cannot embed 12,000 chunks in reasonable time; the baseline took 97 seconds on this laptop (RTX 3060 Laptop, peak 1.5 GB).

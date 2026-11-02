@@ -1,7 +1,7 @@
 """bge-m3 sparse (lexical) weights (step 0c): the same model as the dense search gives one non-negative weight
 per token, relu(linear(last hidden state)), from `sparse_linear.pt` in the model repository. A text keeps the
 largest weight of each token id (special tokens dropped); a question and a chunk score the sum of weight
-products over the tokens they share. Rules checked against the FlagEmbedding code, 2026-11-03.
+products over the tokens they share. Rules checked against the FlagEmbedding code, 2026-11-02.
 """
 
 from collections import defaultdict

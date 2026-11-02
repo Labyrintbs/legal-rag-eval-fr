@@ -332,14 +332,14 @@ Entry template:
 - Seen in the rewrites: a rewrite can lose a detail (hw-08 "Pourquoi la période d'essai est-elle obligatoire dans un CDI ?" became "...est-elle obligatoire ...", the false premise question lost its "pourquoi"; the acronym ETTP was dropped in sheet-06). Largest losses: smoke-27 and mw-013 (-0.37 under fuse).
 - Cost in production: one LLM call per user query, about 1 second in the pilot, 0.00005 USD per question.
 
-## 2026-11-03: heading sentence pilot, local 4-bit model against DeepSeek, 50 articles (step 0c, in progress)
+## 2026-11-02: heading sentence pilot, local 4-bit model against DeepSeek, 50 articles (step 0c, in progress)
 - Pilot only; no sentence is in a heading yet, nothing is embedded. Same 50 articles (seed 20261101: 40 Code du travail articles, 4 GDPR articles, 4 recitals, 2 annexes), one article per request, temperature 0. Prompts in `prompts/heading_sentence.yaml`: v1 restates the article in plain words, v2 asks for the question a worker or employer would ask, v3 adds first person, a question mark, a ban on invented persons and one invented example. Outputs in `docs/pilots/` (ids and sentences only).
 - DeepSeek `deepseek-flash` (0.0046 to 0.0051 USD per 50 articles, about 1.2 USD for the corpus at the same rate, my extrapolation): v1 32.1 words, no question; v2 24.7 words, 50 of 50 questions, "patron" in 23 of 50 including GDPR articles that do not mention an employer; v3 21.6 words, 50 of 50 questions, "patron" in 0.
 - Local `Qwen3.5-4B` Q4_K_M (bartowski GGUF) on the RTX 3060 Laptop, llama.cpp build b12034, server context 4,096 tokens per slot, longest prompt 3,182 tokens: one request alone 55 to 59 output tokens/s, 0.83 to 0.99 s per article, 42 to 50 s for 50 articles; four requests at once 26.5 tokens/s each, 25 s for 50 articles (about 0.5 s per article). The corpus would take roughly 1.6 hours (four slots) to 3 hours (one slot); the pilot sample has longer texts than the corpus average (1,029 against about 570 characters), so this is an order of magnitude. No thinking text; completion 39 tokens on average.
 - Same input, same sentences on a rerun with one slot (0 of 50 differ); one slot against four slots: 26 of 50 sentences differ, so outputs depend on the server configuration and it must be recorded.
 - Prompt following of the 4-bit model: with v2 only 14 or 15 of 50 outputs are questions (DeepSeek 50), many statements address the reader as "tu" or "ton"; with v1, 2 of 50 cite an article number. Both models invent content for the two annexes (one is a table of correspondences). The 8-bit model and prompt v3 on the laptop are the next measurement (`docs/handoff/local_llm_windows.md` section 13).
 
-## 2026-11-03: heading sentence pilot, 8-bit model and prompt v3 (step 0c, in progress)
+## 2026-11-02: heading sentence pilot, 8-bit model and prompt v3 (step 0c, in progress)
 - Laptop round 2 (`docs/handoff/local_llm_windows.md` section 13), same 50 articles, `Qwen3.5-4B` Q4_K_M and Q8_0, prompts v2 and v3, outputs in `docs/pilots/`. The laptop's own report (GPU memory, file hashes) went to the user, not to the repository, so it is not recorded here. No 8-bit run with four slots exists: it ran out of CUDA memory on the 6 GB card (told by the user), so two slots is the most the 8-bit model can serve here.
 
 | Run | Questions of 50 | "tu/ton" | Article number cited | "patron" | Wall s for 50 | Decode tokens/s per request |
@@ -356,15 +356,15 @@ Entry template:
 - Content, read against DeepSeek v3 on 14 articles: both local models often answer another question than the article settles (a recital on groups of companies, one on data subject rights, the GDPR transfer article), act a role ("Je suis agent inspecteur du travail..."), make grammar slips ("Mon certification", "Si je détenez") and copy the article's own references to other texts ("l'article L. 262-28 du code de l'action sociale", "l'article 50-0 du code général des impôts", 3 or 4 of 50). DeepSeek v3 has none of these on the same 50.
 - Output depends on the server setup: 4-bit one slot against four slots, 26 of 50 sentences differ; 8-bit one against two slots, 16 of 50.
 - Time for the corpus at 0.47 s (4-bit, four slots) to 0.59 s (8-bit, two slots) per article: about 1.5 to 1.9 hours, from a sample with longer texts than the corpus average.
-- Verdict against the rule set before the run (at least 48 questions, no "tu/ton", no invented persons, no cited article numbers): neither local model passes. The sentences will be written with DeepSeek (decision of the user, 2026-11-03, conditional on this quality result).
+- Verdict against the rule set before the run (at least 48 questions, no "tu/ton", no invented persons, no cited article numbers): neither local model passes. The sentences will be written with DeepSeek (decision of the user, 2026-11-02, conditional on this quality result).
 
-## 2026-11-03: heading sentences for the whole corpus, header-llm chunks (step 0c, in progress)
-- Decision of the user (2026-11-03): option B, the sentence is added after the section titles ("Code du travail, article L1221-13. T1 > T2 > T3. <question>"); the sentences are written with DeepSeek because neither local model passed (entry above); the file may be published.
+## 2026-11-02: heading sentences for the whole corpus, header-llm chunks (step 0c, in progress)
+- Decision of the user (2026-11-02): option B, the sentence is added after the section titles ("Code du travail, article L1221-13. T1 > T2 > T3. <question>"); the sentences are written with DeepSeek because neither local model passed (entry above); the file may be published.
 - `scripts/heading_sentences_all.py`, `deepseek-flash`, prompts `sentence.v3` (French) and `sentence.v3.en` (English GDPR; 12 English articles: 12 questions, no flag). 11,977 of 11,977 articles written, 0 failed, 26 minutes, 0.73 USD in the ledger (the first 200 articles cost 0.0156 USD). All 11,977 are questions, 21.6 words on average (longest 41); 14 cite an article number and are not used (the articles keep the plain heading), so 11,963 are used; "patron" in 40 of 11,524 French sentences, no "tu/ton". The 8 annexes got plausible questions.
 - Published as the Release `heading-sentences-v3` (SHA-256 d77bf4c7...afb8, 2.9 MB).
 - Chunks, variant `header-llm` (`variants.py`: the baseline settings plus `sentences`): 12,150 chunks against 12,136, 76 split articles against 69, none over the 1,024-token limit (longest 1,023), mean heading 339 characters against 206. Embedding on the laptop: `docs/handoff/header_llm_windows.md`. Not evaluated yet.
 
-## 2026-11-03: LLM-written heading sentence, dev half (step 0c)
+## 2026-11-02: LLM-written heading sentence, dev half (step 0c)
 - Vectors: bge-m3, variant `header-llm` (12,150 chunks), embedded on the laptop (RTX 3060 Laptop, 113 s, peak 1,490 MB, same model revision as the baseline) from commit a80d28e with the sentences file of the Release `heading-sentences-v3`; Release `embeddings-bge-m3-header-llm-v1`, both SHA-256 equal to the notes, `sentences_sha256` in the run file equal to the file's. Loaded into the chunking run `header-llm`; `db-check` passes on the default run except the approximate-index recall check (84.9%), which does not touch the evaluation (exact scan); I did not check whether it changed since the extra vectors were added.
 - Dense search, exact scan, same questions and settings, run `headerllm`:
 
@@ -379,7 +379,7 @@ Entry template:
 - Cost: 0.73 USD for the sentences, 113 s of GPU for the vectors; search time unchanged (0.455 s per question including the db round trip).
 - Decision: the baseline heading stays; `header-llm` is a measured option. Left open for the user: use it in the final setup on the strength of the MRR hint, or keep it only as a pre-registered comparison on the test half.
 
-## 2026-11-03: do the sentences help keyword search? header-llm with BM25 and fusion, dev half (step 0c)
+## 2026-11-02: do the sentences help keyword search? header-llm with BM25 and fusion, dev half (step 0c)
 - Same keyword search (BM25 on the lexemes of `chunks.tsv`, which now contain the question) and the same fusion with dense (k 60, top 100 each, keyword weight 1, 0.5, 0.25), run on the chunking run `header-llm`; runs `llm-keyword`, `llm-hybrid-w10`, `llm-hybrid-w05`, `llm-hybrid-w025`. Compared with the same method on the plain heading, and with the dense baseline (rule 3b).
 
 | Search | plain heading nDCG@10 | header-llm nDCG@10 | header-llm minus plain heading [95% paired] | MRR@10 change | header-llm minus dense baseline |
@@ -394,9 +394,9 @@ Entry template:
 - They do not make fusion better than dense on the same chunks: hybrid minus dense header-llm is +0.013 [-0.023, +0.047] (weight 0.25), +0.013 [-0.060, +0.083] (weight 1), +0.000 [-0.050, +0.053] (weight 0.5). The fused runs are not improvements over the dense baseline by 3b (nDCG@10 intervals include 0); their gain over the baseline is the dense effect of the sentence.
 - Questions not written by the sentence's model family (31): mean nDCG@10 change against the baseline +0.019 dense, +0.038 hybrid weight 0.25, +0.024 hybrid weight 1; model-written (30): +0.052, +0.058, +0.072. The same-family bias applies to keyword matching as well (shared wording).
 - Counting: this adds eight comparisons to the many already made on one 61-question half; the within-method gains for keyword and weight 1 and 0.5 clear zero, the rest does not.
-- Decision of the user (2026-11-03): the heading with the LLM-written question stays a measured option and is not part of the final setup; the final setup keeps the baseline heading. It may be raised again if keyword search becomes part of the retrieval.
+- Decision of the user (2026-11-02): the heading with the LLM-written question stays a measured option and is not part of the final setup; the final setup keeps the baseline heading. It may be raised again if keyword search becomes part of the retrieval.
 
-## 2026-11-03: Postgres ts_rank as the word-matching search, dev half (step 0c)
+## 2026-11-02: Postgres ts_rank as the word-matching search, dev half (step 0c)
 - Same protocol as the BM25 entry of 2026-10-29: the question's lexemes (same French/English text-search configuration as the chunks) joined by OR and matched against `chunks.tsv`; chunks ordered by `ts_rank(tsv, query, flag)`, best chunk per article, top 400 chunks; alone and fused with dense by reciprocal rank fusion (k 60, top 100 each, keyword weight 1, 0.5, 0.25). `--lexical tsrank` is ts_rank with its defaults (flag 0, no length normalisation); `--lexical tsrank-len` divides by 1 + log(length) (flag 1). Default chunking, baseline heading, runs `tsrank-*` and `tsranklen-*`.
 
 | Search | nDCG@10 | Recall@10 | MRR@10 | nDCG@10 minus dense baseline [95% paired] | minus BM25, same weight |
@@ -410,7 +410,7 @@ Entry template:
 
 - Verdict by decision 3b: no setting is an improvement; every nDCG@10 interval against the dense baseline includes 0 or lies below it, and the two ts_rank searches alone are clearly worse than BM25. As expected, ts_rank does not weigh rare words more (no inverse document frequency), which BM25 does. Dense stays the retrieval default.
 
-## 2026-11-03: bge-m3 sparse as the word-matching search, dev half (step 0c)
+## 2026-11-02: bge-m3 sparse as the word-matching search, dev half (step 0c)
 - Vectors: bge-m3 sparse (the model's own word-weight head, `relu(linear(last hidden state))`, highest weight per token id, special tokens dropped; score = sum of weight products over shared tokens), default chunking, 12,136 chunks, encoded on the laptop (RTX 3060 Laptop, 105 s, peak 1,491 MB, 71.7 tokens per chunk on average, same model revision as the dense baseline) from commit 73137c2; Release `embeddings-bge-m3-sparse-v1`, both SHA-256 equal to the notes. The index checks the file against the `default` run: the same 12,136 chunks and the hash of every chunk text.
 - Same protocol as BM25 and ts_rank: alone, and fused with dense by reciprocal rank fusion (k 60, top 100 each, keyword weight 1, 0.5, 0.25); runs `sparse-keyword`, `sparse-hybrid-w10`, `sparse-hybrid-w05`, `sparse-hybrid-w025`.
 
@@ -424,5 +424,24 @@ Entry template:
 | sparse fused, weight 0.25 | 0.767 | 0.885 | 0.711 | +0.029 [-0.008, +0.066] | +0.018 [-0.028, +0.069] |
 
 - Verdict by decision 3b: no setting is an improvement (every nDCG@10 interval against the dense baseline includes 0, alone it is clearly lower). Sparse is clearly better than BM25 alone (+0.091 [+0.004, +0.195]) and its fusions are better than BM25's in point estimate, but not distinguishable from them; the learned weights help a keyword search, they do not make it beat dense.
-- Rule of the test plan (`0004`, written 2026-11-03 before this run): sparse goes on the test half only if one setting reaches nDCG@10 +0.03 over the dense baseline. The best is weight 0.25 with +0.02915, so the rule is not met and **sparse is not run on the test half**.
+- Rule of the test plan (`0004`, written 2026-11-02 before this run): sparse goes on the test half only if one setting reaches nDCG@10 +0.03 over the dense baseline. The best is weight 0.25 with +0.02915, so the rule is not met and **sparse is not run on the test half**.
 - Multiple comparisons: this adds four comparisons to those already made on one 61-question dev half.
+
+## 2026-11-02: final test session, test half (step 0c)
+- The test half was opened once, with `--final`, at the clean commit dc7924c, following the plan written before (`docs/decisions/0004-step-0c-decisions.md`, "Final test plan"). 65 questions (63 French, 2 English); 64 have gold (59 answerable, 3 false premise, 2 underspecified), 1 unanswerable; 43 clusters. Runs `final-*`. The rewrites of the test questions were made once with `rewrite.v1` (0.0066 USD; 52 of 65 searched with a changed rewrite, none flagged). bge-m3 sparse was not run: its best dev setting (+0.02915) did not reach the threshold of the plan.
+- **Final setup (the baseline)**, test half: nDCG@10 0.746 [0.649, 0.828], Recall@10 0.865 [0.772, 0.942], Recall@5 0.792 [0.689, 0.882], Recall@20 0.880 [0.791, 0.957], Hit@5 0.828 [0.726, 0.914], MRR@10 0.693 [0.589, 0.788], nDCG@5 0.720 [0.616, 0.808]. The dev half gave nDCG@10 0.738.
+- Secondary comparisons against it (paired differences, intervals not adjusted for the number of comparisons):
+
+| Run | nDCG@10 | Recall@10 | Hit@5 | MRR@10 | nDCG@10 minus final setup [95% paired] | Recall@10 minus final setup | Verdict by 3b |
+|---|---|---|---|---|---|---|---|
+| Qwen3-Reranker, top 50 | 0.765 | 0.896 | 0.828 | 0.710 | +0.019 [-0.063, +0.101] | +0.031 [-0.006, +0.082] | not an improvement |
+| Rewrite fused with the original | 0.766 | 0.880 | 0.844 | 0.714 | +0.021 [+0.005, +0.041] | +0.016 [+0.000, +0.053] | improvement (nominal) |
+| header-llm heading | 0.781 | 0.927 | 0.891 | 0.709 | +0.036 [-0.017, +0.094] | +0.062 [+0.014, +0.130] | not an improvement |
+| Article-number rule | 0.746 | 0.865 | 0.828 | 0.693 | 0.000 | 0.000 | no effect |
+
+- Rewriting: 8 questions up, 1 down (hw-06, -0.069), 55 unchanged. The hypothesis of 2026-11-02 (it helps the 14 ministry-sheet questions) is not supported: none of the 14 changed. The gain is on model-written questions (+0.028, 6 up, 0 down), smoke (+0.024) and hand-written (+0.022). Four questions carry most of the average (smoke-06 +0.36, mw-048 +0.34, mw-088 +0.28, hw-12 +0.20). Dev was +0.010 [-0.022, +0.045].
+- Reranker: the dev pass (+0.061 [+0.003, +0.125]) does not repeat: test +0.019 [-0.063, +0.101]; 15 questions up, 14 down, 35 unchanged. By who wrote the question (mean nDCG@10 change): model-written +0.131 [+0.029, +0.260] (29), ministry sheets -0.053 (14), smoke -0.079 (15), hand-written -0.105 (6). 89.9 s per question on this CPU (the Mac was swapping; same order as on dev), `truncated_pairs` 0.
+- header-llm: nDCG@10 +0.036 repeats the dev figure (+0.035) with an interval that still includes 0; Recall@10 is clearly up on test (+0.062 [+0.014, +0.130]) and was unchanged on dev. 16 questions up, 9 down, 39 unchanged. By provenance: smoke +0.107 (15), model-written +0.051 (29), ministry sheets -0.016 (14), hand-written -0.096 (6).
+- Article-number rule: no test question names an article by number, so no ranking changed; the rule has been exercised on one dev question only.
+- Counting: four comparisons were run; the chance that at least one passes at 5% by luck is about 19% (1 - 0.95^4). Per the plan these comparisons never change the setup: the final setup stays the dense baseline. The nominal pass of rewriting and the Recall@10 gain of header-llm are for the user to weigh at the review gate.
+- Costs of the stage: the DeepSeek ledger holds 2.55 USD in total (question writing and review 1.78, heading sentences 0.75, pilots and rewrites about 0.02); the laptop did the vectors in about 15 minutes of GPU time in total.

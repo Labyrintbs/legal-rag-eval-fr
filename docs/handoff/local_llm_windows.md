@@ -130,7 +130,7 @@ Do not commit the `vram_*.csv` files or the trial files; paste the peak memory n
 2. Decision: local model, API, or a mix, with measured speed and cost. If local: the full run is about 11,700 articles at the measured speed; GDPR English needs its own prompt version.
 3. The sentence then enters a new chunking run `header-llm` and is embedded on this laptop later (a separate handoff).
 
-## 13. Round 2 (2026-11-03): the 8-bit model and prompt v3
+## 13. Round 2 (2026-11-02): the 8-bit model and prompt v3
 Round 1 (sections 4 to 11) is done and read on the Mac: the 4-bit model runs here at 55 to 59 tokens/s for one request and 25 s for 50 articles with 4 slots, no thinking text, and the same input gives the same sentences on a rerun with one slot. Its weakness is prompt following: with prompt v2 only 14 or 15 of 50 outputs are questions, the rest are statements that often address the reader as "tu" or "ton". The user asked to try the 8-bit version. Because that changes two things at once if run with v2 alone, round 2 is a 2 by 2: model precision (4-bit, 8-bit) against prompt (`sentence.v2`, new `sentence.v3`). v3 asks for a first-person question ending with "?", forbids adding a person the article does not mention, and has one invented example. `git pull` first (the script now accepts `--prompt sentence.v3`); `uv run pytest -q tests/test_headsentence.py` must pass.
 
 Already measured, do not redo: 4-bit + v2 (files `heading_qwen35-4b-q4km-v2-*.jsonl`), 4-bit + v1.

@@ -1,9 +1,9 @@
 # Handoff: bge-m3 sparse (word weight) vectors for the default chunks, on the Windows laptop
 
-Written 2026-11-03 on the Mac. For an agent (or the user) on the Windows laptop. Self-contained. Facts marked "unverified" come from memory, not from a check. Read `CLAUDE.md` first (working rules). The setup is the same as for the earlier embedding jobs (`header_llm_windows.md`).
+Written 2026-11-02 on the Mac. For an agent (or the user) on the Windows laptop. Self-contained. Facts marked "unverified" come from memory, not from a check. Read `CLAUDE.md` first (working rules). The setup is the same as for the earlier embedding jobs (`header_llm_windows.md`).
 
 ## 1. What this is and why
-Step 0c has an untried keyword option: **bge-m3 sparse**. The same bge-m3 model that gives the dense vector can also give one non-negative weight per token of a text (a small linear layer, `sparse_linear.pt` from the model repository, on top of the last hidden state, then ReLU; the largest weight of each token id is kept and the special tokens are dropped). A question and a chunk then score the sum of weight products over the tokens they share. It is word matching with learned weights, not meaning matching. The Mac encodes the 65 dev questions; the 12,136 chunks need the GPU. The code is in `src/legalrag/sparse.py` and the command `legalrag sparse-embed`; checked against the FlagEmbedding code on 2026-11-03.
+Step 0c has an untried keyword option: **bge-m3 sparse**. The same bge-m3 model that gives the dense vector can also give one non-negative weight per token of a text (a small linear layer, `sparse_linear.pt` from the model repository, on top of the last hidden state, then ReLU; the largest weight of each token id is kept and the special tokens are dropped). A question and a chunk then score the sum of weight products over the tokens they share. It is word matching with learned weights, not meaning matching. The Mac encodes the 65 dev questions; the 12,136 chunks need the GPU. The code is in `src/legalrag/sparse.py` and the command `legalrag sparse-embed`; checked against the FlagEmbedding code on 2026-11-02.
 
 What you produce: two files, `data/embeddings/bge-m3-sparse-default.parquet` and `.run.json`, published as one GitHub Release, `embeddings-bge-m3-sparse-v1`. The default chunking is the baseline (12,136 chunks), so no sentences file is needed.
 
