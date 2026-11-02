@@ -315,3 +315,19 @@ Entry template:
 - Rule (`src/legalrag/articlenum.py`, flag `--article-lookup`, off by default): a question that names a Code du travail article by number (`L1221-13`, `R*3231-4`) gets that article first, found by its number in the articles table; the search results follow below it without repeating it. GDPR articles count only when the question names the RGPD or GDPR ("article 17" alone is ignored), and recitals by "considérant" or "recital". Option chosen by the user (direct lookup, not keyword search).
 - Dev half, run `artnum` (dense search plus the rule), clean commit: nDCG@10 0.754 against 0.738, +0.016 [+0.000, +0.056]; Hit@5, Recall@5/10/20 and MRR@10 each +0.016 [+0.000, +0.056]. Only 1 of 65 rankings changes: smoke-08 ("Que dit l'article L1221-13 du code du travail ?") goes from rank outside the top 5 to rank 1.
 - Verdict by decision 3b: not an improvement (interval touches 0). One question cannot show a gain; the rule is kept as a design choice for a known failure class, not as a measured win. The GDPR and recital patterns have unit tests but no dev question exercises them. How many test-half questions name an article is not counted; that half stays closed until the final run.
+
+## 2026-11-02: query rewriting, dev half (step 0c)
+- Rewrite: `deepseek-flash`, thinking off, temperature 0, one question per call, prompt `rewrite.v1` (`prompts/query_rewrite.yaml`: restate the question in the wording of the code, keep every detail, no article numbers, one sentence of at most 40 words, copy it if already legal). Script `scripts/rewrite_questions.py`; the 65 dev questions cost 0.0033 USD. A rewrite that is empty or names an article is not used (the original question is searched): 1 case, smoke-08. 54 questions are searched with a rewrite that differs from the question, 11 unchanged. Curly apostrophes are turned back to straight ones.
+- Two ways to use it, dense bge-m3, same chunks, `legalrag eval --rewrites FILE --rewrite-mode replace|fuse`: replace searches the rewrite instead of the question; fuse runs both searches (top 100 articles each) and merges them by reciprocal rank fusion (k 60), as in the keyword fusion.
+
+| Run | nDCG@10 | Recall@10 | Recall@20 | Hit@5 | MRR@10 | nDCG@10 minus baseline [95% paired] |
+|---|---|---|---|---|---|---|
+| baseline (original question) | 0.738 | 0.893 | 0.926 | 0.902 | 0.670 | |
+| rewrite, replace | 0.726 | 0.888 | 0.943 | 0.885 | 0.675 | -0.011 [-0.060, +0.040] |
+| rewrite, fuse | 0.748 | 0.910 | 0.959 | 0.918 | 0.688 | +0.010 [-0.022, +0.045] |
+
+- Verdict by decision 3b: neither is an improvement (nDCG@10 not clearly up). Fuse minus replace +0.021 [-0.010, +0.051]. Fuse raises Recall@20 by +0.033 [+0.000, +0.080], which matters only as a candidate list for a reranker.
+- By who wrote the question (mean nDCG@10 change, fuse; replace in brackets): ministry sheets +0.075 (+0.077) over 15 questions, model-written +0.001 (-0.053) over 30, smoke -0.024 (-0.010) over 12, hand-written -0.062 (-0.039) over 4. Group I (the sheets): fuse +0.075 [+0.010, +0.154], replace +0.077 [-0.002, +0.184]. One subgroup of eight, looked at after the result: exploratory, not a finding.
+- Hypothesis, written down before the test half is opened: rewriting helps questions in everyday wording (the 14 ministry-sheet questions of the test half) and not questions already close to the code's text. It is checked once at the final run, not tuned on.
+- Seen in the rewrites: a rewrite can lose a detail (hw-08 "Pourquoi la période d'essai est-elle obligatoire dans un CDI ?" became "...est-elle obligatoire ...", the false premise question lost its "pourquoi"; the acronym ETTP was dropped in sheet-06). Largest losses: smoke-27 and mw-013 (-0.37 under fuse).
+- Cost in production: one LLM call per user query, about 1 second in the pilot, 0.00005 USD per question.
