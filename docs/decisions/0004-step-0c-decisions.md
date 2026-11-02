@@ -27,3 +27,17 @@ Written here on 2026-10-29; before that the list existed only in the master plan
 ## Not decided yet
 
 The choices inside each ablation above; the order after the reranker; whether to build the LLM-written heading.
+
+## Final test plan (approved by the user, 2026-11-03; written before the test half is opened)
+Decision 5 of `0003`: the test half is opened once, at the end of the stage, with `--final`. One session, the runs below, nothing else.
+
+**Final setup (primary result).** Dense bge-m3, heading with the last 3 section titles, chunks split above 1,024 tokens, language filter on, annexes kept, no reranker, no rewriting, no article-number rule, no keyword search. It is the dev baseline: every ablation of 0c was either not an improvement by rule 3b or was set aside by the user (reranker, article-number rule, LLM-written heading). The result to report is its test numbers with the bootstrap intervals.
+
+**Secondary comparisons (fixed list).** Each is one paired comparison against the final setup, with the 3b verdict printed but never used to change the setup. Intervals are not adjusted for the number of comparisons; with five, one apparent win in five happens by chance about 23% of the time (1 - 0.95^5), and the report says so.
+1. Qwen3-Reranker-0.6B on the top 50 bge-m3 articles, as run on dev (window 1,700 tokens, article score = best chunk). The only configuration that passed 3b on dev, barely.
+2. Rewriting, original and rewrite fused (`rewrite.v1`, `deepseek-flash`, rewrites made once for the test questions with `scripts/rewrite_questions.py --split test --final`). Hypothesis written on 2026-11-02: it helps the everyday-wording questions, here the 14 ministry-sheet questions of the test half; reported for that subgroup and for all questions.
+3. `header-llm` chunks, dense search (the question added to the heading; same-family caveat: DeepSeek wrote both the sentences and part of the questions, so the result is also split by who wrote the question).
+4. Article-number rule (`--article-lookup`), dense search.
+5. bge-m3 sparse, only if on dev it reaches nDCG@10 +0.03 or more over the dense baseline in one of its settings; then only the single dev-best setting (alone or fused at one weight) is run. Otherwise it is not run on the test half.
+
+**Rules.** No setting, prompt or file is changed after the test half is opened. All five results are reported in full, losses included. The test half is not used to choose among the comparisons. After the session: the stage summary of 0c, then the review gate with the user before 0d.
