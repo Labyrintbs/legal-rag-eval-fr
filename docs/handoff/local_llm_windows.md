@@ -18,8 +18,8 @@ What you produce: a **pilot of 50 articles** through the local model in two or t
 - The user's global rules (commit messages, delete commands) are in `docs/handoff/global_CLAUDE.md`.
 
 ## 3. What is already on the Mac (do not redo)
-- `scripts/heading_sentence_pilot.py`: draws 50 articles with a fixed seed (40 Code du travail articles, 4 GDPR articles, 4 GDPR recitals, 2 annexes), builds the prompt (`prompts/heading_sentence.yaml`, id `sentence.v1`, French), sends one article per request, writes `data/pilot/heading_<tag>.jsonl` and prints a summary.
-- The same 50 articles went through `deepseek-flash` (backend `deepseek`); that file comes with the repository once the Mac has committed it (`docs/pilots/heading_deepseek-flash.jsonl`).
+- `scripts/heading_sentence_pilot.py`: draws 50 articles with a fixed seed (40 Code du travail articles, 4 GDPR articles, 4 GDPR recitals, 2 annexes), builds the prompt (`prompts/heading_sentence.yaml`, French; `--prompt sentence.v1` restates the article in plain words, `--prompt sentence.v2` writes the question a worker or employer would ask, in everyday words), sends one article per request, writes `data/pilot/heading_<tag>.jsonl` and prints a summary.
+- The same 50 articles went through `deepseek-flash` (backend `deepseek`) with both prompts; the files are in the repository: `docs/pilots/heading_deepseek-flash.jsonl` (v1) and `docs/pilots/heading_deepseek-flash-v2.jsonl` (v2). **The prompt to test on this laptop is v2**; v1 is run once for comparison (8.2 step 6).
 - Tests: `tests/test_headsentence.py`.
 - The script sends `chat_template_kwargs: {"enable_thinking": false}` so a thinking model does not spend its tokens reasoning (unverified that the server and this model honour it; you will check, see 6.5).
 
@@ -82,11 +82,12 @@ Replace `<address>` and `<name>` (from `/v1/models`). Open a second terminal for
 ```
 nvidia-smi --query-gpu=memory.used,memory.total,utilization.gpu --format=csv -l 1 > vram_<tag>.csv
 ```
-1. **Trial** (3 articles, server config A): `uv run python scripts/heading_sentence_pilot.py --backend local --model <name> --base-url http://<address>:8080 --n 3 --workers 1 --tag win-trial`. Look at the three sentences in `data/pilot/heading_win-trial.jsonl`. If the sentences contain reasoning text or `<think>` (thinking was not switched off), stop and report: that is the first thing to settle.
-2. **Config A**: `... --workers 1 --tag qwen35-4b-q4km-np1`.
-3. **Config A again** with the same tag plus `-again`, to see whether the same input gives the same sentences (temperature 0).
-4. **Config B** (restart the server): `... --workers 4 --tag qwen35-4b-q4km-np4`.
-5. **Config C** only if B failed.
+1. **Trial** (3 articles, server config A): `uv run python scripts/heading_sentence_pilot.py --backend local --model <name> --base-url http://<address>:8080 --prompt sentence.v2 --n 3 --workers 1 --tag win-trial`. Look at the three sentences in `data/pilot/heading_win-trial.jsonl`. If the sentences contain reasoning text or `<think>` (thinking was not switched off), stop and report: that is the first thing to settle.
+2. **Config A**: `... --prompt sentence.v2 --workers 1 --tag qwen35-4b-q4km-v2-np1`.
+3. **Config A again** with the same command and the tag `qwen35-4b-q4km-v2-np1-again`, to see whether the same input gives the same sentences (temperature 0).
+4. **Config B** (restart the server): `... --prompt sentence.v2 --workers 4 --tag qwen35-4b-q4km-v2-np4`.
+5. **Config C** only if B failed (same command with `--workers 2`, tag `...-v2-np2`).
+6. **Prompt v1, once**, on the server config that was fastest: `... --prompt sentence.v1 --workers <its slots> --tag qwen35-4b-q4km-v1`. It shows whether the small model follows each prompt equally well.
 Each run prints a summary: answered count, flags, wall time, tokens per second. The peak of the second column of `vram_<tag>.csv` is the GPU memory.
 
 ### 8.3 Speed of one article alone
@@ -112,19 +113,19 @@ Reply to the user with:
 1. `git rev-parse HEAD` in WSL2; the llama.cpp zip name and `--version`; the model file name, size and SHA-256; the licence line from the model card.
 2. The driver and CUDA version from `nvidia-smi`; which WSL2 network option worked.
 3. For each config (A, A again, B, C if run): the server command, the summary printed by the script, the peak GPU memory, and whether the A rerun produced identical sentences (count how many differ).
-4. The first five sentences of the A run (copy them), and every flagged line with its flag.
+4. The first five sentences of the A run (copy them), and every flagged line with its flag. Also say, for the v2 run, how many sentences are **not questions** (no question mark) and how many contain a thinking marker.
 5. Anything that did not match this file, with the exact output.
 
 Then commit the outputs (names are fixed so the Mac can find them):
 ```
 mkdir -p docs/pilots
-cp data/pilot/heading_qwen35-4b-q4km-np*.jsonl docs/pilots/
+cp data/pilot/heading_qwen35-4b-q4km-*.jsonl docs/pilots/
 grep -ci "users" docs/pilots/*.jsonl      # must print 0 for every file
 git add docs/pilots && git commit -m "Add local heading-sentence pilot outputs" && git push
 ```
 Do not commit the `vram_*.csv` files or the trial files; paste the peak memory numbers in the reply.
 
 ## 12. What happens next on the Mac (not your job)
-1. The user and the Mac session read the 50 sentences of each model side by side: accuracy to the article text, plain wording, invented content, article numbers, length.
+1. The user and the Mac session read the 50 sentences of each model side by side: accuracy to the article text, everyday wording, invented content (for example a "patron" that the article does not mention), article numbers, length.
 2. Decision: local model, API, or a mix, with measured speed and cost. If local: the full run is about 11,700 articles at the measured speed; GDPR English needs its own prompt version.
 3. The sentence then enters a new chunking run `header-llm` and is embedded on this laptop later (a separate handoff).

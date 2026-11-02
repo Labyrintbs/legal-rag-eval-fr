@@ -61,3 +61,12 @@ def test_ask_local_posts_one_chat_with_thinking_off_and_returns_usage_and_timing
     assert seen["url"] == "/v1/chat/completions" and seen["body"]["temperature"] == 0
     assert seen["body"]["chat_template_kwargs"] == {"enable_thinking": False} and seen["body"]["max_tokens"] == 120
     assert out["text"] == "Une phrase." and out["usage"] == {"completion_tokens": 4} and out["timings"]["predicted_per_second"] == 30.0
+
+
+def test_both_prompts_have_the_fields_the_script_reads():
+    prompts = load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"]
+    assert set(prompts) == {"sentence.v1", "sentence.v2"}
+    for prompt in prompts.values():
+        assert {"system", "user", "max_body_chars", "max_words", "max_tokens"} <= set(prompt)
+        assert "{body}" in prompt["user"] and "{doc}" in prompt["user"] and "{context}" in prompt["user"]
+    assert "la question" in prompts["sentence.v2"]["system"]

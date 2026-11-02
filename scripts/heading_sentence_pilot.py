@@ -21,7 +21,7 @@ from legalrag import questiongen as qg
 from legalrag.sources import gdpr, legi
 
 RAW = Path("data/raw")
-PROMPT_ID = "sentence.v1"
+PROMPT_IDS = ("sentence.v1", "sentence.v2")
 SEED = 20261101
 
 
@@ -79,6 +79,7 @@ def summarize(records: list[dict], wall: float) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--backend", choices=("local", "deepseek"), required=True)
+    parser.add_argument("--prompt", choices=PROMPT_IDS, default="sentence.v1")
     parser.add_argument("--model", required=True, help="local: the name the server reports; deepseek: deepseek-flash")
     parser.add_argument("--base-url", default="http://127.0.0.1:8080", help="local server")
     parser.add_argument("--n", type=int, default=None, help="use only the first N of the 50 (trial)")
@@ -88,10 +89,10 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, default=Path("data/pilot"))
     args = parser.parse_args()
 
-    prompt = qg.load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"][PROMPT_ID]
+    prompt = qg.load_prompts(Path("prompts/heading_sentence.yaml"))["prompts"][args.prompt]
     articles = headsentence.sample(load_articles(), SEED)[: args.n]
     jobs = [(a, headsentence.messages(prompt, a)) for a in articles]
-    print(f"{len(jobs)} articles, prompt {PROMPT_ID}, backend {args.backend}, workers {args.workers}")
+    print(f"{len(jobs)} articles, prompt {args.prompt}, backend {args.backend}, workers {args.workers}")
 
     if args.backend == "deepseek":
         budget = llm.Budget(run_cap=args.run_cap, total_cap=5.0)
@@ -130,7 +131,7 @@ def main() -> None:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out = args.out_dir / f"heading_{args.tag}.jsonl"
-    header = {"type": "run", "prompt": PROMPT_ID, "seed": SEED, "backend": args.backend, "model": args.model,
+    header = {"type": "run", "prompt": args.prompt, "seed": SEED, "backend": args.backend, "model": args.model,
               "workers": args.workers, "wall_seconds": round(wall, 2), "server": info, **git_state()}
     out.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in [header, *records]) + "\n")
     print(summarize(records, wall))
