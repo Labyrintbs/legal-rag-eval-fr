@@ -409,3 +409,20 @@ Entry template:
 | ts_rank-len fused, weight 1 / 0.5 / 0.25 | 0.682 / 0.694 / 0.704 | 0.842 / 0.861 / 0.861 | 0.626 / 0.621 / 0.624 | -0.055 / -0.044 / -0.033 | weight 0.25: -0.045 [-0.083, -0.008] |
 
 - Verdict by decision 3b: no setting is an improvement; every nDCG@10 interval against the dense baseline includes 0 or lies below it, and the two ts_rank searches alone are clearly worse than BM25. As expected, ts_rank does not weigh rare words more (no inverse document frequency), which BM25 does. Dense stays the retrieval default.
+
+## 2026-11-03: bge-m3 sparse as the word-matching search, dev half (step 0c)
+- Vectors: bge-m3 sparse (the model's own word-weight head, `relu(linear(last hidden state))`, highest weight per token id, special tokens dropped; score = sum of weight products over shared tokens), default chunking, 12,136 chunks, encoded on the laptop (RTX 3060 Laptop, 105 s, peak 1,491 MB, 71.7 tokens per chunk on average, same model revision as the dense baseline) from commit 73137c2; Release `embeddings-bge-m3-sparse-v1`, both SHA-256 equal to the notes. The index checks the file against the `default` run: the same 12,136 chunks and the hash of every chunk text.
+- Same protocol as BM25 and ts_rank: alone, and fused with dense by reciprocal rank fusion (k 60, top 100 each, keyword weight 1, 0.5, 0.25); runs `sparse-keyword`, `sparse-hybrid-w10`, `sparse-hybrid-w05`, `sparse-hybrid-w025`.
+
+| Search | nDCG@10 | Recall@10 | MRR@10 | minus dense baseline [95% paired] | minus BM25, same weight |
+|---|---|---|---|---|---|
+| dense baseline | 0.738 | 0.893 | 0.670 | | |
+| BM25 alone | 0.548 | 0.697 | 0.505 | -0.190 | |
+| sparse alone | 0.639 | 0.775 | 0.587 | -0.099 [-0.184, -0.009], Recall@10 -0.119 [-0.204, -0.036] | +0.091 [+0.004, +0.195] |
+| sparse fused, weight 1 | 0.732 | 0.851 | 0.680 | -0.006 [-0.066, +0.049] | +0.032 [-0.029, +0.103] |
+| sparse fused, weight 0.5 | 0.762 | 0.865 | 0.714 | +0.024 [-0.026, +0.071] | +0.046 [-0.007, +0.106] |
+| sparse fused, weight 0.25 | 0.767 | 0.885 | 0.711 | +0.029 [-0.008, +0.066] | +0.018 [-0.028, +0.069] |
+
+- Verdict by decision 3b: no setting is an improvement (every nDCG@10 interval against the dense baseline includes 0, alone it is clearly lower). Sparse is clearly better than BM25 alone (+0.091 [+0.004, +0.195]) and its fusions are better than BM25's in point estimate, but not distinguishable from them; the learned weights help a keyword search, they do not make it beat dense.
+- Rule of the test plan (`0004`, written 2026-11-03 before this run): sparse goes on the test half only if one setting reaches nDCG@10 +0.03 over the dense baseline. The best is weight 0.25 with +0.02915, so the rule is not met and **sparse is not run on the test half**.
+- Multiple comparisons: this adds four comparisons to those already made on one 61-question dev half.
