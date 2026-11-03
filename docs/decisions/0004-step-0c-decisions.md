@@ -41,3 +41,6 @@ Decision 5 of `0003`: the test half is opened once, at the end of the stage, wit
 5. bge-m3 sparse, only if on dev it reaches nDCG@10 +0.03 or more over the dense baseline in one of its settings; then only the single dev-best setting (alone or fused at one weight) is run. Otherwise it is not run on the test half. **Result (2026-11-02): best dev setting +0.02915, rule not met, not run.** The list for the session is therefore items 1 to 4.
 
 **Rules.** No setting, prompt or file is changed after the test half is opened. All five results are reported in full, losses included. The test half is not used to choose among the comparisons. After the session: the stage summary of 0c, then the review gate with the user before 0d.
+
+## Review gate of step 0c (user, 2026-11-03)
+Approved: the final setup is the dense baseline only (no reranker, no rewriting, no article-number rule, no keyword search, no LLM-written heading), and everything written in `docs/stage_0c_summary.md` (results, set-aside list, caveats). Step 0d may start.
