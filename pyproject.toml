@@ -22,6 +22,8 @@ dependencies = [
 [project.optional-dependencies]
 # Embedding job only (GPU laptop); keeps the Mac install light.
 embed = ["sentence-transformers", "torch"]
+# The service (step 0d, decision 4 of docs/decisions/0006): LlamaIndex around our retrieval; pinned, its API changes between versions.
+serve = ["llama-index-core==0.14.25", "llama-index-llms-deepseek==0.4.1"]
 
 [dependency-groups]
 dev = [
