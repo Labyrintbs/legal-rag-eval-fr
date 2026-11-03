@@ -1,8 +1,6 @@
 import json
-import uuid
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -11,8 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from legalrag import db, smoke, store
-from legalrag.config import database_url
+from legalrag import smoke, store
 from legalrag.dbcheck import NEIGHBOUR_QUERY, _exact_scan, cross_language_rate, index_recall
 from legalrag.embed import DIM, MODEL, embed_text_hash
 from legalrag.ingest import build_chunks
@@ -22,37 +19,8 @@ FIXTURES = Path(__file__).parent / "fixtures"
 SETTINGS = {"style": "last_k", "k": 3, "max_tokens": 100_000, "collapse_repeats": False}
 
 
-def with_database(url: str, name: str) -> str:
-    return urlparse(url)._replace(path="/" + name).geturl()
-
-
 def words(s: str) -> int:
     return len(s.split())
-
-
-@pytest.fixture(scope="module")
-def database_name():
-    """A throwaway database on the dev server; the tests skip when no server is reachable."""
-    try:
-        admin = psycopg.connect(with_database(database_url(), "postgres"), autocommit=True)
-    except psycopg.OperationalError:
-        pytest.skip("no Postgres reachable at DATABASE_URL (run `make db-up`)")
-    name = f"legalrag_test_{uuid.uuid4().hex[:8]}"
-    admin.execute(f"CREATE DATABASE {name}")
-    try:
-        db.migrate(with_database(database_url(), name))
-        yield name
-    finally:  # also when the migration fails, so no throwaway database is left behind
-        admin.execute(f"DROP DATABASE {name} WITH (FORCE)")
-        admin.close()
-
-
-@pytest.fixture
-def conn(database_name):
-    c = db.connect(with_database(database_url(), database_name))
-    yield c
-    c.rollback()  # each test leaves the database as it found it
-    c.close()
 
 
 @pytest.fixture(scope="module")
