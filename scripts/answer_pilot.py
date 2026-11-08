@@ -12,7 +12,7 @@ from pathlib import Path
 
 from llama_index.llms.deepseek import DeepSeek
 
-from legalrag import db, embed, gold, rag
+from legalrag import db, embed, gold, rag, search
 from legalrag.questiongen import load_prompts as qg_load_prompts
 
 RUN = "default"
@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument("--model", required=True, help="deepseek-flash or deepseek-v4-pro")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--n", type=int, default=None, help="trial: only the first N dev questions")
-    parser.add_argument("--threshold", type=float, default=0.60, help="0 switches the pre-filter off")
+    parser.add_argument("--threshold", type=float, default=search.WEAK_THRESHOLD, help="0 switches the pre-filter off")
     parser.add_argument("--prompt", default="answer.v1")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()

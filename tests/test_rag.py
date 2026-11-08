@@ -73,8 +73,8 @@ def test_a_good_reply_becomes_an_answer_with_the_stored_passage_and_the_cost_of_
 
 def test_a_weak_search_never_calls_the_model():
     llm = FakeLLM(error=AssertionError("must not be called"))
-    result = ask([node(0.59)], llm)
-    assert result.outcome == "refused_weak_retrieval" and "0.59" in result.reason and llm.calls == []
+    result = ask([node(0.54)], llm)
+    assert result.outcome == "refused_weak_retrieval" and "0.54" in result.reason and llm.calls == []
     assert ask([], FakeLLM(GOOD)).outcome == "refused_weak_retrieval"
 
 

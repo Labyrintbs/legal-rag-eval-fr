@@ -25,8 +25,8 @@ def test_the_best_chunk_of_each_article_is_kept_in_order():
 
 
 def test_a_weak_search_is_refused_before_the_model():
-    assert search.is_weak([]) and search.is_weak([hit(similarity=0.59)]) and not search.is_weak([hit(similarity=0.60)])
-    assert search.WEAK_THRESHOLD == 0.60 and search.TOP_ARTICLES == 5
+    assert search.is_weak([]) and search.is_weak([hit(similarity=0.54)]) and not search.is_weak([hit(similarity=0.55)])
+    assert search.WEAK_THRESHOLD == 0.55 and search.TOP_ARTICLES == 5
 
 
 def test_the_context_numbers_every_unit_under_its_source():

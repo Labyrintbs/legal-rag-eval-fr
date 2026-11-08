@@ -13,7 +13,7 @@ from legalrag.smoke import article_label
 
 TOP_ARTICLES = 5  # decision 7 of 0006
 CHUNKS_SEARCHED = 400  # as in the evaluation: enough chunks to find 5 distinct articles
-WEAK_THRESHOLD = 0.60  # decision 9 of 0006: below this top-1 similarity no answer is attempted (provisional)
+WEAK_THRESHOLD = 0.55  # decision 9 of 0006: below this top-1 similarity no answer is attempted (provisional)
 HITS = (
     "SELECT c.chunk_index, c.header_text, c.body_text, a.source_code, a.kind, a.article_num, a.section_path, "
     "a.source_url, 1 - (e.embedding <=> %s) AS similarity "
