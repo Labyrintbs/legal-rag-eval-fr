@@ -61,6 +61,14 @@ def _radios(name: str, values: tuple[str, ...]) -> str:
     return " ".join(f'<label><input type="radio" name="{name}" value="{v}"> {v}</label>' for v in values)
 
 
+def _texts(title: str, texts: list[tuple[str, str]]) -> str:
+    """A collapsed block with (article label, text) pairs; nothing when there are none."""
+    if not texts:
+        return ""
+    body = "".join(f'<blockquote><i>{html.escape(label)}</i> {html.escape(text)}</blockquote>' for label, text in texts)
+    return f"<details><summary>{html.escape(title)}</summary>{body}</details>"
+
+
 def _item(row: dict) -> str:
     key = html.escape(row["id"])
     gold = ", ".join(html.escape(g) for g in row["gold"]) or "none (no answer expected)"
@@ -76,7 +84,10 @@ def _item(row: dict) -> str:
         out.append(f'<p>Does the answer answer the question? {_radios(f"{key}|answer", ANSWERS)}</p>')
     else:
         out.append(f'<p class="refusal">Not answered ({html.escape(row["outcome"])}): {html.escape(row["reason"] or "")}</p>')
-        out.append(f'<p>Was refusing right? {_radios(f"{key}|refusal", REFUSALS)}</p>')
+        out.append(_texts("What the model was shown (the top 5 articles)", row.get("seen", [])))
+        out.append(_texts("Text of the gold articles (what should answer it)", row.get("gold_text", [])))
+        out.append(f'<p>Was refusing right? (right: what the model was shown does not answer the question; wrong: it does) '
+                   f'{_radios(f"{key}|refusal", REFUSALS)}</p>')
     out.append(f'<p><input type="text" name="{key}|note" placeholder="note (optional)" size="60"></p></section>')
     return "\n".join(out)
 

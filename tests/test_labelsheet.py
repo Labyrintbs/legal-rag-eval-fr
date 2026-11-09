@@ -61,6 +61,13 @@ def test_checks_carry_the_original_passages_and_stop_when_the_original_changed(t
         labelsheet.load_checks(edits, [row("a1")])
 
 
+def test_a_refusal_shows_what_the_model_saw_and_the_gold_text_collapsed():
+    refused = row("r1", outcome="refused_by_model", reason="no", seen=[("L1", "texte vu <b>")], gold_text=[("R2314-1", "texte or")])
+    page = labelsheet.render([refused], "t")
+    assert page.count("<details>") == 2 and "texte vu &lt;b&gt;" in page and "texte or" in page
+    assert "<details>" not in labelsheet.render([row("r2", outcome="refused_by_model", reason="no")], "t")
+
+
 def test_the_sheet_has_a_radio_group_per_claim_and_per_answer_and_escapes_the_text():
     page = labelsheet.render([row("a1", question="Vrai <b>?</b>"), row("r1", outcome="refused_by_model", reason="no")], "t")
     assert page.count('name="a1|claim') == 2 * 3 and page.count('name="a1|answer"') == 3
