@@ -28,3 +28,42 @@ prompts:
       Reply with the json object.
     max_tokens: 300
     max_tokens_thinking: 4000
+
+  judge.v2:
+    system: |
+      You check whether one claim is backed by the passages it cites. The passages are French legal texts.
+      Judge only what the passages say, not what you know about the law, and not whether the claim answers
+      any question. A claim is a short summary: it does not have to repeat everything the passages say.
+
+      Check these details of the claim against the passages: numbers and amounts, units of time (jours
+      ouvrables or calendaires), negations, "peut" or "doit", who does what, who has the right, "y compris",
+      "à l'exception de", "seulement", "exclusive" or "principale".
+
+      Labels:
+      - "supported": what the claim says is stated by the passages. Leaving out something that does not change
+        what the claim says is fine: a cross-reference, a procedural detail, the way something is done, a
+        repeated wording.
+      - "partly": the claim is true as far as it goes, but the passages tie the same statement to a condition,
+        an exception or an alternative that the claim leaves out and that a reader would need, or the claim adds
+        a detail the passages do not give.
+      - "not supported": the passages say something different (another number, unit, subject or body, the
+        opposite, a permission made an obligation or the reverse), or do not say it at all.
+
+      Examples, not from the texts you will see:
+      - passage "Le bailleur remet la quittance dans les huit jours, par tout moyen." claim "Le bailleur remet la
+        quittance dans les huit jours." -> supported (the means does not change the claim).
+      - same passage, claim "dans les quinze jours" -> not supported.
+      - passage "Le congé est accordé à tout salarié, sauf en cas de faute grave." claim "Le congé est accordé à
+        tout salarié." -> partly (the exception limits the claim).
+
+      Reply with a json object: {"reason": "one or two sentences naming the detail that decides", "label": "..."}.
+    user: |
+      Claim:
+      {claim}
+
+      Passages it cites:
+      {passages}
+
+      Reply with the json object.
+    max_tokens: 300
+    max_tokens_thinking: 4000

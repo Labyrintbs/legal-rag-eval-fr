@@ -19,7 +19,7 @@ from legalrag import questiongen as qg
 
 PILOT = Path("data/pilot/answers_flash-v3.jsonl")
 OUT = Path("data/judge")
-PENDING = ("mw-035|claim0",)  # not yet settled with the labeller: left out of the scores
+PENDING: tuple[str, ...] = ()  # labels not yet settled with the labeller: left out of the scores
 
 
 def load_items(labels_path: Path, exclude: tuple[str, ...]) -> list[claimjudge.Item]:
@@ -30,8 +30,9 @@ def load_items(labels_path: Path, exclude: tuple[str, ...]) -> list[claimjudge.I
     return [i for i in claimjudge.collect(labels, rows, checks) if i.key not in exclude]
 
 
-def judge_all(items: list[claimjudge.Item], model: str, think: bool, run_cap: float, workers: int, tag: str) -> list[dict]:
-    prompt = qg.load_prompts(Path("prompts/judge.yaml"))["prompts"]["judge.v1"]
+def judge_all(items: list[claimjudge.Item], model: str, think: bool, run_cap: float, workers: int, tag: str,
+              prompt_id: str) -> list[dict]:
+    prompt = qg.load_prompts(Path("prompts/judge.yaml"))["prompts"][prompt_id]
     budget = llm.Budget(run_cap=run_cap, total_cap=5.0)
     http = llm.make_http(os.environ["DEEPSEEK_API_KEY"])
     max_tokens = prompt["max_tokens_thinking"] if think else prompt["max_tokens"]
@@ -73,6 +74,7 @@ def main() -> None:
     parser.add_argument("--export", type=Path)
     parser.add_argument("--run", metavar="MODEL")
     parser.add_argument("--think", action="store_true", help="thinking mode of the judge model")
+    parser.add_argument("--prompt", default="judge.v1")
     parser.add_argument("--tag")
     parser.add_argument("--score", type=Path)
     parser.add_argument("--run-cap", type=float, default=0.5)
@@ -88,10 +90,10 @@ def main() -> None:
     if args.run:
         if not args.tag:
             parser.error("--run needs --tag")
-        verdicts = judge_all(items, args.run, args.think, args.run_cap, args.workers, args.tag)
+        verdicts = judge_all(items, args.run, args.think, args.run_cap, args.workers, args.tag, args.prompt)
         OUT.mkdir(parents=True, exist_ok=True)
         (OUT / f"{args.tag}.jsonl").write_text("".join(json.dumps(v, ensure_ascii=False) + "\n" for v in verdicts))
-        print(f"model {args.run}, thinking {args.think}, {sum('error' in v for v in verdicts)} errors")
+        print(f"model {args.run}, prompt {args.prompt}, thinking {args.think}, {sum('error' in v for v in verdicts)} errors")
         score(items, verdicts)
     if args.score:
         score(items, labelsheet.read_rows(args.score))
