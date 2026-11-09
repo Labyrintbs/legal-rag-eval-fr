@@ -19,7 +19,7 @@ from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from pydantic import ValidationError
 
-from legalrag import answer, search, smoke
+from legalrag import answer, limits, search, smoke
 from legalrag import llm as costs
 from legalrag.embed import MODEL
 from legalrag.units import Unit, split_units
@@ -73,10 +73,15 @@ class AnswerEngine(CustomQueryEngine):
     prompt_id: str
     threshold: float = search.WEAK_THRESHOLD
     ledger_label: str | None = None  # development runs also append their calls to the development ledger
+    gate: Any = None  # a limits.Limits (rate limits and kill switch); none in development runs
 
     def custom_query(self, query_str: str) -> Response:
+        return self.respond(query_str)
+
+    def respond(self, question: str, client: str | None = None) -> Response:
+        """Search, then the weak check, then the limits, then the model; the articles come back in every case."""
         started = time.monotonic()
-        nodes = self.retriever.retrieve(query_str)
+        nodes = self.retriever.retrieve(question)
         hits = hits_of(nodes)
         retrieval_ms = round((time.monotonic() - started) * 1000)
         if search.is_weak(hits, self.threshold):
@@ -84,7 +89,12 @@ class AnswerEngine(CustomQueryEngine):
             result = answer.Result("refused_weak_retrieval", f"(no answer: nothing close enough found, best {top})", hits,
                                    reason=f"top similarity {top} below {self.threshold:.2f}", retrieval_ms=retrieval_ms)
         else:
-            result = self.ask(query_str, self.postprocessor.postprocess_nodes(nodes), hits, retrieval_ms)
+            verdict = self.gate.check(client) if self.gate else limits.ALLOWED
+            if verdict.allowed:
+                result = self.ask(question, self.postprocessor.postprocess_nodes(nodes), hits, retrieval_ms)
+            else:
+                result = answer.Result(verdict.outcome, f"(no answer: {verdict.reason})", hits, reason=verdict.reason,
+                                       retrieval_ms=retrieval_ms, status=verdict.status, retry_after=verdict.retry_after)
         result.total_ms = round((time.monotonic() - started) * 1000)
         return Response(response=result.text, source_nodes=nodes, metadata={"result": result})
 

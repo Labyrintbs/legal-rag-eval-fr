@@ -135,6 +135,8 @@ class Result:
     retrieval_ms: int | None = None
     llm_ms: int | None = None
     total_ms: int | None = None
+    status: int = 200  # HTTP status for the service: 429 client limit, 503 cost cap or switch off (decision 15)
+    retry_after: int | None = None  # seconds
 
 
 def usage_of(usage) -> tuple[int | None, int | None, int | None]:

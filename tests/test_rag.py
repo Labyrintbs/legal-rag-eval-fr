@@ -11,7 +11,7 @@ pytest.importorskip("llama_index.core")
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, TextNode
 
-from legalrag import answer, rag, search, trace
+from legalrag import answer, limits, rag, search, trace
 
 TRIAL = ("Le contrat de travail à durée indéterminée peut comporter une période d'essai dont la durée maximale est : "
          "1° Pour les ouvriers et les employés, de deux mois ; 2° Pour les agents de maîtrise et les techniciens, de trois mois ; "
@@ -76,6 +76,38 @@ def test_a_weak_search_never_calls_the_model():
     result = ask([node(0.54)], llm)
     assert result.outcome == "refused_weak_retrieval" and "0.54" in result.reason and llm.calls == []
     assert ask([], FakeLLM(GOOD)).outcome == "refused_weak_retrieval"
+
+
+class FakeGate:
+    def __init__(self, verdict):
+        self.verdict, self.clients = verdict, []
+
+    def check(self, client):
+        self.clients.append(client)
+        return self.verdict
+
+
+def respond(nodes, llm, gate, client="c1", **changes):
+    return engine(nodes, llm, gate=gate, **changes).respond("Quelle durée pour un cadre ?", client).metadata["result"]
+
+
+def test_a_limited_request_never_calls_the_model_and_still_returns_the_articles():
+    llm = FakeLLM(error=AssertionError("must not be called"))
+    for verdict, outcome in ((limits.Decision(False, "rate_limited", "too many", 429, 42), "rate_limited"),
+                             (limits.Decision(False, "llm_disabled", "switched off", 503), "llm_disabled")):
+        gate = FakeGate(verdict)
+        result = respond([node(), node(0.65, "L1221-20")], llm, gate)
+        assert (result.outcome, result.status, result.retry_after) == (outcome, verdict.status, verdict.retry_after)
+        assert [h.label for h in result.hits] == ["L1221-19", "L1221-20"] and verdict.reason in result.text
+        assert gate.clients == ["c1"] and llm.calls == []
+
+
+def test_an_allowed_request_reaches_the_model_and_a_weak_search_skips_the_gate():
+    gate = FakeGate(limits.ALLOWED)
+    result = respond([node()], FakeLLM(GOOD), gate)
+    assert result.outcome == "answered" and result.status == 200 and gate.clients == ["c1"]
+    weak = FakeGate(limits.Decision(False, "llm_disabled", "off", 503))
+    assert respond([node(0.40)], FakeLLM(GOOD), weak).outcome == "refused_weak_retrieval" and weak.clients == []
 
 
 def test_every_failure_of_the_call_or_the_reply_has_its_own_outcome():

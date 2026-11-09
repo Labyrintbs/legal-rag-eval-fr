@@ -3,7 +3,7 @@ import json
 import os
 import time
 from collections import Counter
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -19,6 +19,7 @@ from legalrag import (
     gold,
     headsentence,
     keyword,
+    limits,
     llm,
     rerank,
     rewrite,
@@ -36,6 +37,8 @@ from legalrag.sources import gdpr, legi
 app = typer.Typer(no_args_is_help=True)
 traces_app = typer.Typer(no_args_is_help=True, help="Look at the traces of the service: failures, summary, purge, export.")
 app.add_typer(traces_app, name="traces")
+service_app = typer.Typer(no_args_is_help=True, help="Switch the written answers of the running service on or off.")
+app.add_typer(service_app, name="service")
 
 RAW = Path("data/raw")
 PARQUET = RAW / "legi_vincegx33_train.parquet"
@@ -369,6 +372,36 @@ def traces_export_cmd(
         except FileExistsError as e:
             raise typer.BadParameter(str(e)) from e
     typer.echo(f"{n} candidates written to {out}; read each one and remove personal data before use")
+
+
+@service_app.command("llm-off")
+def service_llm_off_cmd() -> None:
+    """Kill switch: no model call is made; search still works. Takes effect on the next request."""
+    with db.connect() as conn:
+        limits.set_llm_enabled(conn, False)
+    typer.echo("written answers are OFF")
+
+
+@service_app.command("llm-on")
+def service_llm_on_cmd() -> None:
+    """Turn the written answers back on."""
+    with db.connect() as conn:
+        limits.set_llm_enabled(conn, True)
+    typer.echo("written answers are ON")
+
+
+@service_app.command("status")
+def service_status_cmd() -> None:
+    """The kill switch and what today's limits have used."""
+    settings = limits.Settings()
+    with db.connect() as conn:
+        enabled = limits.llm_enabled(conn)
+        today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        spent, requests = conn.execute(
+            "SELECT coalesce(sum(cost_usd), 0)::float, count(*) FROM query_traces WHERE created_at >= %s", (today,)).fetchone()
+    typer.echo(f"written answers: {'ON' if enabled else 'OFF'}")
+    typer.echo(f"today (UTC): {requests} requests, {spent:.4f} of {settings.cost_per_day_usd:.2f} USD used; "
+               f"per client {settings.per_minute} a minute and {settings.per_day} a day")
 
 
 @app.command("db-check")
