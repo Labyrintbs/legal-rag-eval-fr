@@ -40,9 +40,12 @@ def parse_answer(text: str) -> list[Claim]:
     return claims
 
 
-def pick(rows: list[dict], answered: int = 19, gdpr_share: float = 0.3, seed: int = 20261109) -> list[dict]:
+def pick(rows: list[dict], answered: int = 19, gdpr_share: float = 0.3, seed: int = 20261109,
+         skip: frozenset[str] = frozenset()) -> list[dict]:
     """Every row that is not a plain answer (refusals, false premise, underspecified), plus a random sample of the
-    plain answers, about `gdpr_share` of them citing the GDPR. In the order of the input rows."""
+    plain answers, about `gdpr_share` of them citing the GDPR. In the order of the input rows; `skip` leaves out
+    the answers that are already labelled."""
+    rows = [r for r in rows if r["id"] not in skip]
     rest = [r for r in rows if r["outcome"] != "answered" or r["kind"] in ("false_premise", "underspecified")]
     plain = [r for r in rows if r["outcome"] == "answered" and r not in rest]
     law = [r for r in plain if any(c.startswith(GDPR) for c in r["cited"])]
@@ -74,6 +77,31 @@ def _item(row: dict) -> str:
     else:
         out.append(f'<p class="refusal">Not answered ({html.escape(row["outcome"])}): {html.escape(row["reason"] or "")}</p>')
         out.append(f'<p>Was refusing right? {_radios(f"{key}|refusal", REFUSALS)}</p>')
+    out.append(f'<p><input type="text" name="{key}|note" placeholder="note (optional)" size="60"></p></section>')
+    return "\n".join(out)
+
+
+def load_checks(path, rows: list[dict], seed: int = 20261109) -> list[dict]:
+    """The claim checks (`eval/answer_checks.json`) as items for the sheet, in a shuffled order: each is a claim,
+    edited or unchanged, with the passages the original claim cited. Stops if an original no longer matches."""
+    by_id = {r["id"]: r for r in rows}
+    items = []
+    for edit in json.loads(path.read_text()):
+        source = by_id[edit["from"]]
+        original = parse_answer(source["text"])[edit["claim"]]
+        if original.text != edit["original"]:
+            raise ValueError(f"{edit['id']}: the claim {edit['from']}#{edit['claim']} is no longer the stored original")
+        items.append({"id": edit["id"], "question": source["question"], "claim": Claim(edit["text"], original.passages)})
+    random.Random(seed).shuffle(items)
+    return items
+
+
+def _check_item(item: dict) -> str:
+    key, claim = html.escape(item["id"]), item["claim"]
+    out = [f'<section data-id="{key}"><h2>{key} <small>claim check</small></h2>',
+           f'<p class="q">{html.escape(item["question"])}</p>', '<div class="claim">', f'<p><b>{html.escape(claim.text)}</b></p>']
+    out += [f'<blockquote><i>{html.escape(label)}</i> {html.escape(passage)}</blockquote>' for label, passage in claim.passages]
+    out.append(f'<p>Supported by what it cites? {_radios(f"{key}|claim0", SUPPORT)}</p></div>')
     out.append(f'<p><input type="text" name="{key}|note" placeholder="note (optional)" size="60"></p></section>')
     return "\n".join(out)
 
@@ -126,8 +154,9 @@ update();
 """
 
 
-def render(rows: list[dict], sheet: str) -> str:
-    return PAGE.format(items="\n".join(_item(r) for r in rows), sheet=html.escape(sheet))
+def render(rows: list[dict], sheet: str, checks: list[dict] | None = None) -> str:
+    items = [_item(r) for r in rows] + [_check_item(c) for c in checks or []]
+    return PAGE.format(items="\n".join(items), sheet=html.escape(sheet))
 
 
 def read_rows(path) -> list[dict]:

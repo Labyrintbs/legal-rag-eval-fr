@@ -1,3 +1,7 @@
+import json
+
+import pytest
+
 from legalrag import labelsheet
 
 TEXT = (
@@ -36,6 +40,25 @@ def test_pick_keeps_every_refusal_and_odd_kind_and_samples_the_plain_answers():
     assert {"r1", "f1", "u1"} <= set(ids) and len(ids) == 13
     assert sum(i.startswith("g") for i in ids) == 3
     assert ids == [r["id"] for r in rows if r["id"] in ids] and ids == [r["id"] for r in labelsheet.pick(rows, 10, 0.3)]
+
+
+def test_pick_leaves_out_the_answers_already_labelled():
+    rows = [row(f"a{i}") for i in range(6)] + [row("r1", outcome="refused_by_model", reason="no")]
+    ids = [r["id"] for r in labelsheet.pick(rows, answered=3, skip=frozenset({"a0", "r1"}))]
+    assert len(ids) == 3 and "a0" not in ids and "r1" not in ids
+
+
+def test_checks_carry_the_original_passages_and_stop_when_the_original_changed(tmp_path):
+    edits = tmp_path / "checks.json"
+    edit = {"id": "check-01", "from": "a1", "claim": 0, "original": "Quatre mois pour un cadre.", "text": "Six mois pour un cadre."}
+    edits.write_text(json.dumps([edit]))
+    (item,) = labelsheet.load_checks(edits, [row("a1")])
+    assert item["claim"].text == "Six mois pour un cadre." and item["claim"].passages[0][0] == "L1221-19"
+    page = labelsheet.render([], "t", [item])
+    assert page.count('name="check-01|claim0"') == 3 and "Six mois pour un cadre." in page and "Quatre mois" not in page.split("<section")[1]
+    edits.write_text(json.dumps([{**edit, "original": "Autre phrase."}]))
+    with pytest.raises(ValueError, match="no longer"):
+        labelsheet.load_checks(edits, [row("a1")])
 
 
 def test_the_sheet_has_a_radio_group_per_claim_and_per_answer_and_escapes_the_text():
