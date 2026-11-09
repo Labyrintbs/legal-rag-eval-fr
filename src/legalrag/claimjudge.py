@@ -2,13 +2,28 @@
 Validated against the labels made by hand on the sheets of `labelsheet` before it scores anything else.
 """
 
-import json
 from collections import Counter
 from dataclasses import dataclass
+from typing import Literal, get_args
+
+from pydantic import BaseModel, field_validator
 
 from legalrag import labelsheet
 
-LABELS = labelsheet.SUPPORT  # supported, partly, not supported
+Label = Literal["supported", "partly", "not supported"]
+LABELS = get_args(Label)
+
+
+class Verdict(BaseModel):
+    """The reply of the judge: the detail that decides, then the label."""
+
+    reason: str = ""
+    label: Label
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def lowercase(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
 
 
 @dataclass(frozen=True)
@@ -41,12 +56,9 @@ def messages(prompt: dict, item: Item) -> list[dict]:
 
 
 def parse(text: str) -> tuple[str, str]:
-    """(label, reason) of the judge's reply; ValueError when it is not a verdict."""
-    data = json.loads(text)
-    label = str(data.get("label", "")).strip().lower()
-    if label not in LABELS:
-        raise ValueError(f"unknown label {data.get('label')!r}")
-    return label, str(data.get("reason", ""))
+    """(label, reason) of the judge's reply; a ValueError (pydantic's ValidationError) when it is not a verdict."""
+    verdict = Verdict.model_validate_json(text)
+    return verdict.label, verdict.reason
 
 
 def kappa(pairs: list[tuple[str, str]]) -> float | None:
