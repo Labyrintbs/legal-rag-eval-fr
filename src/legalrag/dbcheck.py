@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import psycopg
 
 from legalrag.embed import DIM, MODEL
+from legalrag.smoke import EF_SEARCH
 from legalrag.store import HNSW_INDEX
 from legalrag.verify import Check
 
@@ -68,6 +69,8 @@ def index_recall(
         (run_id, MODEL, sample),
     ).fetchall()
     sql = NEIGHBOUR_QUERY.format(extra="AND c.id <> %s")
+    # the index holds every chunking run: at the default ef_search (40) the run filter leaves few candidates
+    conn.execute("SELECT set_config('hnsw.ef_search', %s, true)", (str(EF_SEARCH),))
     found = possible = 0
     for chunk_id, vec in probes:
         args = (run_id, chunk_id, vec, k)

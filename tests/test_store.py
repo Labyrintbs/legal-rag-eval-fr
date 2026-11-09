@@ -252,6 +252,7 @@ def test_index_recall_counts_the_exact_neighbours_the_index_returns(conn, loaded
     store.build_hnsw_index(conn)
     found, possible = index_recall(conn, run_id, sample=10, k=3)
     assert possible == 30 and found == possible
+    assert conn.execute("SHOW hnsw.ef_search").fetchone()[0] == str(smoke.EF_SEARCH)
 
 
 def test_db_checks_run_end_to_end_on_loaded_data(conn, loaded, tmp_path):
