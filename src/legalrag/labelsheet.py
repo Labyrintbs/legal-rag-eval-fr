@@ -132,9 +132,7 @@ blockquote {{ background: #2c2c2c; color: #eee; }} .meta {{ color: #aaa; }} .ref
 </style></head><body>
 <div id="bar"><b id="count"></b> <button onclick="save()">Download labels.json</button>
 <small>Progress is kept in this browser; download when you finish or stop.</small></div>
-<p>Label what the answer does with the text it cites, not whether you know the law to be true.
-<b>supported</b>: the passage says it. <b>partly</b>: the passage says part of it, or says it with a condition the claim leaves out.
-<b>not supported</b>: the passage does not say it.</p>
+{intro}
 {items}
 <script>
 const KEY = "answer-labels-{sheet}";
@@ -165,9 +163,34 @@ update();
 """
 
 
+INTRO = """<p>Label what the answer does with the text it cites, not whether you know the law to be true.
+<b>supported</b>: the passage says it. <b>partly</b>: the passage says part of it, or says it with a condition the claim leaves out.
+<b>not supported</b>: the passage does not say it.</p>"""
+
+COVERAGE = ("covered", "partly", "not covered")
+COVERAGE_INTRO = """<p>Each item has a <b>reference claim</b> (from an expert's reference answer) and <b>our answer</b> to the same
+question. Does our answer say what the claim says? <b>covered</b>: yes, in the same or other words, or a reader would plainly
+conclude it from our answer. <b>partly</b>: our answer says part of it, or a weaker version. <b>not covered</b>: our answer
+does not say it, or says something different. Judge only against our answer, not against what you know of the law.</p>"""
+
+
+def _pair_item(key: str, question: str, claim: str, answer: str) -> str:
+    key = html.escape(key)
+    lines = "".join(f"<blockquote>{html.escape(line)}</blockquote>" for line in answer.split("\n") if line.strip())
+    return (f'<section data-id="{key}"><h2>{key} <small>coverage</small></h2><p class="q">{html.escape(question)}</p>'
+            f'<p><b>Reference claim: {html.escape(claim)}</b></p><p class="meta">Our answer:</p>{lines}'
+            f'<p>Does our answer say it? {_radios(f"{key}|claim0", COVERAGE)}</p>'
+            f'<p><input type="text" name="{key}|note" placeholder="note (optional)" size="60"></p></section>')
+
+
+def render_pairs(pairs: list[tuple[str, str, str, str]], sheet: str) -> str:
+    """The sheet of (key, question, reference claim, our answer) items, for the completeness hand check."""
+    return PAGE.format(items="\n".join(_pair_item(*p) for p in pairs), sheet=html.escape(sheet), intro=COVERAGE_INTRO)
+
+
 def render(rows: list[dict], sheet: str, checks: list[dict] | None = None) -> str:
     items = [_item(r) for r in rows] + [_check_item(c) for c in checks or []]
-    return PAGE.format(items="\n".join(items), sheet=html.escape(sheet))
+    return PAGE.format(items="\n".join(items), sheet=html.escape(sheet), intro=INTRO)
 
 
 def read_rows(path) -> list[dict]:

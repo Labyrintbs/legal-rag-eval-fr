@@ -6,6 +6,7 @@ Contradiction against the source chunk of its question. Data: https://huggingfac
 
 import json
 import os
+import random
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -170,6 +171,27 @@ def completeness_items(rows: list[dict]) -> list[claimjudge.Item]:
         items += [claimjudge.Item(f"{row['id']}|ref{i}", claim, [("answer", answer)], "")
                   for i, claim in enumerate(row["reference_claims"])]
     return items
+
+
+def pick_pairs(items: list[claimjudge.Item], verdicts: list[dict], counts: dict[str, int], seed: int = 20261110) -> list[claimjudge.Item]:
+    """A sample of completeness items for the hand check: `counts` of them per label of the judge, at most one per
+    question while there are enough questions, shuffled so the sheet does not reveal the judge's label."""
+    label = {v["key"]: v["label"] for v in verdicts if v.get("label")}
+    rng = random.Random(seed)
+    pool = [i for i in items if i.key in label]
+    rng.shuffle(pool)
+    chosen, used = [], set()
+    for want, n in counts.items():
+        for strict in (True, False):  # first one per question, then the rest
+            for item in pool:
+                if len([c for c in chosen if label[c.key] == want]) >= n:
+                    break
+                question = item.key.split("|")[0]
+                if label[item.key] == want and item not in chosen and not (strict and question in used):
+                    chosen.append(item)
+                    used.add(question)
+    rng.shuffle(chosen)
+    return chosen
 
 
 def completeness(rows: list[dict], verdicts: list[dict]) -> dict:

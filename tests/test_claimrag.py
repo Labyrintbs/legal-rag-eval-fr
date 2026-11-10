@@ -94,6 +94,25 @@ def test_retrieval_counts_hits_recall_and_rank_of_the_gold_articles_and_groups_b
     assert r["per_gold"] == {"art 8": [1, 2], "art 49 + rct 112": [1, 1]}
 
 
+def test_pick_pairs_takes_the_wanted_count_per_judge_label_one_per_question_first():
+    items = [claimrag.claimjudge.Item(f"{q}|ref{i}", "c", [("answer", "a")], "") for q in range(1, 7) for i in range(2)]
+    labels = ["supported", "supported", "partly", "partly", "not supported", "not supported"] * 2
+    verdicts = [{"key": i.key, "label": label} for i, label in zip(items, labels, strict=True)]
+    picked = claimrag.pick_pairs(items, verdicts, {"supported": 2, "partly": 1, "not supported": 1})
+    got = {i.key: next(v["label"] for v in verdicts if v["key"] == i.key) for i in picked}
+    assert sorted(got.values()) == ["not supported", "partly", "supported", "supported"]
+    assert len({k.split("|")[0] for k in got}) == 4  # no question twice while others are available
+    assert [i.key for i in claimrag.pick_pairs(items, verdicts, {"supported": 2})] == [i.key for i in claimrag.pick_pairs(items, verdicts, {"supported": 2})]
+
+
+def test_the_coverage_sheet_shows_the_claim_and_the_answer_but_no_judge_label():
+    from legalrag import labelsheet
+
+    page = labelsheet.render_pairs([("7|ref0", "Quelle durée ?", "Four months.", "Four months.\nRenewable once.")], "t")
+    assert page.count('name="7|ref0|claim0"') == 3 and "Reference claim: Four months." in page
+    assert page.count("<blockquote>") == 2 and "covered" in page
+
+
 def test_the_halves_split_by_question_so_one_question_is_never_in_both():
     assert claimrag.half("8|0") == claimrag.half("8|3") == "dev" and claimrag.half("7|2") == "test"
 
