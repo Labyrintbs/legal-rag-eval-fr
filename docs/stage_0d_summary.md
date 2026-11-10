@@ -35,7 +35,7 @@ Model `deepseek-flash` with thinking off (same results as `deepseek-v4-pro` at a
 | Answers citing a gold article | 51 of 55 | 47 of 50 |
 | Supported / partly / not supported claims | 85% / 13% / 2.4% | 86% / 12% / 2.1% |
 | False-premise questions | 1 of 2 answered, correcting the premise | 3 of 3 answered, correcting the premise (read) |
-| Unanswerable questions refused | 3 of 4 | 1 of 1 (stopped by the weak-retrieval check at 0.54, just under the threshold) |
+| Unanswerable questions refused | 4 of 4 | 1 of 1 (stopped by the weak-retrieval check at 0.54, just under the threshold) |
 | Cost and speed | about $0.0004 per question, median 1.65 s | about $0.0004 per question, median 1.61 s |
 
 Faithfulness and citations hold on the test half. The extra search misses (7 against 3) are why fewer answerable questions are answered.
