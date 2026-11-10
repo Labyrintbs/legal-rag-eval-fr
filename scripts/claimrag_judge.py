@@ -36,11 +36,18 @@ def main() -> None:
     parser.add_argument("--model", default="deepseek-flash")
     parser.add_argument("--prompt", default="judge.v2")
     parser.add_argument("--half", choices=("dev", "test", "all"), default="all")
+    parser.add_argument("--chunk", choices=("claim-file", "rag-file"), default="claim-file",
+                        help="which source chunk the judge sees; rag-file keeps only the questions the two files share")
+    parser.add_argument("--matching-only", action="store_true", help="with claim-file: the same questions as rag-file")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--run-cap", type=float, default=0.5)
     args = parser.parse_args()
 
-    triples = [t for t in claimrag.load_claims(DATA / "GDPR-CLAIM-LAW.json") if args.half in ("all", claimrag.half(t.key))]
+    triples = claimrag.load_claims(DATA / "GDPR-CLAIM-LAW.json")
+    if args.chunk == "rag-file" or args.matching_only:
+        longer = {t.key: t for t in claimrag.with_rag_chunks(triples, DATA / "GDPR-RAG-LAW.json")}
+        triples = [longer[t.key] if args.chunk == "rag-file" else t for t in triples if t.key in longer]
+    triples = [t for t in triples if args.half in ("all", claimrag.half(t.key))]
     items = claimrag.to_items(triples, [claimrag.template_sentence(t.parts) for t in triples])
     verdicts = claimjudge.run_judge(items, args.model, False, args.run_cap, 6, f"claimrag-{args.tag}", args.prompt)
     OUT.mkdir(parents=True, exist_ok=True)

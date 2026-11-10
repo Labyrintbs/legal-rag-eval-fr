@@ -7,7 +7,7 @@ Contradiction against the source chunk of its question. Data: https://huggingfac
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import httpx
@@ -24,7 +24,8 @@ class Triple:
     key: str  # "<query id>|<claim index>"
     parts: tuple[str, str, str]
     label: str  # the expert's entailment label
-    chunk: str  # the source chunk of the question
+    chunk: str  # the source chunk of the question, as the claim file gives it
+    query: str = ""
 
 
 def load_claims(path: Path) -> list[Triple]:
@@ -35,8 +36,16 @@ def load_claims(path: Path) -> list[Triple]:
         for index, claim in enumerate(item["claims"]):
             if claim.get("claim_entailment") in BINARY and len(claim["claim"]) == 3:
                 triples.append(Triple(f"{item['query_id']}|{index}", tuple(claim["claim"]), claim["claim_entailment"],
-                                      item["relevant_chunk"]))
+                                      item["relevant_chunk"], item["query"]))
     return triples
+
+
+def with_rag_chunks(triples: list[Triple], rag_path: Path) -> list[Triple]:
+    """The triples whose question is, under the same id, the question of GDPR-RAG-LAW.json (the ids of the two files
+    name the same question only in part), with the chunk of that file, which is the longer one."""
+    rag = {i["query_id"]: i for i in json.loads(rag_path.read_text())["input_data"]}
+    same = [(t, rag.get(int(t.key.split("|")[0]))) for t in triples]
+    return [replace(t, chunk=r["relevant_chunk"]) for t, r in same if r and r["query"] == t.query]
 
 
 def half(key: str) -> str:
