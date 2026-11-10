@@ -24,14 +24,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", required=True, help="deepseek-flash or deepseek-v4-pro")
     parser.add_argument("--tag", required=True)
-    parser.add_argument("--n", type=int, default=None, help="trial: only the first N dev questions")
+    parser.add_argument("--n", type=int, default=None, help="trial: only the first N questions of the half")
+    parser.add_argument("--split", choices=("dev", "test"), default="dev", help="test is opened once, for the final numbers")
     parser.add_argument("--threshold", type=float, default=search.WEAK_THRESHOLD, help="0 switches the pre-filter off")
     parser.add_argument("--prompt", default="answer.v1")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
 
     prompt = qg_load_prompts(Path("prompts/answer.yaml"))["prompts"][args.prompt]
-    questions = [q for q in gold.load_gold(Path("eval/gold.jsonl")) if q.split == "dev" and q.lang == "fr"][: args.n]
+    questions = [q for q in gold.load_gold(Path("eval/gold.jsonl")) if q.split == args.split and q.lang == "fr"][: args.n]
     llm = DeepSeek(model=args.model, api_key=os.environ["DEEPSEEK_API_KEY"], temperature=0,
                    additional_kwargs={"extra_body": {"thinking": {"type": "disabled"}}}, max_tokens=prompt["max_tokens"])
     with db.connect() as conn:
