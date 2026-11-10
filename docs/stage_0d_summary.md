@@ -26,6 +26,20 @@ Model `deepseek-flash` with thinking off (same results as `deepseek-v4-pro` at a
 
 **Against LlamaIndex's `CitationQueryEngine`** (same search, model and judge): the same faithfulness and gold citations. Ours shows the exact passage (311 characters against 920) and gives a clear refusal signal; the engine does not. The engine is simpler.
 
+## Final numbers on the test half (opened once, settings frozen)
+63 French test questions, same settings as dev.
+
+| | Dev (65) | Test (63) |
+|---|---|---|
+| Answerable questions answered | 55 of 58 | 50 of 57 (the 7 refusals are all search misses) |
+| Answers citing a gold article | 51 of 55 | 47 of 50 |
+| Supported / partly / not supported claims | 85% / 13% / 2.4% | 86% / 12% / 2.1% |
+| False-premise questions | 1 of 2 answered, correcting the premise | 3 of 3 answered, correcting the premise (read) |
+| Unanswerable questions refused | 3 of 4 | 1 of 1 (stopped by the weak-retrieval check at 0.54, just under the threshold) |
+| Cost and speed | about $0.0004 per question, median 1.65 s | about $0.0004 per question, median 1.61 s |
+
+Faithfulness and citations hold on the test half. The extra search misses (7 against 3) are why fewer answerable questions are answered.
+
 ## English check on an outside dataset (ClaimRAG-LAW, GDPR)
 66 expert-reviewed questions, but they cover only 4 articles (38 are on article 49). With the dataset's own source text as the only source: 93% supported claims. With our full search: 87% supported, and the right article in the top 5 for 70% of the questions (articles 1, 8 and 28 almost always, article 49 for half, and several of those misses ask about the information duties of articles 13 and 14, so the dataset's label is doubtful). Completeness against the expert reference claims is about 70% in both setups, but this is **indicative only**: your hand check agreed with the judge claim by claim only at kappa 0.01, though the total came out the same.
 
