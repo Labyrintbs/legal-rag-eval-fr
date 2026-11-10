@@ -25,19 +25,21 @@ def test_the_claim_file_may_be_a_bare_list_of_items(tmp_path):
     assert len(claimrag.load_claims(path)) == 3
 
 
-def test_the_rag_file_chunk_replaces_the_claim_chunk_only_where_both_files_ask_the_same_question(tmp_path):
+def test_the_rag_file_chunk_replaces_the_claim_chunk_where_the_question_text_matches_whatever_the_id(tmp_path):
     claims = tmp_path / "claims.json"
     claims.write_text(json.dumps([
         {"query_id": 1, "query": "Same?", "relevant_chunk": "short", "claims": [
             {"claim": ["a", "b", "c"], "claim_entailment": "Entailment"}]},
-        {"query_id": 2, "query": "Different?", "relevant_chunk": "short", "claims": [
-            {"claim": ["d", "e", "f"], "claim_entailment": "Neutral"}]}]))
+        {"query_id": 31, "query": "Shifted id?", "relevant_chunk": "short", "claims": [
+            {"claim": ["d", "e", "f"], "claim_entailment": "Neutral"}]},
+        {"query_id": 3, "query": "Only here?", "relevant_chunk": "short", "claims": [
+            {"claim": ["g", "h", "i"], "claim_entailment": "Neutral"}]}]))
     rag = tmp_path / "rag.json"
     rag.write_text(json.dumps({"input_data": [
         {"query_id": 1, "query": "Same?", "relevant_chunk": "a much longer chunk"},
-        {"query_id": 2, "query": "Another question", "relevant_chunk": "other"}]}))
-    (kept,) = claimrag.with_rag_chunks(claimrag.load_claims(claims), rag)
-    assert (kept.key, kept.chunk) == ("1|0", "a much longer chunk")
+        {"query_id": 30, "query": "Shifted id?", "relevant_chunk": "another long chunk"}]}))
+    kept = claimrag.with_rag_chunks(claimrag.load_claims(claims), rag)
+    assert [(t.key, t.chunk) for t in kept] == [("1|0", "a much longer chunk"), ("31|0", "another long chunk")]
 
 
 def test_the_halves_split_by_question_so_one_question_is_never_in_both():

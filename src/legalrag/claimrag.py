@@ -41,11 +41,11 @@ def load_claims(path: Path) -> list[Triple]:
 
 
 def with_rag_chunks(triples: list[Triple], rag_path: Path) -> list[Triple]:
-    """The triples whose question is, under the same id, the question of GDPR-RAG-LAW.json (the ids of the two files
-    name the same question only in part), with the chunk of that file, which is the longer one."""
-    rag = {i["query_id"]: i for i in json.loads(rag_path.read_text())["input_data"]}
-    same = [(t, rag.get(int(t.key.split("|")[0]))) for t in triples]
-    return [replace(t, chunk=r["relevant_chunk"]) for t, r in same if r and r["query"] == t.query]
+    """The triples whose question is also in GDPR-RAG-LAW.json, with the chunk of that file, which is the longer one.
+    Matched by the text of the question: the ids of the two files drift apart (id 31 of the claim file is id 30 of
+    the RAG file)."""
+    rag = {i["query"].strip(): i["relevant_chunk"] for i in json.loads(rag_path.read_text())["input_data"]}
+    return [replace(t, chunk=rag[t.query.strip()]) for t in triples if t.query.strip() in rag]
 
 
 def half(key: str) -> str:
