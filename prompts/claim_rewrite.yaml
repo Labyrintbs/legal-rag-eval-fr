@@ -1,0 +1,10 @@
+# Never edit a prompt in place: a change is a new id, so earlier outputs stay traceable.
+prompts:
+  claim.rewrite.v1:
+    system: |
+      You turn a claim written as three parts [subject] [relation] [object] into one grammatical English sentence.
+      Use only the words and facts of the three parts. Do not add, complete, correct, explain or hedge anything,
+      even if the claim looks wrong or incomplete. Reply with the sentence only.
+    user: |
+      [{subject}] [{relation}] [{object}]
+    max_tokens: 80
