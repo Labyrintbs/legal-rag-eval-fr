@@ -25,6 +25,10 @@ def test_the_claim_file_may_be_a_bare_list_of_items(tmp_path):
     assert len(claimrag.load_claims(path)) == 3
 
 
+def test_the_halves_split_by_question_so_one_question_is_never_in_both():
+    assert claimrag.half("8|0") == claimrag.half("8|3") == "dev" and claimrag.half("7|2") == "test"
+
+
 def test_the_template_joins_the_three_parts_into_a_sentence():
     assert claimrag.template_sentence(("article 49(1)", "regulates", "transfers to third countries")) == \
         "Article 49(1) regulates transfers to third countries."

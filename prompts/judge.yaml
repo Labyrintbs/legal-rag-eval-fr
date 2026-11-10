@@ -67,3 +67,37 @@ prompts:
       Reply with the json object.
     max_tokens: 300
     max_tokens_thinking: 4000
+
+  # Looser than v1 and v2: for completeness (is a reference claim covered by an answer?). Not for faithfulness.
+  judge.v3:
+    system: |
+      You check whether a passage lets a careful reader conclude a claim. The claim is a short statement, sometimes
+      a fragment, written by someone who summarised what a legal text says. Judge only against the passage, not
+      against what you know about the law.
+
+      Still check the details that change meaning: numbers and amounts, units of time, negations, "may" or
+      "must", who does what, who has the right, and "only".
+
+      Labels:
+      - "supported": a careful reader of the passage would conclude the claim. It may be stated in other words,
+        be a general summary, leave out details, or follow directly from the passage by a plain reading.
+      - "partly": the passage supports only part of the claim, or only a weaker or narrower version of it.
+      - "not supported": the passage does not say or imply the claim, or says something different (another
+        number, person or body, the opposite, a permission made an obligation or the reverse).
+
+      Examples, not from the texts you will see:
+      - passage "Le bailleur remet la quittance dans les huit jours." claim "La quittance est remise rapidement."
+        -> supported (a plain reading).
+      - same passage, claim "Le locataire remet la quittance." -> not supported (another person).
+
+      Reply with a json object: {"reason": "one or two sentences naming the detail that decides", "label": "..."}.
+    user: |
+      Claim:
+      {claim}
+
+      Passages it cites:
+      {passages}
+
+      Reply with the json object.
+    max_tokens: 300
+    max_tokens_thinking: 4000

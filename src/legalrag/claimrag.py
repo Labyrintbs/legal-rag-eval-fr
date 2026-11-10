@@ -39,6 +39,11 @@ def load_claims(path: Path) -> list[Triple]:
     return triples
 
 
+def half(key: str) -> str:
+    """"dev" or "test" for a claim key: by question (even or odd query id), so the claims of one question stay together."""
+    return "dev" if int(key.split("|")[0]) % 2 == 0 else "test"
+
+
 def template_sentence(parts: tuple[str, str, str]) -> str:
     """The three parts in a row, as a sentence: faithful to the claim, sometimes clumsy."""
     text = " ".join(p.strip() for p in parts)
