@@ -10,29 +10,14 @@ from typing import Annotated
 import pandas as pd
 import typer
 
-from legalrag import (
-    db,
-    dbcheck,
-    embed,
-    evaluate,
-    fetch,
-    gold,
-    headsentence,
-    keyword,
-    limits,
-    llm,
-    rerank,
-    rewrite,
-    sanity,
-    smoke,
-    sparse,
-    store,
-    trace,
-    variants,
-    verify,
-)
-from legalrag.ingest import build_chunks, token_counter
-from legalrag.sources import gdpr, legi
+from legalrag import llm
+from legalrag.answering import limits, trace
+from legalrag.corpus import fetch, variants, verify
+from legalrag.corpus.ingest import build_chunks, token_counter
+from legalrag.corpus.sources import gdpr, legi
+from legalrag.evaluation import evaluate, gold, sanity, smoke
+from legalrag.experiments import headsentence, keyword, rerank, rewrite, sparse
+from legalrag.index import db, dbcheck, embed, store
 
 app = typer.Typer(no_args_is_help=True)
 traces_app = typer.Typer(no_args_is_help=True, help="Look at the traces of the service: failures, summary, purge, export.")

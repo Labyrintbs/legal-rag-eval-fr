@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 import psycopg
 import pytest
 
-from legalrag import db
-from legalrag.config import database_url
+from legalrag.index import db
+from legalrag.index.config import database_url
 
 
 def with_database(url: str, name: str) -> str:
