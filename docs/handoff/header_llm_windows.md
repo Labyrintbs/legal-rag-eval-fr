@@ -17,7 +17,7 @@ What you produce: two files, `data/embeddings/bge-m3-header-llm.parquet` and `.r
 - The user's global rules (commit messages, delete commands) are in `docs/handoff/global_CLAUDE.md`.
 
 ## 3. Setup (WSL2 Ubuntu)
-1. `cd ~/legal-rag-eval-fr && git pull`; `git log --oneline -1` (note the hash). `grep -c "embed-llm" Makefile` must print 1 or more and `grep -c header-llm src/legalrag/variants.py` must print 1 or more.
+1. `cd ~/legal-rag-eval-fr && git pull`; `git log --oneline -1` (note the hash). `grep -c "embed-llm" Makefile` must print 1 or more and `grep -c header-llm src/legalrag/corpus/variants.py` must print 1 or more.
 2. `nvidia-smi` shows the RTX 3060. Close the llama.cpp server and anything else heavy on the GPU (it was used for the local-model pilot).
 3. `uv sync --extra embed`; `uv run python -c "import torch; print(torch.cuda.is_available())"` must print `True`.
 4. Raw data present and checked: `make fetch` prints `present` four times; `make verify SOURCE=legi` and `make verify SOURCE=gdpr` pass.

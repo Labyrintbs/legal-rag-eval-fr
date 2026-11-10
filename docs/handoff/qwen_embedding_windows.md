@@ -7,7 +7,7 @@ Step 0c compares embedding models (plan decision D7): the baseline `BAAI/bge-m3`
 
 - Documents are embedded **without** an instruction. Questions get the model's own `query` prompt ("Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:"); that part runs on the Mac.
 - The Mac cannot embed 12,000 chunks in reasonable time. The bge-m3 baseline took 97 seconds on this laptop (RTX 3060 Laptop, 6 GB VRAM, peak 1.5 GB).
-- The code is in `src/legalrag/embed.py` (`EMBEDDING_MODELS`: Hugging Face name, query prompt name, `max_seq_length` 2048). Chunk lengths are counted in bge-m3 tokens (at most 1,024); the Qwen tokenizer cuts at 2,048, which leaves headroom.
+- The code is in `src/legalrag/index/embed.py` (`EMBEDDING_MODELS`: Hugging Face name, query prompt name, `max_seq_length` 2048). Chunk lengths are counted in bge-m3 tokens (at most 1,024); the Qwen tokenizer cuts at 2,048, which leaves headroom.
 - What you produce: two files, `data/embeddings/qwen3-embedding-0.6b-main.parquet` and `.run.json`, published as one GitHub Release.
 
 ## 2. Rules
@@ -20,7 +20,7 @@ Step 0c compares embedding models (plan decision D7): the baseline `BAAI/bge-m3`
 - The user's global rules (commit messages, delete commands) are in `docs/handoff/global_CLAUDE.md`.
 
 ## 3. Setup (WSL2 Ubuntu, as for the earlier embedding jobs)
-1. `cd ~/legal-rag-eval-fr && git pull`. Run `git log --oneline -1` and note the hash. The commit must be `9af4b63` or later (it added `EMBEDDING_MODELS` and the `--model` option): `grep -c qwen3-embedding src/legalrag/embed.py` must print 1 or more.
+1. `cd ~/legal-rag-eval-fr && git pull`. Run `git log --oneline -1` and note the hash. The commit must be `9af4b63` or later (it added `EMBEDDING_MODELS` and the `--model` option): `grep -c qwen3-embedding src/legalrag/index/embed.py` must print 1 or more.
 2. `nvidia-smi` shows the RTX 3060. Nothing else heavy uses the GPU.
 3. `uv sync --extra embed`. Then `uv run python -c "import torch; print(torch.cuda.is_available())"` must print `True`. The lock file pins `transformers` 5.20.2; the Qwen model needs 4.51 or later, so nothing to do.
 4. Raw data present and checked: `make fetch` prints `present` four times; `make verify SOURCE=legi` and `make verify SOURCE=gdpr` pass.

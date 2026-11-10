@@ -17,6 +17,9 @@ The user is learning system design alongside the code. When explaining anything
 at system-design level (server, storage, concurrency, architecture choices),
 also name the common alternatives and when each is preferred, briefly.
 
+## Code layout
+- Code is in folders by job (`corpus`, `index`, `answering`, `experiments`, `evaluation`, `cli`), with tests and scripts in mirror folders. `docs/CODE_MAP.md` has the map and the dependency order: a folder imports only from the ones before it. Put each new module where its job is; do not add a flat module at the top. Update the map when a folder gains or loses a module.
+
 ## Code and git
 - The user's global coding rules (comments, commit messages, tests, delete commands, how to explain) are in `docs/handoff/global_CLAUDE.md`. If they are not installed on this machine (`~/.claude/CLAUDE.md`), follow that file anyway.
 - Push to origin after every commit.

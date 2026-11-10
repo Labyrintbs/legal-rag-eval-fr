@@ -18,9 +18,9 @@ What you produce: a **pilot of 50 articles** through the local model in two or t
 - The user's global rules (commit messages, delete commands) are in `docs/handoff/global_CLAUDE.md`.
 
 ## 3. What is already on the Mac (do not redo)
-- `scripts/heading_sentence_pilot.py`: draws 50 articles with a fixed seed (40 Code du travail articles, 4 GDPR articles, 4 GDPR recitals, 2 annexes), builds the prompt (`prompts/heading_sentence.yaml`, French; `--prompt sentence.v1` restates the article in plain words, `--prompt sentence.v2` writes the question a worker or employer would ask, in everyday words), sends one article per request, writes `data/pilot/heading_<tag>.jsonl` and prints a summary.
+- `scripts/data/heading_sentence_pilot.py`: draws 50 articles with a fixed seed (40 Code du travail articles, 4 GDPR articles, 4 GDPR recitals, 2 annexes), builds the prompt (`prompts/heading_sentence.yaml`, French; `--prompt sentence.v1` restates the article in plain words, `--prompt sentence.v2` writes the question a worker or employer would ask, in everyday words), sends one article per request, writes `data/pilot/heading_<tag>.jsonl` and prints a summary.
 - The same 50 articles went through `deepseek-flash` (backend `deepseek`) with both prompts; the files are in the repository: `docs/pilots/heading_deepseek-flash.jsonl` (v1) and `docs/pilots/heading_deepseek-flash-v2.jsonl` (v2). **The prompt to test on this laptop is v2**; v1 is run once for comparison (8.2 step 6).
-- Tests: `tests/test_headsentence.py`.
+- Tests: `tests/experiments/test_headsentence.py`.
 - The script sends `chat_template_kwargs: {"enable_thinking": false}` so a thinking model does not spend its tokens reasoning (unverified that the server and this model honour it; you will check, see 6.5).
 
 ## 4. Hardware and checks first
@@ -65,9 +65,9 @@ From the log or `curl.exe http://127.0.0.1:8080/props`, note: the context size p
 
 ## 8. Run the pilot
 The script runs inside WSL2 (where the repository and `uv` are). Preparation in WSL2 (as for the earlier jobs; see `qwen_embedding_windows.md` section 3):
-1. `cd ~/legal-rag-eval-fr && git pull`; `git log --oneline -1` (note the hash); `ls scripts/heading_sentence_pilot.py prompts/heading_sentence.yaml` must list both.
+1. `cd ~/legal-rag-eval-fr && git pull`; `git log --oneline -1` (note the hash); `ls scripts/data/heading_sentence_pilot.py prompts/heading_sentence.yaml` must list both.
 2. `uv sync` (the pilot needs no GPU libraries; do not use `--extra embed`).
-3. `uv run pytest -q tests/test_headsentence.py` passes. `make fetch` prints `present` four times (raw data is needed to draw the 50 articles).
+3. `uv run pytest -q tests/experiments/test_headsentence.py` passes. `make fetch` prints `present` four times (raw data is needed to draw the 50 articles).
 4. `git status --short` prints nothing.
 
 ### 8.1 Let WSL2 reach the server
@@ -82,7 +82,7 @@ Replace `<address>` and `<name>` (from `/v1/models`). Open a second terminal for
 ```
 nvidia-smi --query-gpu=memory.used,memory.total,utilization.gpu --format=csv -l 1 > vram_<tag>.csv
 ```
-1. **Trial** (3 articles, server config A): `uv run python scripts/heading_sentence_pilot.py --backend local --model <name> --base-url http://<address>:8080 --prompt sentence.v2 --n 3 --workers 1 --tag win-trial`. Look at the three sentences in `data/pilot/heading_win-trial.jsonl`. If the sentences contain reasoning text or `<think>` (thinking was not switched off), stop and report: that is the first thing to settle.
+1. **Trial** (3 articles, server config A): `uv run python scripts/data/heading_sentence_pilot.py --backend local --model <name> --base-url http://<address>:8080 --prompt sentence.v2 --n 3 --workers 1 --tag win-trial`. Look at the three sentences in `data/pilot/heading_win-trial.jsonl`. If the sentences contain reasoning text or `<think>` (thinking was not switched off), stop and report: that is the first thing to settle.
 2. **Config A**: `... --prompt sentence.v2 --workers 1 --tag qwen35-4b-q4km-v2-np1`.
 3. **Config A again** with the same command and the tag `qwen35-4b-q4km-v2-np1-again`, to see whether the same input gives the same sentences (temperature 0).
 4. **Config B** (restart the server): `... --prompt sentence.v2 --workers 4 --tag qwen35-4b-q4km-v2-np4`.
@@ -131,7 +131,7 @@ Do not commit the `vram_*.csv` files or the trial files; paste the peak memory n
 3. The sentence then enters a new chunking run `header-llm` and is embedded on this laptop later (a separate handoff).
 
 ## 13. Round 2 (2026-11-02): the 8-bit model and prompt v3
-Round 1 (sections 4 to 11) is done and read on the Mac: the 4-bit model runs here at 55 to 59 tokens/s for one request and 25 s for 50 articles with 4 slots, no thinking text, and the same input gives the same sentences on a rerun with one slot. Its weakness is prompt following: with prompt v2 only 14 or 15 of 50 outputs are questions, the rest are statements that often address the reader as "tu" or "ton". The user asked to try the 8-bit version. Because that changes two things at once if run with v2 alone, round 2 is a 2 by 2: model precision (4-bit, 8-bit) against prompt (`sentence.v2`, new `sentence.v3`). v3 asks for a first-person question ending with "?", forbids adding a person the article does not mention, and has one invented example. `git pull` first (the script now accepts `--prompt sentence.v3`); `uv run pytest -q tests/test_headsentence.py` must pass.
+Round 1 (sections 4 to 11) is done and read on the Mac: the 4-bit model runs here at 55 to 59 tokens/s for one request and 25 s for 50 articles with 4 slots, no thinking text, and the same input gives the same sentences on a rerun with one slot. Its weakness is prompt following: with prompt v2 only 14 or 15 of 50 outputs are questions, the rest are statements that often address the reader as "tu" or "ton". The user asked to try the 8-bit version. Because that changes two things at once if run with v2 alone, round 2 is a 2 by 2: model precision (4-bit, 8-bit) against prompt (`sentence.v2`, new `sentence.v3`). v3 asks for a first-person question ending with "?", forbids adding a person the article does not mention, and has one invented example. `git pull` first (the script now accepts `--prompt sentence.v3`); `uv run pytest -q tests/experiments/test_headsentence.py` must pass.
 
 Already measured, do not redo: 4-bit + v2 (files `heading_qwen35-4b-q4km-v2-*.jsonl`), 4-bit + v1.
 

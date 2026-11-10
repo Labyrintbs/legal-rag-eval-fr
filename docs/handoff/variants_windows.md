@@ -5,7 +5,7 @@ Written 2026-10-29 on the Mac. For an agent (or the user) on the Windows laptop.
 ## 1. What this is and why
 Step 0c compares ways to chunk the text before embedding. Each variant changes one setting of the baseline and needs its own vectors. The Mac cannot embed them in reasonable time (about 12,000 chunks per variant); the Loop 3 baseline took 97 seconds on this laptop (RTX 3060, peak VRAM 1.5 GB).
 
-Six variants, defined in `src/legalrag/variants.py` (the baseline is `default` and already exists):
+Six variants, defined in `src/legalrag/corpus/variants.py` (the baseline is `default` and already exists):
 
 | Variant | What changes against the baseline | Chunks expected |
 |---|---|---|
@@ -27,7 +27,7 @@ The expected counts were computed on the Mac on 2026-10-29 from the same code an
 - The user's global rules (commit messages, delete commands) are in `docs/handoff/global_CLAUDE.md`.
 
 ## 3. Setup
-1. `cd ~/legal-rag-eval-fr && git pull`. Check that `src/legalrag/variants.py` exists and run `git log --oneline -1`; note the hash.
+1. `cd ~/legal-rag-eval-fr && git pull`. Check that `src/legalrag/corpus/variants.py` exists and run `git log --oneline -1`; note the hash.
 2. `uv sync --extra embed`; `uv run python -c "import torch; print(torch.cuda.is_available())"` must print `True`.
 3. Raw data present and checked: `make fetch` should print `present` four times (it downloads what is missing and verifies the checksums). `make verify SOURCE=legi` and `make verify SOURCE=gdpr` must pass.
 4. `uv run pytest -q` should pass (171 tests on the Mac on 2026-10-29; tests that need files not present on this laptop are skipped).

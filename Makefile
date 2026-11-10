@@ -26,19 +26,19 @@ embed-variants:
 	for v in $(VARIANTS); do uv run --extra embed legalrag embed --variant $$v || exit 1; done
 
 pack-variants:
-	uv run python scripts/pack_variants.py $(ARGS)
+	uv run python scripts/data/pack_variants.py $(ARGS)
 
 embed-llm:
 	uv run --extra embed legalrag embed --variant header-llm
 
 pack-llm:
-	uv run python scripts/pack_variants.py --variant header-llm $(ARGS)
+	uv run python scripts/data/pack_variants.py --variant header-llm $(ARGS)
 
 embed-qwen:
 	uv run --extra embed legalrag embed --model qwen3-embedding-0.6b
 
 pack-qwen:
-	uv run python scripts/pack_variants.py --model qwen3-embedding-0.6b $(ARGS)
+	uv run python scripts/data/pack_variants.py --model qwen3-embedding-0.6b $(ARGS)
 
 sanity:
 	uv run legalrag sanity
@@ -71,7 +71,7 @@ db-down:
 	docker compose down
 
 fresh-rebuild:
-	uv run python scripts/fresh_rebuild.py
+	uv run python scripts/data/fresh_rebuild.py
 
 test:
 	uv run pytest
@@ -83,4 +83,4 @@ sparse-embed:
 	uv run --extra embed legalrag sparse-embed
 
 pack-sparse:
-	uv run python scripts/pack_sparse.py $(ARGS)
+	uv run python scripts/data/pack_sparse.py $(ARGS)

@@ -10,12 +10,12 @@ The job: embed the 22,633 articles with bge-m3, rank them for the 222 test quest
 ## 2. Rules for this job
 - The data is CC BY-NC-SA 4.0 (dataset card on Hugging Face). Use it locally. **Never commit or push the BSARD files, the vectors or the output folder, and never upload them to GitHub, not even as a Release asset.** `data/` is gitignored; keep it that way.
 - Do not change the code to make a number look better. If something fails, stop and report the output.
-- Do not edit the expected checksums in `scripts/sanity_bsard.py`. A mismatch means the upstream file changed: stop and tell the user.
+- Do not edit the expected checksums in `scripts/benchmarks/sanity_bsard.py`. A mismatch means the upstream file changed: stop and tell the user.
 - No secrets are needed; the files come from a public Hugging Face URL pinned to one dataset revision.
 - The user's global rules are in `docs/handoff/global_CLAUDE.md` (comments, commit messages, delete commands). You should not need to commit anything; if you think a code change is needed, describe it to the user instead.
 
 ## 3. Setup (the laptop already ran Loop 3, so most of this should exist)
-1. In WSL2 Ubuntu: `cd ~/legal-rag-eval-fr && git pull`. The latest commit must contain `scripts/sanity_bsard.py`.
+1. In WSL2 Ubuntu: `cd ~/legal-rag-eval-fr && git pull`. The latest commit must contain `scripts/benchmarks/sanity_bsard.py`.
 2. `uv sync --extra embed`, then `uv run python -c "import torch; print(torch.cuda.is_available())"` must print `True`. If not, see section 4 step 6 of `docs/handoff/loop3_windows_embedding.md`.
 3. `uv run pytest -q` should pass (the Mac gives 160 passed; tests that need `data/raw` are skipped if the raw files are not on this laptop, which is fine for this job).
 4. Disk: about 100 MB for the BSARD files and 50 MB for the vectors. The model weights are cached in `~/.cache/huggingface` from Loop 3.
@@ -23,13 +23,13 @@ The job: embed the 22,633 articles with bge-m3, rank them for the 222 test quest
 ## 4. Run
 Smoke first (10 questions, 300 articles, under a minute on the GPU). It also fetches and checks the two data files:
 ```
-uv run --extra embed python scripts/sanity_bsard.py --smoke --device cuda
+uv run --extra embed python scripts/benchmarks/sanity_bsard.py --smoke --device cuda
 ```
 Expected: `articles.csv: ok`, `questions_test.csv: ok`, `300 articles (12 truncated), 10 questions`, then two metric tables. The numbers are not meaningful (300 articles only). The Mac CPU run gave `hit@5 0.900`, `recall@100 0.939` for the first table; small differences on the GPU (fp16) are normal.
 
 Then the full run:
 ```
-uv run --extra embed python scripts/sanity_bsard.py --device cuda
+uv run --extra embed python scripts/benchmarks/sanity_bsard.py --device cuda
 ```
 - It prints `embedded N/22633` after every block of 2,000 articles. Expected total: a few minutes (unverified; Loop 3 speed suggests under 10).
 - If it stops, run the same command again: finished blocks in `data/external/bsard_out/full/blocks/` are kept and skipped.

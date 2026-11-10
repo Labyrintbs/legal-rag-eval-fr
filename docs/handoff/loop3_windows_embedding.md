@@ -38,9 +38,9 @@ Hardware of the Windows laptop: Lenovo Legion R9000P 2021H, Ryzen 7 5800H, NVIDI
 - Python 3.12 with `uv`; `uv sync` installs the light set; `uv sync --extra embed` adds `sentence-transformers` and PyTorch for this job.
 - 62 tests pass (`uv run pytest`). `make verify SOURCE=legi` and `make verify SOURCE=gdpr` pass. On Windows use WSL2, where `make` works.
 - Code that matters for you:
-  - `src/legalrag/sources/legi.py` (Code du travail reader), `src/legalrag/sources/gdpr.py` (GDPR reader, French and English)
-  - `src/legalrag/ingest.py`: `build_chunks(articles, count_tokens, style="last_k", k=3, max_tokens=1024, collapse_repeats=False)` returns `Chunk` objects (`src/legalrag/models.py`). The text to embed is `chunk.embed_text` (header, a line break, then the body).
-  - `src/legalrag/cli.py`: Typer commands `fetch`, `profile` and `verify`; add the embedding command here. `src/legalrag/fetch.py` holds the download list and checksums.
+  - `src/legalrag/corpus/sources/legi.py` (Code du travail reader), `src/legalrag/corpus/sources/gdpr.py` (GDPR reader, French and English)
+  - `src/legalrag/corpus/ingest.py`: `build_chunks(articles, count_tokens, style="last_k", k=3, max_tokens=1024, collapse_repeats=False)` returns `Chunk` objects (`src/legalrag/corpus/models.py`). The text to embed is `chunk.embed_text` (header, a line break, then the body).
+  - `src/legalrag/cli.py`: Typer commands `fetch`, `profile` and `verify`; add the embedding command here. `src/legalrag/corpus/fetch.py` holds the download list and checksums.
 - Default chunk settings (decisions made, see `EXPERIMENT.md`): one article = one chunk, split only above 1,024 bge-m3 tokens, no overlap, header style `last_k` with k=3, `collapse_repeats` off. Use exactly these defaults for the run; they define the chunk set.
 - Expected chunk counts with those defaults: Code du travail 11,563 (from 11,433 articles), GDPR French 292 (from 99 articles and 173 recitals), GDPR English 281. Total 12,136. Largest chunk is 1,023 tokens (counted without special tokens).
 
@@ -90,7 +90,7 @@ Expected output on a fresh clone: four lines, `downloaded` for each, in this ord
 
 You may also copy the four files from the Mac's `data/raw/` into `data/raw/` and run `make fetch` to check them.
 
-| File | Bytes | SHA-256 (test oracle, defined in `src/legalrag/fetch.py`) |
+| File | Bytes | SHA-256 (test oracle, defined in `src/legalrag/corpus/fetch.py`) |
 |---|---|---|
 | `legi_vincegx33_train.parquet` | 262,688,820 | `6b4e2fde6daab5fa92bccec533037a33e27f4df353b4f7e647cc356f3018287b` |
 | `gdpr_fr.xhtml` | 876,858 | `27a2248cf0cf7c79a3ec7eae30b6e871817230d9f577632fed915181642144c2` |
@@ -156,7 +156,7 @@ Add a command `legalrag embed` (Makefile target `make embed`). Design, from the 
 - Dimension 1,024; no NaN; vector norm about 1.
 - No chunk truncated.
 - Sanity test without a database: embed about 5 French questions with the same model and rank all vectors by cosine similarity with numpy. For example "préavis de démission" should return L1237-1 in the top 3, "droit à l'effacement" should return GDPR article 17 in the top 3. These are inspection checks, not a metric.
-- Unit tests for the new code in the same style as `tests/test_chunking.py` and `tests/test_gdpr.py`, using a stub embedder so they run without a GPU; the full suite must pass.
+- Unit tests for the new code in the same style as `tests/corpus/test_chunking.py` and `tests/corpus/test_gdpr.py`, using a stub embedder so they run without a GPU; the full suite must pass.
 
 ## 8. Finish and hand back
 1. Log the run in `EXPERIMENT.md` (date, what changed, measured effect: time, VRAM, counts, sanity results, commit hash).

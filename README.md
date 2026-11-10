@@ -71,5 +71,5 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 - [EXPERIMENT.md](EXPERIMENT.md): every change to data processing and chunking, and the measurements, newest last.
 - [docs/decisions/](docs/decisions/): design decisions (database design, decisions of step 0a).
 - [docs/data_profiles/](docs/data_profiles/): statistics and spot checks of each source, smoke notes.
-- `src/legalrag/`: `sources/` (readers), `chunking/` (headers, splitting), `ingest.py`, `embed.py`, `store.py`, `dbcheck.py`, `smoke.py`, `gold.py`, `metrics.py`, `evaluate.py`, `cli.py`. Migrations in `migrations/`, tests in `tests/`.
+- `src/legalrag/`: the code, in folders by job (`corpus/`, `index/`, `answering/`, `evaluation/`, `experiments/`, `cli/`). Tests in `tests/` and scripts in `scripts/` mirror them; migrations in `migrations/`. [docs/CODE_MAP.md](docs/CODE_MAP.md) says what each folder holds and where every old file went.
 - [CLAUDE.md](CLAUDE.md): rules for working with the AI assistant on this repo.
