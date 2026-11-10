@@ -6,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from legalrag import cli
+from legalrag.cli import common
 from legalrag.corpus import variants
 from legalrag.corpus.chunking.header import STYLES
 from legalrag.corpus.ingest import build_chunks
@@ -108,9 +109,9 @@ def test_a_sentence_is_added_after_the_section_titles_and_only_for_its_article(a
 def test_the_llm_variant_names_its_sentences_file_and_needs_it(tmp_path, monkeypatch):
     settings = variants.settings("header-llm")
     assert settings["sentences"] == "heading-sentences-v3" and {k: v for k, v in settings.items() if k != "sentences"} == variants.BASE
-    monkeypatch.setattr(cli, "SENTENCES", tmp_path)
+    monkeypatch.setattr(common, "SENTENCES", tmp_path)
     with pytest.raises(Exception, match="missing"):
-        cli._chunk_kwargs(settings)
+        common.chunk_kwargs(settings)
     (tmp_path / "heading-sentences-v3.jsonl").write_text(json.dumps({"uid": "u", "sentence": "Q ?", "flags": []}))
-    assert cli._chunk_kwargs(settings)["sentences"] == {"u": "Q ?"}
-    assert len(cli._sentences_sha256(settings)) == 64 and cli._sentences_sha256(variants.settings("size-512")) is None
+    assert common.chunk_kwargs(settings)["sentences"] == {"u": "Q ?"}
+    assert len(common.sentences_sha256(settings)) == 64 and common.sentences_sha256(variants.settings("size-512")) is None

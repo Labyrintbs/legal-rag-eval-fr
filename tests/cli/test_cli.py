@@ -5,7 +5,8 @@ import pytest
 from typer.testing import CliRunner
 
 from legalrag import cli
-from legalrag.index import embed
+from legalrag.cli import index as index_cli
+from legalrag.index import db, embed, store
 
 runner = CliRunner()
 
@@ -36,7 +37,7 @@ def test_git_commit_flags_only_a_dirty_tree(repo):
 
 def test_load_chunks_refuses_a_dirty_tree_before_touching_data(monkeypatch):
     monkeypatch.setattr(embed, "git_commit", lambda: "abc" + embed.DIRTY)
-    monkeypatch.setattr(cli, "token_counter", lambda _: pytest.fail("ran past the check"))
+    monkeypatch.setattr(index_cli, "token_counter", lambda _: pytest.fail("ran past the check"))
     result = runner.invoke(cli.app, ["load-chunks"])
     assert result.exit_code == 1
     assert "Uncommitted changes" in result.output
@@ -48,7 +49,7 @@ def test_allow_dirty_goes_past_the_check(monkeypatch):
     def stop(_):
         raise RuntimeError("past the check")
 
-    monkeypatch.setattr(cli, "token_counter", stop)
+    monkeypatch.setattr(index_cli, "token_counter", stop)
     result = runner.invoke(cli.app, ["load-chunks", "--allow-dirty"])
     assert isinstance(result.exception, RuntimeError)
 
@@ -57,9 +58,9 @@ def test_allow_dirty_goes_past_the_check(monkeypatch):
 def deleted(monkeypatch):
     """Stub the database: run 'r' has 5 chunks and 5 vectors; returns the names passed to delete_run."""
     calls = []
-    monkeypatch.setattr(cli.db, "connect", lambda: contextlib.nullcontext(object()))
-    monkeypatch.setattr(cli.store, "run_size", lambda _, name: (5, 5) if name == "r" else None)
-    monkeypatch.setattr(cli.store, "delete_run", lambda _, name: calls.append(name))
+    monkeypatch.setattr(db, "connect", lambda: contextlib.nullcontext(object()))
+    monkeypatch.setattr(store, "run_size", lambda _, name: (5, 5) if name == "r" else None)
+    monkeypatch.setattr(store, "delete_run", lambda _, name: calls.append(name))
     return calls
 
 
