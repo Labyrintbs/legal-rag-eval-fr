@@ -40,6 +40,12 @@ def test_refusals_separate_retrieval_misses_from_refusals_with_evidence():
     assert (r["no_answer_expected"], r["correctly_refused"], r["underspecified_answered"]) == (2, 1, 1)
 
 
+def test_passages_measure_what_the_reader_is_shown_for_each_claim():
+    p = am.passages([row("a1"), row("r1", outcome="refused_by_model")])
+    assert p["claims_per_answer"] == 2 and p["passages"] == 2 and p["chars_mean"] == len("Quatre mois pour les cadres.")
+    assert am.passages([row("r1", outcome="refused_by_model")])["chars_mean"] is None
+
+
 def test_cost_sums_the_calls_and_ignores_rows_without_one():
     rows = [row("a1"), row("a2", llm_ms=3000), row("r1", outcome="refused_weak_retrieval", cost_usd=None, llm_ms=None)]
     c = am.cost(rows)

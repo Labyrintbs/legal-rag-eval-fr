@@ -53,6 +53,15 @@ def refusals(rows: list[dict]) -> dict:
             "underspecified_answered": sum(r["kind"] == "underspecified" and r["outcome"] == "answered" for r in rows)}
 
 
+def passages(rows: list[dict]) -> dict:
+    """Length in characters of the cited passages shown to the reader, per claim, and the claims per answer."""
+    answers = [labelsheet.parse_answer(r["text"]) for r in rows if r["outcome"] == "answered"]
+    lengths = sorted(len(p) for claims in answers for c in claims for _, p in c.passages)
+    return {"claims_per_answer": sum(map(len, answers)) / len(answers) if answers else None, "passages": len(lengths),
+            "chars_mean": sum(lengths) / len(lengths) if lengths else None,
+            "chars_median": lengths[len(lengths) // 2] if lengths else None}
+
+
 def cost(rows: list[dict]) -> dict:
     """Tokens, cost and model time of the answer calls (rows without a call have no cost)."""
     called = [r for r in rows if r.get("cost_usd") is not None]

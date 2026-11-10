@@ -34,7 +34,8 @@ def main() -> None:
         verdict_file.write_text("".join(json.dumps(v, ensure_ascii=False) + "\n" for v in verdicts))
     result = {"tag": args.tag, "judge": {"model": args.model, "prompt": args.prompt},
               "faithfulness": answermetrics.faithfulness(verdicts), "citations": answermetrics.citations(rows),
-              "refusals": answermetrics.refusals(rows), "cost": answermetrics.cost(rows)}
+              "refusals": answermetrics.refusals(rows), "passages": answermetrics.passages(rows),
+              "cost": answermetrics.cost(rows)}
     (PILOT / f"metrics_{args.tag}.json").write_text(json.dumps(result, indent=1) + "\n")
     print(json.dumps(result, indent=1))
     claims = {f"{r['id']}|claim{i}": c.text for r in rows if r["outcome"] == "answered"
