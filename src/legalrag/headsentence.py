@@ -12,7 +12,7 @@ import httpx
 from legalrag import articlenum
 from legalrag.ingest import header_inputs
 from legalrag.models import Article
-from legalrag.questiongen import context_of
+from legalrag.text import context_of
 
 CONTEXT_LEVELS = 3
 # Pilot sample: how many articles of each kind, drawn with a fixed seed from the sorted uids.

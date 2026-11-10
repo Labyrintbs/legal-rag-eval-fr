@@ -13,7 +13,6 @@ from legalrag import llm
 PROMPTS = Path("prompts")
 ARTICLE_REF = re.compile(r"\b[LRD]\.?\s?\d{3,4}-\d|\barticles?\s+\d+", re.IGNORECASE)
 DUPLICATE_OVERLAP = 0.7
-CONTEXT_LEVELS = 4
 # Above the 30 words the prompt asks for: 33-word questions were fine in the audit.
 MAX_WORDS = 35
 # Two questions joined by "et": "..., et combien de temps ?", "... et est-il payé ?"
@@ -26,11 +25,6 @@ COMPOUND = re.compile(
 
 def load_prompts(path: Path) -> dict:
     return yaml.safe_load(path.read_text())
-
-
-def context_of(section_path: str, levels: int = CONTEXT_LEVELS) -> str:
-    """The last section levels, which name the scope of an article (a contract, a risk, a category)."""
-    return " > ".join(level[:120] for level in section_path.split(" > ")[-levels:])
 
 
 def writer_messages(prompts: dict, style: str, article_body: str, context: str = "") -> list[dict]:

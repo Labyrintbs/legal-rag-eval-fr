@@ -8,7 +8,9 @@ import psycopg
 import yaml
 from pydantic import BaseModel
 
-from legalrag.embed import Embedder
+from legalrag.embed import Embedder, embed_queries
+from legalrag.labels import article_label
+from legalrag.store import EF_SEARCH
 
 NEAREST = (
     "SELECT a.source_code, a.kind, a.article_num, c.lang, c.chunk_index, "
@@ -18,9 +20,6 @@ NEAREST = (
     "JOIN articles a ON a.uid = c.article_uid "
     "WHERE e.model = 'BAAI/bge-m3' AND c.run_id = %s ORDER BY e.embedding <=> %s LIMIT %s"
 )
-# Candidate list of the index search. With pgvector's default of 40 one smoke question lost 3 of its
-# exact top 5; from 100 up the 29 questions match the exact result (EXPERIMENT.md, 2026-10-27).
-EF_SEARCH = 100
 LABELS = (
     "SELECT DISTINCT CASE WHEN source_code = 'code_travail' THEN article_num "
     "ELSE CASE kind WHEN 'article' THEN 'art ' ELSE 'rct ' END || article_num END FROM articles"
@@ -55,26 +54,7 @@ def load_questions(path: Path) -> list[Question]:
 
 
 def embed_questions(questions: list[Question], embedder: Embedder, batch_size: int = 16) -> np.ndarray:
-    """One unit-length vector per question; bge-m3 takes queries without an instruction prefix, Qwen3 with one."""
-    vectors = np.asarray(embedder.encode_queries([q.question for q in questions], batch_size), dtype=np.float32)
-    return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
-
-
-def article_label(source_code: str, kind: str, article_num: str) -> str:
-    if source_code == "code_travail":
-        return article_num
-    return f"{'art' if kind == 'article' else 'rct'} {article_num}"
-
-
-def split_label(label: str) -> tuple[str, str, str]:
-    """Inverse of article_label: (source_code, kind, article_num)."""
-    if label.startswith("art "):
-        return "rgpd", "article", label[4:]
-    if label.startswith("rct "):
-        return "rgpd", "recital", label[4:]
-    if label.startswith("Annexe"):
-        return "code_travail", "annex", label
-    return "code_travail", "article", label
+    return embed_queries([q.question for q in questions], embedder, batch_size)
 
 
 def nearest(conn: psycopg.Connection, run_id: int, vector: np.ndarray, k: int = 5) -> list[Hit]:

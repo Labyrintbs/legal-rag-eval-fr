@@ -45,6 +45,12 @@ class Embedder(Protocol):
     def info(self) -> dict: ...
 
 
+def embed_queries(texts: list[str], embedder: Embedder, batch_size: int = 16) -> np.ndarray:
+    """One unit-length vector per question; bge-m3 takes queries without an instruction prefix, Qwen3 with one."""
+    vectors = np.asarray(embedder.encode_queries(texts, batch_size), dtype=np.float32)
+    return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+
+
 def embed_text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 

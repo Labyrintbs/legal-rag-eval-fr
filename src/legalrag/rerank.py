@@ -6,7 +6,7 @@ from typing import Protocol
 
 import psycopg
 
-from legalrag.smoke import article_label, split_label
+from legalrag.labels import article_label, split_label
 
 DEFAULT_MODEL = "BAAI/bge-reranker-v2-m3"
 # Tokens of question and chunk (and for Qwen the prompt) together. Sized so the longest default-run chunk fits

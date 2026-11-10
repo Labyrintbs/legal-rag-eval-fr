@@ -16,7 +16,7 @@ import psycopg
 from legalrag import articlenum, gold, keyword, metrics, rerank
 from legalrag.dbcheck import _exact_scan
 from legalrag.embed import MODEL
-from legalrag.smoke import article_label
+from legalrag.labels import article_label
 
 ARTICLES_KEPT = 20  # the deepest cut-off reported (Recall@20)
 CHUNKS_SEARCHED = 400  # enough chunks to find 20 distinct articles when some are split in many chunks

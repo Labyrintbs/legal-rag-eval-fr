@@ -16,7 +16,9 @@ from pathlib import Path
 from legalrag import db, embed, goldjudge, llm
 from legalrag import questiongen as qg
 from legalrag.gold import GoldQuestion, load_gold
-from legalrag.smoke import Question, embed_questions, nearest, split_label
+from legalrag.labels import split_label
+from legalrag.smoke import Question, embed_questions, nearest
+from legalrag.text import context_of
 
 MODEL = "deepseek-v4-pro"  # --model overrides
 MAX_TOKENS = 8000
@@ -32,7 +34,7 @@ def article_texts(conn, labels: set[str], lang: str) -> dict[str, tuple[str, str
             "SELECT section_path, body_text FROM articles WHERE source_code = %s AND kind = %s"
             " AND article_num = %s AND lang = %s LIMIT 1", (source, kind, num, "fr" if source == "code_travail" else lang),
         ).fetchone()
-        texts[label] = (qg.context_of(row[0]), row[1])
+        texts[label] = (context_of(row[0]), row[1])
     return texts
 
 

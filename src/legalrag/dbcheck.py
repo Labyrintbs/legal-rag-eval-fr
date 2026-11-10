@@ -6,8 +6,7 @@ from contextlib import contextmanager
 import psycopg
 
 from legalrag.embed import DIM, MODEL
-from legalrag.smoke import EF_SEARCH
-from legalrag.store import HNSW_INDEX
+from legalrag.store import EF_SEARCH, HNSW_INDEX
 from legalrag.verify import Check
 
 NEIGHBOUR_QUERY = (

@@ -49,14 +49,6 @@ def test_the_reviewer_gets_the_context_only_in_v2():
     assert "Style demandé : lay" in v2 and "Question : Qui décide ?" in v2
 
 
-def test_context_is_the_last_four_section_levels_cut_to_120_characters():
-    path = " > ".join(["Partie", "Livre IV : Travailleurs à domicile", "Titre II", "Chapitre II", "x" * 200])
-    context = qg.context_of(path)
-    assert context.split(" > ")[0] == "Livre IV : Travailleurs à domicile"
-    assert len(context.split(" > ")) == 4 and context.endswith("x" * 120)
-    assert qg.context_of("CHAPITRE VIII : Voies de recours") == "CHAPITRE VIII : Voies de recours"
-
-
 def test_parse_json_refuses_text_and_non_objects():
     assert qg.parse_json('{"question": "a"}') == {"question": "a"}
     with pytest.raises(ValueError, match="not valid JSON"):

@@ -6,7 +6,7 @@ import re
 
 import psycopg
 
-from legalrag.smoke import article_label
+from legalrag.labels import article_label
 
 CODE_NUMBER = re.compile(r"(?<![\w*-])([LRD]\*?\d{4}(?:-\d+)+)(?![\w-])")
 GDPR_ARTICLE = re.compile(r"\b(?:article|art\.?)\s+(\d{1,3})\b", re.IGNORECASE)

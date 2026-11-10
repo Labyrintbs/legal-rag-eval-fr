@@ -17,8 +17,9 @@ from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, TextNode
 from llama_index.llms.deepseek import DeepSeek
 
-from legalrag import answermetrics, claimjudge, claimrag, db, embed, rag, search, smoke
+from legalrag import answermetrics, claimjudge, claimrag, db, embed, rag, search
 from legalrag import questiongen as qg
+from legalrag.labels import article_label
 
 DATA = Path("data/claimrag")
 RUN = "default"  # the chunking run
@@ -44,7 +45,7 @@ def english_articles() -> list[tuple[str, str]]:
     with db.connect() as conn:
         rows = conn.execute("SELECT source_code, kind, article_num, body_text FROM articles "
                             "WHERE lang = 'en' AND source_code = 'rgpd'").fetchall()
-    return [(smoke.article_label(source, kind, num), text) for source, kind, num, text in rows]
+    return [(article_label(source, kind, num), text) for source, kind, num, text in rows]
 
 
 def ask(engine: rag.AnswerEngine, question: claimrag.Question, gold: list[str]) -> dict:

@@ -6,7 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
-from legalrag import db, embed, gold, labelsheet, rag, smoke
+from legalrag import db, embed, gold, labelsheet, rag
+from legalrag.labels import split_label
 
 PILOT = Path("data/pilot")
 OUT = Path("data/labels")
@@ -26,7 +27,7 @@ def add_context(rows: list[dict]) -> list[dict]:
             r["seen"] = [(n.node.metadata["label"], n.node.text) for n in retriever.retrieve(r["question"])]
             r["gold_text"] = []
             for label in r["gold"]:
-                source, kind, num = smoke.split_label(label)
+                source, kind, num = split_label(label)
                 found = conn.execute(
                     "SELECT body_text FROM articles WHERE source_code = %s AND kind = %s AND article_num = %s AND lang = 'fr' "
                     "ORDER BY valid_from DESC LIMIT 1", (source, kind, num)).fetchone()

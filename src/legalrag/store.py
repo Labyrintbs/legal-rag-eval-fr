@@ -13,6 +13,9 @@ from legalrag.fetch import sha256_of
 from legalrag.models import Article, Chunk
 
 HNSW_INDEX = "chunk_embeddings_hnsw_bge_m3"
+# Candidate list of the index search. With pgvector's default of 40 one smoke question lost 3 of its
+# exact top 5; from 100 up the 29 questions match the exact result (EXPERIMENT.md, 2026-10-27).
+EF_SEARCH = 100
 _GDPR_URL = "https://eur-lex.europa.eu/legal-content/{lang}/TXT/?uri=CELEX:32016R0679"
 
 # (source_code, lang) -> corpus_versions fields; the raw file name locates the file to checksum.

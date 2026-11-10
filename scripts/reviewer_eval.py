@@ -13,6 +13,7 @@ from pathlib import Path
 
 from legalrag import llm
 from legalrag import questiongen as qg
+from legalrag.text import context_of
 
 # Thinking tokens count against max_tokens (one test used 2,245 of 2,508 at effort low).
 MAX_TOKENS = {"off": 800, "low": 4000, "high": 8000, "max": 8000}
@@ -59,7 +60,7 @@ def review_all(args) -> None:
                 article = articles[record["article"]]
                 messages = qg.reviewer_messages(
                     reviewer_prompts, args.reviewer, record["style"], article["body"],
-                    qg.context_of(article["section_path"]), record["question"],
+                    context_of(article["section_path"]), record["question"],
                 )
                 jobs.append((file, record, article, messages))
     worst = sum(

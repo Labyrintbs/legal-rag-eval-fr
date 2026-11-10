@@ -3,15 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from legalrag.labels import article_label, split_label
 from legalrag.smoke import (
     Hit,
     Question,
-    article_label,
     embed_questions,
     first_hit_rank,
     format_result,
     load_questions,
-    split_label,
 )
 
 QUESTIONS = Path(__file__).parent / "smoke_questions.yaml"

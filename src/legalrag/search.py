@@ -9,7 +9,7 @@ import psycopg
 
 from legalrag.dbcheck import _exact_scan
 from legalrag.embed import MODEL
-from legalrag.smoke import article_label
+from legalrag.labels import article_label
 
 TOP_ARTICLES = 5  # decision 7 of 0006
 CHUNKS_SEARCHED = 400  # as in the evaluation: enough chunks to find 5 distinct articles

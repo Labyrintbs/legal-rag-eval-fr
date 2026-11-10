@@ -19,9 +19,9 @@ from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from pydantic import ValidationError
 
-from legalrag import answer, limits, search, smoke
+from legalrag import answer, limits, search
 from legalrag import llm as costs
-from legalrag.embed import MODEL
+from legalrag.embed import MODEL, embed_queries
 from legalrag.units import Unit, split_units
 
 
@@ -34,8 +34,7 @@ class LegalRetriever(BaseRetriever):
         self.connect, self.run_id, self.embedder, self.lang, self.k, self.model = connect, run_id, embedder, lang, k, model
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
-        question = smoke.Question(id=0, group="", lang=self.lang, question=query_bundle.query_str)
-        vector = smoke.embed_questions([question], self.embedder)[0]
+        vector = embed_queries([query_bundle.query_str], self.embedder)[0]
         with self.connect() as conn:
             hits = search.top_chunks(conn, self.run_id, self.lang, vector, self.k, self.model)
         return [NodeWithScore(node=TextNode(id_=f"{h.label}#{h.chunk_index}", text=h.text, metadata={

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from legalrag import llm
 from legalrag import questiongen as qg
+from legalrag.text import context_of
 
 WRITER, REVIEWER = "deepseek-flash", "deepseek-v4-pro"
 WRITER_MAX_TOKENS = 400
@@ -30,7 +31,7 @@ def write_one(http, budget, tag, job):
 def review_one(http, budget, tag, prompts, reviewer, effort, item):
     article, style, question = item
     messages = qg.reviewer_messages(
-        prompts, reviewer, style, article["body"], qg.context_of(article["section_path"]), question
+        prompts, reviewer, style, article["body"], context_of(article["section_path"]), question
     )
     return qg.run_call(
         http, budget, f"{tag}-reviewer", REVIEWER, messages, REVIEWER_MAX_TOKENS[effort],
@@ -57,7 +58,7 @@ def main() -> None:
     checks = reviewer_prompts["reviewers"][args.reviewer]["checks"]
 
     jobs = [
-        (a, style, qg.writer_messages(writer_prompts, style, a["body"], qg.context_of(a["section_path"])))
+        (a, style, qg.writer_messages(writer_prompts, style, a["body"], context_of(a["section_path"])))
         for a in articles for style in args.styles
     ]
     writer_cost = sum(
