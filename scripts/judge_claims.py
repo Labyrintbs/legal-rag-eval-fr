@@ -8,14 +8,9 @@ Spends model money only with --run, within a cap of --run-cap USD.
 
 import argparse
 import json
-import os
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import httpx
-
-from legalrag import claimjudge, gold, labelsheet, llm
-from legalrag import questiongen as qg
+from legalrag import claimjudge, gold, labelsheet
 
 PILOT = Path("data/pilot/answers_flash-v3.jsonl")
 OUT = Path("data/judge")
@@ -28,27 +23,6 @@ def load_items(labels_path: Path, exclude: tuple[str, ...]) -> list[claimjudge.I
     checks = labelsheet.load_checks(Path("eval/answer_checks.json"), rows)
     labels = json.loads(labels_path.read_text())["labels"]
     return [i for i in claimjudge.collect(labels, rows, checks) if i.key not in exclude]
-
-
-def judge_all(items: list[claimjudge.Item], model: str, think: bool, run_cap: float, workers: int, tag: str,
-              prompt_id: str) -> list[dict]:
-    prompt = qg.load_prompts(Path("prompts/judge.yaml"))["prompts"][prompt_id]
-    budget = llm.Budget(run_cap=run_cap, total_cap=5.0)
-    http = llm.make_http(os.environ["DEEPSEEK_API_KEY"])
-    max_tokens = prompt["max_tokens_thinking"] if think else prompt["max_tokens"]
-
-    def one(item: claimjudge.Item) -> dict:
-        row = {"key": item.key, "human": item.human}
-        try:
-            text = llm.chat(http, llm.LEDGER, budget, f"judge-{tag}", model, claimjudge.messages(prompt, item), max_tokens,
-                            thinking=think, json_mode=True, temperature=None if think else 0)
-            row["label"], row["reason"] = claimjudge.parse(text)
-        except (httpx.HTTPError, ValueError, KeyError, llm.BudgetExceeded) as error:
-            row["error"] = f"{type(error).__name__}: {error}"
-        return row
-
-    with ThreadPoolExecutor(workers) as pool:
-        return list(pool.map(one, items))
 
 
 def score(items: list[claimjudge.Item], verdicts: list[dict]) -> None:
@@ -90,7 +64,7 @@ def main() -> None:
     if args.run:
         if not args.tag:
             parser.error("--run needs --tag")
-        verdicts = judge_all(items, args.run, args.think, args.run_cap, args.workers, args.tag, args.prompt)
+        verdicts = claimjudge.run_judge(items, args.run, args.think, args.run_cap, args.workers, args.tag, args.prompt)
         OUT.mkdir(parents=True, exist_ok=True)
         (OUT / f"{args.tag}.jsonl").write_text("".join(json.dumps(v, ensure_ascii=False) + "\n" for v in verdicts))
         print(f"model {args.run}, prompt {args.prompt}, thinking {args.think}, {sum('error' in v for v in verdicts)} errors")

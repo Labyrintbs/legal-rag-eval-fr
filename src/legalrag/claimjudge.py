@@ -2,13 +2,18 @@
 Validated against the labels made by hand on the sheets of `labelsheet` before it scores anything else.
 """
 
+import os
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, get_args
 
+import httpx
 from pydantic import BaseModel, field_validator
 
-from legalrag import labelsheet
+from legalrag import labelsheet, llm
+from legalrag import questiongen as qg
 
 Label = Literal["supported", "partly", "not supported"]
 LABELS = get_args(Label)
@@ -59,6 +64,32 @@ def parse(text: str) -> tuple[str, str]:
     """(label, reason) of the judge's reply; a ValueError (pydantic's ValidationError) when it is not a verdict."""
     verdict = Verdict.model_validate_json(text)
     return verdict.label, verdict.reason
+
+
+def run_judge(items: list[Item], model: str, think: bool, run_cap: float, workers: int, tag: str,
+              prompt_id: str) -> list[dict]:
+    """One call per item, no retry: {key, human, label, reason}, or {key, human, error} when the call or the reply
+    failed. The calls are in the DeepSeek ledger under the label `judge-<tag>`."""
+    prompt = qg.load_prompts(Path("prompts/judge.yaml"))["prompts"][prompt_id]
+    budget = llm.Budget(run_cap=run_cap, total_cap=5.0)
+    http = llm.make_http(os.environ["DEEPSEEK_API_KEY"])
+    max_tokens = prompt["max_tokens_thinking"] if think else prompt["max_tokens"]
+    with ThreadPoolExecutor(workers) as pool:
+        futures = [pool.submit(judge_one, http, budget, f"judge-{tag}", model, think, max_tokens, messages(prompt, item), item)
+                   for item in items]
+        return [future.result() for future in futures]
+
+
+def judge_one(http: httpx.Client, budget: llm.Budget, label: str, model: str, think: bool, max_tokens: int,
+              chat: list[dict], item: Item) -> dict:
+    row = {"key": item.key, "human": item.human}
+    try:
+        text = llm.chat(http, llm.LEDGER, budget, label, model, chat, max_tokens, thinking=think, json_mode=True,
+                        temperature=None if think else 0)
+        row["label"], row["reason"] = parse(text)
+    except (httpx.HTTPError, ValueError, KeyError, llm.BudgetExceeded) as error:
+        row["error"] = f"{type(error).__name__}: {error}"
+    return row
 
 
 def kappa(pairs: list[tuple[str, str]]) -> float | None:
