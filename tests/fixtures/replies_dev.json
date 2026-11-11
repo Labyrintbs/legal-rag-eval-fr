@@ -1,0 +1,488 @@
+{
+ "source": "answers_flash-v3.jsonl",
+ "replies": {
+  "mw-001": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Si la visite n'a pas été faite par le médecin du travail, le professionnel de santé peut orienter sans délai le travailleur vers ce médecin s'il l'estime nécessaire.\", \"sources\": [\"1.1\"]}, {\"text\": \"Cette orientation se fait dans le respect du protocole prévu au troisième alinéa de l'article L. 4624-1.\", \"sources\": [\"1.1\"]}, {\"text\": \"Cette nouvelle visite par le médecin du travail sert notamment à proposer des adaptations du poste ou une affectation à d'autres postes si elles sont nécessaires.\", \"sources\": [\"1.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R4624-13"
+   ]
+  },
+  "mw-002": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Oui : si l'infirmier l'estime nécessaire pour tout motif, il oriente sans délai le travailleur vers le médecin du travail.\", \"sources\": [\"4.6\"]}, {\"text\": \"Le médecin du travail réalise alors la visite ou l'examen.\", \"sources\": [\"4.6\"]}, {\"text\": \"L'infirmier ne peut pas émettre les avis, propositions, conclusions écrites ou indications reposant sur des éléments de nature médicale.\", \"sources\": [\"4.5\"]}, {\"text\": \"L'infirmier ne peut pas réaliser l'examen médical d'aptitude ni son renouvellement.\", \"sources\": [\"4.4\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R4623-14"
+   ]
+  },
+  "mw-003": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"L'employeur doit prendre les mesures nécessaires pour assurer la sécurité et protéger la santé physique et mentale des travailleurs.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ces mesures comprennent des actions de prévention des risques professionnels, d'information et de formation.\", \"sources\": [\"1.3\", \"1.4\"]}, {\"text\": \"Elles incluent aussi la mise en place d'une organisation et de moyens adaptés.\", \"sources\": [\"1.5\"]}, {\"text\": \"L'employeur doit adapter ces mesures au changement des circonstances et chercher à améliorer les situations existantes.\", \"sources\": [\"1.6\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L4121-1"
+   ]
+  },
+  "mw-004": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Oui, l'employeur doit prendre les mesures nécessaires pour protéger la santé physique et mentale des travailleurs.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ces mesures comprennent des actions de prévention des risques, d'information et de formation, et une organisation adaptée.\", \"sources\": [\"1.3\", \"1.4\", \"1.5\"]}, {\"text\": \"L'employeur doit adapter ces mesures au changement des circonstances et chercher à améliorer les situations existantes.\", \"sources\": [\"1.6\"]}, {\"text\": \"La réponse dépend de la situation : par exemple, l'employeur évalue les risques et tient compte d'un avis du médecin du travail.\", \"sources\": [\"5.1\", \"2.5\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L4121-1",
+    "L4121-3",
+    "R4446-3"
+   ]
+  },
+  "mw-005": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le congé débute ou est renouvelé à l'initiative du salarié.\", \"sources\": [\"1.1\"]}, {\"text\": \"La durée du congé est fixée par le salarié, dans la limite prévue par accord ou, à défaut, par les dispositions supplétives.\", \"sources\": [\"1.2\"]}, {\"text\": \"À défaut d'accord, la durée maximale est de trois mois, renouvelable une fois.\", \"sources\": [\"2.1\", \"2.2\"]}, {\"text\": \"En cas d'urgence absolue constatée par écrit par le médecin, le congé débute ou peut être renouvelé sans délai.\", \"sources\": [\"1.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3142-15",
+    "L3142-7"
+   ]
+  },
+  "mw-006": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le congé de proche aidant débute ou est renouvelé à l'initiative du salarié.\", \"sources\": [\"1.1\"]}, {\"text\": \"En cas de dégradation soudaine de la santé de la personne aidée, de crise urgente ou de cessation brutale d'hébergement, le congé débute ou peut être renouvelé sans délai.\", \"sources\": [\"1.3\"]}, {\"text\": \"Dans ces cas, la dégradation ou la crise est constatée par écrit par un médecin, et la cessation d'hébergement par le responsable de l'établissement.\", \"sources\": [\"5.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "D3142-7",
+    "L3142-19"
+   ]
+  },
+  "mw-008": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"L'employeur étranger doit conserver sur le lieu de travail les documents requis et les présenter sans délai à l'inspection du travail.\", \"sources\": [\"1.1\"]}, {\"text\": \"Il faut notamment le contrat de travail écrit ou un document équivalent, et le cas échéant l'autorisation de travail d'un ressortissant d'un État tiers.\", \"sources\": [\"1.3\", \"1.4\"]}, {\"text\": \"Si le détachement dure au moins un mois, il faut les bulletins de paie ou un document équivalent avec rémunération brute, horaires, congés et convention collective.\", \"sources\": [\"1.6\"]}, {\"text\": \"Si le détachement dure moins d'un mois, il faut tout document prouvant le respect de la rémunération minimale.\", \"sources\": [\"1.7\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R1263-1"
+   ]
+  },
+  "mw-013": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Verser des fonds à un enfant du spectacle sans autorisation individuelle préalable est puni d'une amende de 3 750 euros.\", \"sources\": [\"1.1\", \"1.2\"]}, {\"text\": \"La même amende de 3 750 euros s'applique si les fonds dépassent la part fixée par l'article L. 7124-9.\", \"sources\": [\"1.3\"]}, {\"text\": \"En cas de récidive, la peine est de quatre mois d'emprisonnement et 7 500 euros d'amende.\", \"sources\": [\"1.4\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L7124-26"
+   ]
+  },
+  "mw-014": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Donner des fonds à un enfant du spectacle sans l'autorisation individuelle préalable à l'emploi est puni d'une amende de 3 750 euros.\", \"sources\": [\"1.1\", \"1.2\"]}, {\"text\": \"Donner des fonds au-delà de la part fixée est aussi puni d'une amende de 3 750 euros.\", \"sources\": [\"1.3\", \"4.1\"]}, {\"text\": \"En cas de récidive, la peine est de quatre mois d'emprisonnement et 7 500 euros d'amende.\", \"sources\": [\"1.4\", \"4.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L7124-25",
+    "L7124-26"
+   ]
+  },
+  "mw-015": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le droit de recevoir ses données dans un format structuré, couramment utilisé et lisible par machine existe quand le traitement est fondé sur le consentement ou sur un contrat.\", \"sources\": [\"2.1\", \"2.2\", \"1.3\"]}, {\"text\": \"Il faut aussi que le traitement soit effectué à l'aide de procédés automatisés.\", \"sources\": [\"2.3\", \"1.1\"]}, {\"text\": \"Ce droit ne s'applique pas au traitement nécessaire à une mission d'intérêt public ou relevant de l'autorité publique.\", \"sources\": [\"2.6\", \"1.5\", \"1.6\"]}, {\"text\": \"La transmission directe d'un responsable à un autre n'est possible que lorsque c'est techniquement possible.\", \"sources\": [\"2.4\", \"1.10\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 20",
+    "rct 68"
+   ]
+  },
+  "mw-016": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Oui, vous pouvez recevoir vos données dans un format structuré, couramment utilisé et lisible par machine.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ce droit s'applique si le traitement est fondé sur votre consentement ou sur un contrat.\", \"sources\": [\"1.2\", \"3.3\"]}, {\"text\": \"Le traitement doit aussi être effectué à l'aide de procédés automatisés.\", \"sources\": [\"1.3\"]}, {\"text\": \"Ce droit ne s'applique pas si le traitement est nécessaire à une mission d'intérêt public ou à l'exercice de l'autorité publique.\", \"sources\": [\"1.6\", \"3.6\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 20",
+    "rct 68"
+   ]
+  },
+  "mw-019": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Non : la libre circulation des données personnelles au sein de l'Union ne peut être ni limitée ni interdite pour des motifs liés à la protection des personnes.\", \"sources\": [\"3.3\", \"5.2\"]}, {\"text\": \"Le règlement établit à la fois des règles de protection des personnes et des règles sur la libre circulation de ces données.\", \"sources\": [\"3.1\"]}, {\"text\": \"Un niveau de protection équivalent dans tous les États membres vise à lever les obstacles aux flux de données au sein de l'Union.\", \"sources\": [\"4.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 1",
+    "rct 10",
+    "rct 13"
+   ]
+  },
+  "mw-020": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"La libre circulation des données personnelles au sein de l'Union n'est ni limitée ni interdite pour des motifs liés à la protection des personnes.\", \"sources\": [\"3.3\"]}, {\"text\": \"Le règlement établit des règles sur la protection des personnes et sur la libre circulation de ces données.\", \"sources\": [\"3.1\"]}, {\"text\": \"Des différences de protection entre États membres peuvent empêcher le libre flux des données dans toute l'Union.\", \"sources\": [\"2.2\"]}, {\"text\": \"La réponse dépend de la situation : les extraits citent des différences de protection entre États membres et des transferts vers des pays tiers.\", \"sources\": [\"2.2\", \"4.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 1",
+    "rct 101",
+    "rct 9"
+   ]
+  },
+  "mw-021": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le congé est ouvert si un ascendant, un descendant, un frère, une sœur ou une personne partageant le même domicile est gravement malade.\", \"sources\": [\"1.1\"]}, {\"text\": \"La maladie doit mettre en jeu le pronostic vital ou être en phase avancée ou terminale d'une affection grave et incurable.\", \"sources\": [\"1.1\"]}, {\"text\": \"Le salarié désigné comme personne de confiance bénéficie du même droit dans les mêmes conditions.\", \"sources\": [\"1.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3142-6"
+   ]
+  },
+  "mw-022": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le salarié dont un ascendant, descendant, frère, sœur ou une personne partageant le même domicile a une pathologie mettant en jeu le pronostic vital a droit à un congé de solidarité familiale.\", \"sources\": [\"3.1\"]}, {\"text\": \"Ce droit s'applique aussi au salarié désigné comme personne de confiance.\", \"sources\": [\"3.2\"]}, {\"text\": \"La réponse dépend de la situation : les extraits citent le congé de solidarité familiale et le congé de proche aidant, qui a ses propres conditions.\", \"sources\": [\"3.1\", \"5.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3142-16",
+    "L3142-6"
+   ]
+  },
+  "mw-023": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"La durée du congé de reclassement ne peut excéder douze mois.\", \"sources\": [\"1.2\"]}, {\"text\": \"Elle peut être portée à vingt-quatre mois en cas de formation de reconversion professionnelle.\", \"sources\": [\"1.2\", \"4.3\"]}, {\"text\": \"L'employeur fixe la durée entre quatre et douze mois.\", \"sources\": [\"4.1\"]}, {\"text\": \"Une durée inférieure à quatre mois est possible seulement avec l'accord exprès du salarié.\", \"sources\": [\"4.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1233-71",
+    "R1233-31"
+   ]
+  },
+  "mw-024": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Dans les entreprises d'au moins mille salariés, l'employeur propose un congé de reclassement au salarié dont il envisage le licenciement économique.\", \"sources\": [\"1.1\"]}, {\"text\": \"La durée du congé de reclassement ne peut excéder douze mois.\", \"sources\": [\"1.2\"]}, {\"text\": \"Cette durée peut être portée à vingt-quatre mois en cas de formation de reconversion professionnelle.\", \"sources\": [\"1.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1233-71"
+   ]
+  },
+  "mw-035": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Dans les entreprises de cinquante salariés et plus, un accord collectif peut fixer le contenu du plan de sauvegarde de l'emploi.\", \"sources\": [\"1.1\"]}, {\"text\": \"Cet accord doit être signé par une ou plusieurs organisations syndicales représentatives ayant recueilli au moins 50 % des suffrages exprimés au premier tour des dernières élections des titulaires au comité social et économique.\", \"sources\": [\"1.2\"]}, {\"text\": \"Ce seuil de 50 % s'apprécie quel que soit le nombre de votants.\", \"sources\": [\"1.2\"]}, {\"text\": \"L'accord peut aussi être signé par le conseil d'entreprise dans les conditions prévues à l'article L. 2321-9.\", \"sources\": [\"1.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1233-24-1"
+   ]
+  },
+  "mw-036": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Dans les entreprises de 50 salariés et plus, un accord collectif peut fixer le contenu du plan de sauvegarde de l'emploi et les modalités de consultation et de licenciement.\", \"sources\": [\"1.1\"]}, {\"text\": \"L'accord est signé par une ou plusieurs organisations syndicales représentatives ayant recueilli au moins 50 % des suffrages exprimés au premier tour des dernières élections, quel que soit le nombre de votants.\", \"sources\": [\"1.2\"]}, {\"text\": \"L'accord peut aussi être signé par le conseil d'entreprise dans les conditions prévues à l'article L. 2321-9.\", \"sources\": [\"1.2\"]}, {\"text\": \"L'administration est informée sans délai de l'ouverture de la négociation en vue de cet accord.\", \"sources\": [\"1.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1233-24-1"
+   ]
+  },
+  "mw-037": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"La commission peut recevoir par délégation tout ou partie des attributions du comité sur la santé, la sécurité et les conditions de travail.\", \"sources\": [\"1.1\"]}, {\"text\": \"Le recours à un expert prévu à la sous-section 10 est exclu de cette délégation.\", \"sources\": [\"1.1\"]}, {\"text\": \"Les attributions consultatives du comité sont aussi exclues de la délégation.\", \"sources\": [\"1.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L2315-38"
+   ]
+  },
+  "mw-043": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Oui, le responsable du traitement peut exiger des frais raisonnables basés sur les coûts administratifs pour toute copie supplémentaire demandée.\", \"sources\": [\"5.12\"]}, {\"text\": \"La première copie des données faisant l'objet d'un traitement est fournie par le responsable du traitement.\", \"sources\": [\"5.11\"]}, {\"text\": \"Le droit d'obtenir une copie ne porte pas atteinte aux droits et libertés d'autrui.\", \"sources\": [\"5.14\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 15"
+   ]
+  },
+  "mw-044": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Sans décision d'adéquation, le responsable doit prévoir des garanties appropriées et vous garantir des droits opposables et des voies de droit effectives.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ces garanties peuvent être des règles d'entreprise contraignantes, des clauses types ou des clauses contractuelles autorisées par une autorité de contrôle.\", \"sources\": [\"2.2\"]}, {\"text\": \"Les garanties doivent assurer le respect des droits des personnes, y compris un recours administratif ou juridictionnel effectif et une action en réparation.\", \"sources\": [\"2.3\"]}, {\"text\": \"La réponse dépend de la situation : décision d'adéquation, garanties appropriées ou dérogations pour des situations particulières.\", \"sources\": [\"3.1\", \"1.1\", \"4.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 45",
+    "art 46",
+    "art 49",
+    "rct 108"
+   ]
+  },
+  "mw-057": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Non : le médecin du travail peut confier à un infirmier des visites et examens, mais pas l'examen médical d'aptitude ni son renouvellement.\", \"sources\": [\"4.4\"]}, {\"text\": \"Cette délégation à l'infirmier se fait dans le cadre de protocoles écrits.\", \"sources\": [\"4.3\", \"4.4\"]}, {\"text\": \"Seul le médecin du travail peut émettre les avis et conclusions reposant sur des éléments médicaux.\", \"sources\": [\"4.5\"]}, {\"text\": \"L'infirmier oriente sans délai le travailleur vers le médecin du travail s'il l'estime nécessaire ou si le protocole le prévoit.\", \"sources\": [\"4.6\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R4623-14"
+   ]
+  },
+  "mw-059": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Non : le médecin du travail peut confier à un infirmier des visites et examens, mais pas l'examen médical d'aptitude ni son renouvellement.\", \"sources\": [\"3.4\"]}, {\"text\": \"Le médecin peut confier ces visites et examens à un infirmier dans le cadre de protocoles écrits.\", \"sources\": [\"3.3\", \"3.4\"]}, {\"text\": \"Les avis reposant sur des éléments médicaux ne peuvent être émis que par le médecin du travail.\", \"sources\": [\"3.5\"]}, {\"text\": \"L'infirmier oriente sans délai le travailleur vers le médecin du travail s'il l'estime nécessaire ou si le protocole le prévoit.\", \"sources\": [\"3.6\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R4623-14"
+   ]
+  },
+  "mw-072": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le responsable du traitement et le sous-traitant doivent mettre en œuvre des mesures techniques et organisationnelles adaptées au risque.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ces mesures peuvent inclure la pseudonymisation et le chiffrement des données.\", \"sources\": [\"1.2\"]}, {\"text\": \"Il faut aussi des moyens garantissant la confidentialité, l'intégrité, la disponibilité et la résilience des systèmes.\", \"sources\": [\"1.3\"]}, {\"text\": \"Une procédure doit tester et évaluer régulièrement l'efficacité des mesures de sécurité.\", \"sources\": [\"1.5\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 32"
+   ]
+  },
+  "mw-073": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"L'entreprise doit évaluer les risques du traitement et mettre en œuvre des mesures pour les atténuer, comme le chiffrement.\", \"sources\": [\"5.1\"]}, {\"text\": \"Ces mesures doivent assurer un niveau de sécurité approprié, y compris la confidentialité, selon l'état des connaissances et les coûts par rapport aux risques.\", \"sources\": [\"5.2\"]}, {\"text\": \"Le responsable du traitement doit adopter des règles internes et des mesures respectant la protection des données dès la conception et par défaut.\", \"sources\": [\"3.2\"]}, {\"text\": \"La réponse dépend de la situation : les extraits citent notamment la réduction du traitement, la pseudonymisation, la transparence et le contrôle par la personne concernée.\", \"sources\": [\"3.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "rct 78",
+    "rct 83"
+   ]
+  },
+  "mw-074": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Une certification prouve que les opérations de traitement respectent le RGPD, mais ne diminue pas la responsabilité du responsable du traitement ou du sous-traitant.\", \"sources\": [\"2.1\", \"2.6\"]}, {\"text\": \"La certification est volontaire et délivrée pour une durée maximale de trois ans, renouvelable si les exigences restent satisfaites.\", \"sources\": [\"2.5\", \"2.10\"]}, {\"text\": \"La certification peut être retirée si les exigences applicables ne sont pas ou plus satisfaites.\", \"sources\": [\"2.11\"]}, {\"text\": \"La réponse dépend de la situation : la certification ne couvre pas à elle seule toutes les obligations de sécurité.\", \"sources\": [\"2.6\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 42"
+   ]
+  },
+  "mw-075": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"L'organisme destinataire envoie ce document dans les cinq jours ouvrables suivant la réception du formulaire de déclaration.\", \"sources\": [\"1.1\"]}, {\"text\": \"Le document mentionne les informations enregistrées.\", \"sources\": [\"1.1\"]}, {\"text\": \"Sans contestation de l'employeur dans les deux jours ouvrables suivant sa réception, ce document constitue une preuve de la déclaration.\", \"sources\": [\"1.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R1221-7"
+   ]
+  },
+  "mw-076": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"L'employeur dispose de deux jours ouvrables après réception du document pour contester les informations qu'il contient.\", \"sources\": [\"1.2\"]}, {\"text\": \"Sans contestation dans ce délai de deux jours ouvrables, le document constitue une preuve de la déclaration.\", \"sources\": [\"1.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R1221-7"
+   ]
+  },
+  "mw-077": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Oui : sans contestation de l'employeur dans les deux jours ouvrables suivant la réception, le document vaut preuve de la déclaration.\", \"sources\": [\"1.2\"]}, {\"text\": \"L'organisme adresse ce document accusant réception dans les cinq jours ouvrables suivant la réception du formulaire.\", \"sources\": [\"1.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R1221-7"
+   ]
+  },
+  "sheet-01": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le représentant de la section syndicale représente son syndicat au sein de l'entreprise ou de l'établissement.\", \"sources\": [\"1.1\"]}, {\"text\": \"Il a les mêmes prérogatives que le délégué syndical, sauf le pouvoir de négocier des accords collectifs.\", \"sources\": [\"1.3\"]}, {\"text\": \"Il dispose d'un temps pour exercer ses fonctions, au moins quatre heures par mois.\", \"sources\": [\"3.1\", \"3.2\"]}, {\"text\": \"Dans les entreprises de moins de cinquante salariés, un membre élu du comité social et économique peut être désigné représentant de la section.\", \"sources\": [\"2.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L2142-1-1",
+    "L2142-1-3",
+    "L2142-1-4"
+   ]
+  },
+  "sheet-04": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"En l'absence d'accord collectif, l'employeur définit les critères après consultation du comité social et économique.\", \"sources\": [\"1.1\"]}, {\"text\": \"Les critères prennent notamment en compte les charges de famille, en particulier celles des parents isolés.\", \"sources\": [\"1.2\", \"1.3\"]}, {\"text\": \"Ils prennent aussi en compte l'ancienneté de service dans l'établissement ou l'entreprise.\", \"sources\": [\"1.2\", \"1.4\"]}, {\"text\": \"L'employeur peut privilégier un critère, à condition de tenir compte de tous les autres critères prévus.\", \"sources\": [\"1.7\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1233-5"
+   ]
+  },
+  "sheet-06": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Une ETTP est une personne physique ou morale dont l'activité exclusive est de mettre du personnel qualifié à disposition d'entreprises utilisatrices.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ces entreprises utilisatrices ne peuvent pas recruter elles-mêmes ce personnel en raison de leur taille ou de leurs moyens.\", \"sources\": [\"1.1\"]}, {\"text\": \"Les salariés mis à disposition le sont pour des missions à temps plein ou à temps partiel.\", \"sources\": [\"1.2\"]}, {\"text\": \"Les entreprises de travail temporaire peuvent aussi exercer l'activité d'entreprise de travail à temps partagé.\", \"sources\": [\"2.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1252-2",
+    "L1252-3"
+   ]
+  },
+  "sheet-10": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Sans accord collectif, tout travail entre 21 heures et 6 heures est du travail de nuit.\", \"sources\": [\"1.1\"]}, {\"text\": \"Pour les activités de l'article L. 3122-3, la plage est minuit à 7 heures.\", \"sources\": [\"1.1\"]}, {\"text\": \"Est aussi travail de nuit tout travail sur au moins neuf heures consécutives incluant minuit à 5 heures.\", \"sources\": [\"3.1\"]}, {\"text\": \"La période de nuit commence au plus tôt à 21 heures et finit au plus tard à 7 heures.\", \"sources\": [\"3.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3122-2",
+    "L3122-20"
+   ]
+  },
+  "sheet-13": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits fournis ne traitent pas de la composition de la délégation du personnel au CSE dans les entreprises de 11 à 49 salariés.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  },
+  "sheet-14": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Un CDD ne peut être conclu que pour une tâche précise et temporaire, et seulement dans les cas prévus par la loi.\", \"sources\": [\"2.1\"]}, {\"text\": \"Le CDD d'usage concerne des emplois pour lesquels, dans certains secteurs définis par décret ou accord collectif étendu, il est d'usage constant de ne pas recourir au CDI.\", \"sources\": [\"2.4\"]}, {\"text\": \"Cela vaut aussi pour les emplois saisonniers dont les tâches se répètent chaque année selon une périodicité à peu près fixe.\", \"sources\": [\"2.4\"]}, {\"text\": \"La réponse dépend du secteur d'activité et de la nature temporaire de l'emploi visés par les extraits.\", \"sources\": [\"2.4\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1242-2"
+   ]
+  },
+  "sheet-18": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le nombre de délégués syndicaux est fixé soit par entreprise, soit par établissement distinct.\", \"sources\": [\"4.1\"]}, {\"text\": \"De 50 à 999 salariés : 1 délégué ; de 1 000 à 1 999 : 2 ; de 2 000 à 3 999 : 3.\", \"sources\": [\"1.2\", \"1.3\", \"1.4\"]}, {\"text\": \"De 4 000 à 9 999 salariés : 4 délégués ; au-delà de 9 999 : 5 délégués.\", \"sources\": [\"1.5\", \"1.6\"]}, {\"text\": \"Dans les entreprises à établissements distincts de 50 salariés ou plus, le nombre est fixé par établissement.\", \"sources\": [\"5.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "R2143-1",
+    "R2143-2",
+    "R2143-3"
+   ]
+  },
+  "sheet-19": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Les informations demandées au candidat ne peuvent viser qu'à apprécier sa capacité à occuper l'emploi ou ses aptitudes professionnelles.\", \"sources\": [\"1.1\"]}, {\"text\": \"Ces informations doivent avoir un lien direct et nécessaire avec l'emploi proposé ou l'évaluation des aptitudes professionnelles.\", \"sources\": [\"1.2\"]}, {\"text\": \"Le candidat doit répondre de bonne foi à ces demandes d'informations.\", \"sources\": [\"1.3\"]}, {\"text\": \"Le candidat est informé à l'avance des méthodes et techniques d'aide au recrutement utilisées, et les résultats sont confidentiels.\", \"sources\": [\"2.1\", \"2.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1221-6",
+    "L1221-8"
+   ]
+  },
+  "sheet-20": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Dans les services publics, la grève doit être précédée d'un préavis d'une organisation syndicale représentative.\", \"sources\": [\"1.1\", \"1.2\"]}, {\"text\": \"Le préavis doit parvenir cinq jours francs avant le déclenchement de la grève à l'autorité hiérarchique ou à la direction.\", \"sources\": [\"1.4\"]}, {\"text\": \"Pendant la durée du préavis, les parties intéressées sont tenues de négocier.\", \"sources\": [\"1.6\"]}, {\"text\": \"Le non-respect de ces règles entraîne les sanctions prévues par les statuts ou les règles concernant les personnels, après observations et accès au dossier.\", \"sources\": [\"2.1\", \"2.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L2512-2",
+    "L2512-4"
+   ]
+  },
+  "sheet-21": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"En principe, un jeune travailleur ne peut pas travailler plus de 8 heures par jour ni 35 heures par semaine.\", \"sources\": [\"2.1\"]}, {\"text\": \"Pour certains chantiers (bâtiment, travaux publics, espaces paysagers), la limite peut monter à 10 heures par jour et 40 heures par semaine.\", \"sources\": [\"4.1\", \"4.2\", \"4.3\", \"4.4\"]}, {\"text\": \"Pour d'autres activités, l'inspecteur du travail peut accorder une dérogation dans la limite de 5 heures par semaine.\", \"sources\": [\"2.6\"]}, {\"text\": \"La réponse dépend de la situation : les limites varient selon l'activité et les dérogations applicables.\", \"sources\": [\"2.1\", \"2.6\", \"4.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3162-1",
+    "R3162-1"
+   ]
+  },
+  "sheet-22": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Les fêtes légales sont des jours fériés : 1er janvier, lundi de Pâques, 1er mai, 8 mai, Ascension, lundi de Pentecôte, 14 juillet, Assomption, Toussaint, 11 novembre et Noël.\", \"sources\": [\"2.1\", \"2.2\", \"2.3\", \"2.4\", \"2.5\", \"2.6\", \"2.7\", \"2.8\", \"2.9\", \"2.10\", \"2.11\", \"2.12\"]}, {\"text\": \"Dans les départements de la Moselle, du Bas-Rhin et du Haut-Rhin, d'autres jours sont chômés, dont le Vendredi Saint dans certaines communes et les deux jours de Noël.\", \"sources\": [\"1.1\", \"1.3\", \"1.13\"]}, {\"text\": \"Le 1er mai est jour férié et chômé.\", \"sources\": [\"4.1\"]}, {\"text\": \"La réponse dépend de la situation : la liste varie selon le département et la commune.\", \"sources\": [\"1.1\", \"1.3\", \"2.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3133-1",
+    "L3133-4",
+    "L3134-13"
+   ]
+  },
+  "sheet-24": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"À défaut d'accord, les heures supplémentaires au-delà de la durée légale sont majorées de 25 % pour les huit premières heures.\", \"sources\": [\"1.1\"]}, {\"text\": \"Les heures supplémentaires suivantes sont majorées de 50 %.\", \"sources\": [\"1.2\"]}, {\"text\": \"Pour un travailleur à domicile dépassant huit heures par jour ouvrable, la majoration est d'au moins 25 % pour les deux premières heures, puis d'au moins 50 %.\", \"sources\": [\"5.1\", \"5.2\", \"5.3\"]}, {\"text\": \"La réponse dépend de la situation : les extraits distinguent le salarié ordinaire et le travailleur à domicile.\", \"sources\": [\"1.1\", \"5.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3121-36",
+    "L7422-9"
+   ]
+  },
+  "sheet-26": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le congé est ouvert si l'enfant à charge a une maladie, un handicap ou un accident grave rendant indispensables une présence soutenue et des soins contraignants.\", \"sources\": [\"2.1\"]}, {\"text\": \"Le nombre maximal de jours de congé est de trois cent dix jours ouvrés.\", \"sources\": [\"2.2\"]}, {\"text\": \"La période maximale pour un même enfant et par maladie, accident ou handicap est de trois ans.\", \"sources\": [\"1.1\"]}, {\"text\": \"Le salarié informe l'employeur au moins quinze jours avant le début du congé, avec un certificat médical.\", \"sources\": [\"3.1\", \"3.2\", \"5.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "D1225-16",
+    "L1225-62",
+    "L1225-63",
+    "R1225-14"
+   ]
+  },
+  "sheet-27": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Sauf accord de branche, le délai de carence est d'un tiers de la durée du contrat de mission expiré si celle-ci, renouvellements inclus, atteint quatorze jours ou plus.\", \"sources\": [\"4.1\", \"4.2\"]}, {\"text\": \"Il est de la moitié de la durée du contrat expiré si celle-ci, renouvellements inclus, est inférieure à quatorze jours.\", \"sources\": [\"4.1\", \"4.3\"]}, {\"text\": \"Seuls comptent les jours d'ouverture de l'entreprise ou de l'établissement utilisateurs.\", \"sources\": [\"4.4\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1251-36-1"
+   ]
+  },
+  "sheet-28": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Tout salarié a droit chaque année à un congé payé à la charge de l'employeur.\", \"sources\": [\"1.1\"]}, {\"text\": \"Les salariés de retour d'un congé de maternité ou d'adoption ont droit à leur congé payé annuel, quelle que soit la période retenue pour le personnel.\", \"sources\": [\"2.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3141-1",
+    "L3141-2"
+   ]
+  },
+  "hw-03": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits ne traitent pas du délai de réponse de l'employeur à une demande d'accès aux données personnelles.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  },
+  "hw-04": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Les informations demandées au candidat ne peuvent viser qu'à apprécier sa capacité à occuper l'emploi ou ses aptitudes professionnelles.\", \"sources\": [\"5.1\"]}, {\"text\": \"Ces informations doivent avoir un lien direct et nécessaire avec l'emploi proposé ou l'évaluation des aptitudes professionnelles.\", \"sources\": [\"5.2\"]}, {\"text\": \"Le candidat doit répondre de bonne foi à ces demandes d'informations.\", \"sources\": [\"5.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1221-6"
+   ]
+  },
+  "hw-07": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le RGPD n'interdit pas tout transfert : les flux hors Union sont jugés nécessaires au commerce et à la coopération internationale.\", \"sources\": [\"2.1\"]}, {\"text\": \"Un transfert vers un pays tiers n'est possible que dans le plein respect du RGPD et sans compromettre le niveau de protection garanti dans l'Union.\", \"sources\": [\"2.3\", \"2.4\"]}, {\"text\": \"Si la Commission constate qu'un pays n'assure plus un niveau adéquat, le transfert vers ce pays est interdit, sauf garanties appropriées ou dérogations.\", \"sources\": [\"3.1\", \"3.2\"]}, {\"text\": \"Sans décision d'adéquation ni garanties appropriées, un transfert n'a lieu qu'à certaines conditions, comme le consentement explicite de la personne concernée.\", \"sources\": [\"5.1\", \"5.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 49",
+    "rct 101",
+    "rct 107"
+   ]
+  },
+  "hw-08": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits ne disent pas que la période d'essai est obligatoire ; ils décrivent son but et ses règles, sans traiter du caractère obligatoire.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  },
+  "hw-09": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits portent sur le droit du travail français et ne contiennent aucune information sur le salaire minimum en Allemagne.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  },
+  "hw-10": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits portent sur le droit français et ne contiennent aucune information sur la Belgique.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  },
+  "hw-11": {
+   "raw": null,
+   "outcome": "refused_weak_retrieval",
+   "cited": []
+  },
+  "smoke-03": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le salarié acquiert deux jours et demi ouvrables de congé par mois de travail effectif chez le même employeur.\", \"sources\": [\"3.1\"]}, {\"text\": \"La durée totale du congé exigible ne peut dépasser trente jours ouvrables.\", \"sources\": [\"3.2\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3141-3"
+   ]
+  },
+  "smoke-04": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Pour un CDI, la durée maximale de la période d'essai est de deux mois pour les ouvriers et employés.\", \"sources\": [\"2.2\"]}, {\"text\": \"Elle est de trois mois pour les agents de maîtrise et techniciens.\", \"sources\": [\"2.3\"]}, {\"text\": \"Elle est de quatre mois pour les cadres.\", \"sources\": [\"2.4\"]}, {\"text\": \"La réponse dépend de la catégorie professionnelle : ouvriers et employés, agents de maîtrise et techniciens, ou cadres.\", \"sources\": [\"2.2\", \"2.3\", \"2.4\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1221-19"
+   ]
+  },
+  "smoke-08": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits ne contiennent pas le texte de l'article L1221-13 ; seule une source y fait référence indirectement.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  },
+  "smoke-09": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Pendant la grossesse et les congés maternité et payés qui suivent, plus dix semaines, l'employeur ne peut pas rompre le contrat.\", \"sources\": [\"1.1\"]}, {\"text\": \"Pendant les dix semaines suivant une interruption spontanée de grossesse entre la 14e et la 21e semaine, la rupture est interdite.\", \"sources\": [\"3.1\"]}, {\"text\": \"Pendant un congé de présence parentale, y compris fractionné ou à temps partiel, l'employeur ne peut pas rompre le contrat.\", \"sources\": [\"4.1\"]}, {\"text\": \"Pendant les dix semaines suivant la naissance de son enfant, le salarié est protégé contre la rupture.\", \"sources\": [\"5.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1225-4",
+    "L1225-4-1",
+    "L1225-4-3",
+    "L1225-4-4"
+   ]
+  },
+  "smoke-10": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"En l'absence d'accord, la base rassemble des informations mises à disposition du comité social et économique.\", \"sources\": [\"1.1\"]}, {\"text\": \"Elle porte notamment sur les investissements, l'égalité professionnelle, les fonds propres, la rémunération, les activités sociales, la sous-traitance et l'environnement.\", \"sources\": [\"1.3\", \"1.4\", \"1.5\", \"1.6\", \"1.7\", \"1.8\", \"1.11\", \"1.13\"]}, {\"text\": \"Les informations portent sur les deux années précédentes et l'année en cours, avec des perspectives sur les trois années suivantes.\", \"sources\": [\"1.14\"]}, {\"text\": \"Le contenu peut varier selon que l'effectif est inférieur ou au moins égal à trois cents salariés.\", \"sources\": [\"1.15\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L2312-36"
+   ]
+  },
+  "smoke-12": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le fabricant d'une machine neuve doit d'abord effectuer une évaluation des risques pour déterminer les règles techniques applicables.\", \"sources\": [\"1.2\"]}, {\"text\": \"La machine est ensuite conçue et construite en tenant compte des résultats de cette évaluation des risques.\", \"sources\": [\"1.3\"]}, {\"text\": \"Les règles techniques de l'annexe sont obligatoires, mais compte tenu de l'état de la technique, leurs objectifs peuvent ne pas être atteints.\", \"sources\": [\"1.7\", \"1.8\"]}, {\"text\": \"Les obligations issues des règles techniques ne s'appliquent que si le danger correspondant existe pour la machine considérée.\", \"sources\": [\"1.5\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "Annexe I à l'article R4312-1"
+   ]
+  },
+  "smoke-14": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"En CDI, la période d'essai maximale est de deux mois pour les ouvriers et employés.\", \"sources\": [\"4.1\", \"4.2\"]}, {\"text\": \"Elle est de trois mois pour les agents de maîtrise et techniciens et de quatre mois pour les cadres.\", \"sources\": [\"4.3\", \"4.4\"]}, {\"text\": \"La période d'essai ne peut être renouvelée qu'une fois, si un accord de branche étendu le prévoit.\", \"sources\": [\"1.1\"]}, {\"text\": \"La réponse dépend de votre catégorie professionnelle : ouvrier ou employé, agent de maîtrise ou technicien, ou cadre.\", \"sources\": [\"4.2\", \"4.3\", \"4.4\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L1221-19",
+    "L1221-21"
+   ]
+  },
+  "smoke-17": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"La personne peut demander l'effacement de ses données dans les meilleurs délais, et le responsable doit les effacer dans les meilleurs délais.\", \"sources\": [\"1.1\"]}, {\"text\": \"Cela vaut notamment si les données ne sont plus nécessaires aux finalités, si le consentement est retiré sans autre fondement, ou en cas de traitement illicite.\", \"sources\": [\"1.2\", \"1.3\", \"1.5\"]}, {\"text\": \"Si les données ont été rendues publiques, le responsable prend des mesures raisonnables pour informer les autres responsables de la demande d'effacement.\", \"sources\": [\"1.8\", \"2.1\", \"2.2\"]}, {\"text\": \"L'effacement ne s'applique pas si le traitement est nécessaire, par exemple pour la liberté d'expression, une obligation légale ou la défense de droits en justice.\", \"sources\": [\"1.9\", \"1.10\", \"1.11\", \"1.14\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 17",
+    "rct 66"
+   ]
+  },
+  "smoke-18": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Un délégué doit être désigné quand le traitement est effectué par une autorité publique ou un organisme public, sauf les juridictions dans leur fonction juridictionnelle.\", \"sources\": [\"1.1\", \"1.2\"]}, {\"text\": \"Il faut aussi le désigner si les activités de base exigent un suivi régulier et systématique à grande échelle des personnes concernées.\", \"sources\": [\"1.1\", \"1.3\"]}, {\"text\": \"Il en faut un également si les activités de base consistent en un traitement à grande échelle de catégories particulières de données ou de données sur condamnations pénales et infractions.\", \"sources\": [\"1.1\", \"1.4\"]}, {\"text\": \"Dans les autres cas, le responsable ou le sous-traitant peut désigner un délégué, ou y être tenu si le droit de l'Union ou d'un État membre l'exige.\", \"sources\": [\"1.7\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 37"
+   ]
+  },
+  "smoke-21": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"En principe, un transfert hors UE n'est possible que si une décision d'adéquation ou des garanties appropriées existent.\", \"sources\": [\"1.1\", \"5.1\"]}, {\"text\": \"Sans décision d'adéquation ni garanties, le transfert n'est permis que dans les cas particuliers listés, comme le consentement explicite de la personne.\", \"sources\": [\"1.1\", \"1.2\"]}, {\"text\": \"D'autres cas particuliers existent, par exemple un contrat avec la personne concernée ou des motifs d'intérêt public.\", \"sources\": [\"1.3\", \"1.5\"]}, {\"text\": \"La réponse dépend de la situation : les extraits citent notamment le consentement, le contrat, l'intérêt public et les intérêts vitaux.\", \"sources\": [\"1.2\", \"1.3\", \"1.5\", \"1.7\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "art 46",
+    "art 49"
+   ]
+  },
+  "smoke-22": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le RGPD s'applique à un responsable du traitement non établi dans l'Union lorsque le droit d'un État membre s'applique en vertu du droit international public.\", \"sources\": [\"5.1\"]}, {\"text\": \"C'est par exemple le cas d'un responsable situé auprès d'une représentation diplomatique ou consulaire d'un État membre.\", \"sources\": [\"5.1\"]}, {\"text\": \"Les lois de pays tiers qui s'appliquent de façon extraterritoriale peuvent faire obstacle à la protection garantie dans l'Union.\", \"sources\": [\"4.3\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "rct 115",
+    "rct 25"
+   ]
+  },
+  "smoke-27": {
+   "raw": "{\"refusal\": false, \"reason\": null, \"claims\": [{\"text\": \"Le salarié acquiert deux jours et demi ouvrables de congé par mois de travail effectif chez le même employeur.\", \"sources\": [\"1.1\"]}, {\"text\": \"Le congé total exigible ne peut dépasser trente jours ouvrables.\", \"sources\": [\"1.2\"]}, {\"text\": \"Les congés pris en une seule fois ne peuvent dépasser vingt-quatre jours ouvrables, sauf dérogation individuelle pour contraintes géographiques particulières ou présence d'un proche handicapé ou âgé en perte d'autonomie.\", \"sources\": [\"2.1\", \"2.2\"]}, {\"text\": \"La réponse dépend de la situation : les moins de vingt et un ans au 30 avril de l'année précédente peuvent demander trente jours quelle que soit leur ancienneté.\", \"sources\": [\"4.1\"]}]}",
+   "outcome": "answered",
+   "cited": [
+    "L3141-17",
+    "L3141-3",
+    "L3164-9"
+   ]
+  },
+  "smoke-29": {
+   "raw": "{\"refusal\": true, \"reason\": \"Les extraits fournis traitent du marchandage, du portage salarial et du travail des jeunes, mais aucun ne concerne le vol.\", \"claims\": []}",
+   "outcome": "refused_by_model",
+   "cited": []
+  }
+ }
+}

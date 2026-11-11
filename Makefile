@@ -1,4 +1,4 @@
-.PHONY: db-up db-down migrate load-chunks load-embeddings db-check fetch embed embed-variants pack-variants embed-qwen pack-qwen sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
+.PHONY: ci-fixture ci-fixture-fetch gate db-up db-down migrate load-chunks load-embeddings db-check fetch embed embed-variants pack-variants embed-qwen pack-qwen sanity smoke llm-balance llm-ledger gold-check eval profile verify test lint fresh-rebuild
 
 SOURCE ?= legi
 
@@ -84,3 +84,13 @@ sparse-embed:
 
 pack-sparse:
 	uv run python scripts/data/pack_sparse.py $(ARGS)
+
+ci-fixture:
+	uv run --extra embed python scripts/data/make_ci_fixture.py
+
+ci-fixture-fetch:
+	gh release download ci-fixture-v1 --pattern ci-fixture.tar.gz --dir data/ci --clobber
+	tar -xzf data/ci/ci-fixture.tar.gz -C data/ci
+
+gate:
+	uv run pytest tests/gate -q

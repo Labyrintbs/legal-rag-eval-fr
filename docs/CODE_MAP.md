@@ -15,13 +15,13 @@ spend ledger) sits beside them and imports nothing from the folders.
 | `index/` | vectors and the database | `config`, `db`, `store`, `dbcheck`, `embed` |
 | `answering/` | what a request to the service goes through | `search`, `units`, `answer`, `rag` (the LlamaIndex layer), `articlenum`, `limits`, `trace`, `logs` |
 | `experiments/` | the step 0c options that are not in the final setup | `rerank`, `rewrite`, `sparse`, `keyword`, `headsentence` |
-| `evaluation/` | measuring: gold, metrics, judges, outside datasets | `gold`, `goldjudge`, `draw`, `questiongen`, `metrics`, `evaluate`, `smoke`, `sanity`, `answermetrics`, `claimjudge`, `labelsheet`, `claimrag`, `citationcompare` |
+| `evaluation/` | measuring: gold, metrics, judges, outside datasets | `gold`, `goldjudge`, `draw`, `questiongen`, `metrics`, `evaluate`, `smoke`, `sanity`, `answermetrics`, `claimjudge`, `labelsheet`, `claimrag`, `citationcompare`, `cifixture` |
 | `cli/` | the `legalrag` command, one module per job | `corpus`, `index`, `evaluation`, `service`, and `common` (paths and helpers they share) |
 | top level | the model client | `llm` |
 
 ## `tests/` and `scripts/`
 
-`tests/<folder>/test_<module>.py` for the modules above; `tests/conftest.py` (database fixtures) and `tests/fixtures/` stay at
+`tests/<folder>/test_<module>.py` for the modules above; `tests/gate/` is the quality gate of CI (step 0e, see `docs/decisions/0007-step-0e-quality-gate.md`); `tests/conftest.py` (database fixtures) and `tests/fixtures/` stay at
 the top, and `tests/test_llm.py` tests `llm.py`.
 
 | `scripts/` folder | Holds |

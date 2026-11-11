@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:0.8.7-pg16
+        env:
+          POSTGRES_USER: legalrag
+          POSTGRES_PASSWORD: legalrag
+          POSTGRES_DB: legalrag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U legalrag" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://legalrag:legalrag@localhost:5432/legalrag
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv sync --extra serve --locked
+      - name: Lint
+        run: uv run ruff check .
+      - name: Fetch the quality-gate fixture (a Release asset, never committed)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ci-fixture-v1 --pattern ci-fixture.tar.gz --dir data/ci
+          tar -xzf data/ci/ci-fixture.tar.gz -C data/ci
+      - name: Tests and quality gate
+        run: uv run pytest -q
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

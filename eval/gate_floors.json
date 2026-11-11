@@ -1,0 +1,8 @@
+{
+  "note": "Floors of the quality gate (tests/gate): dev half, fixture of step 0e, exact dense search. Baseline on 2026-11-11: hit@5 0.902, recall@5 0.800, recall@20 0.926, mrr@10 0.670, ndcg@10 0.738. Floor = baseline minus 0.02 (rounded down), only to absorb rounding differences between machines. Change a floor only in a commit that says why.",
+  "hit@5": 0.88,
+  "recall@5": 0.78,
+  "recall@20": 0.90,
+  "mrr@10": 0.65,
+  "ndcg@10": 0.71
+}
