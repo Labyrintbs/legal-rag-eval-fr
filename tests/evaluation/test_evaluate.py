@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -50,7 +51,8 @@ def test_questions_on_the_same_article_are_one_cluster_in_the_summary():
 
 def test_the_test_half_needs_the_final_flag(tmp_path):
     result = runner.invoke(cli.app, ["eval", "--split", "test"])
-    assert result.exit_code != 0 and "--final" in result.output
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)  # CI forces colours, which split "--final"
+    assert result.exit_code != 0 and "--final" in plain
     assert runner.invoke(cli.app, ["eval", "--split", "other"]).exit_code != 0
 
 
