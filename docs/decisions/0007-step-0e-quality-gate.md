@@ -2,6 +2,8 @@
 
 Chosen by the user on 2026-11-11 (option 3 of 4): code checks, a retrieval check on a frozen fixture, and an answer-path replay with recorded model replies. The full evaluation (model, GPU, full database) stays a manual step before a release.
 
+Approved by the user on 2026-11-11 (the review gate of 0e).
+
 ## What runs on every push (`.github/workflows/ci.yml`)
 1. `ruff`, then the whole test suite on a Postgres 16 + pgvector service (the database tests no longer skip).
 2. The quality gate, `tests/gate/`:
@@ -23,3 +25,6 @@ A change of embedding model, chunking, prompt or the model itself (the replay us
 
 ## Raising a floor
 Floors only move in a commit that says why (a better setup measured on dev through the normal process), never to make a failing push pass.
+
+## Triggers
+Every push and pull request, a manual button (`workflow_dispatch`), and a weekly run on Mondays at 06:00 UTC. No branch protection is set, so a red run blocks nothing.

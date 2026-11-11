@@ -2,7 +2,7 @@
 
 Question answering over French labour law (Code du travail) and the GDPR, with measured evaluation. French questions first. Answers will cite articles and refuse when the corpus cannot answer.
 
-**Status:** step 0a (ingest, storage, first retrieval) is done. The evaluation set (0b) is next. There is no answer generation and nothing is deployed.
+**Status:** steps 0a to 0e are done: ingest and storage, the evaluation set, the retrieval experiments, cited answers with refusals and guardrails, and a quality gate in CI (`docs/stage_0d_summary.md`, `docs/stage_0e_summary.md`). The web service and demo page (0f) come next. Nothing is deployed.
 
 **Disclaimer:** legal information, not legal advice. The corpus has a date (below) and may not contain the current law.
 
@@ -53,6 +53,7 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 | `make llm-balance`, `make llm-ledger` | DeepSeek balance snapshot (needs `DEEPSEEK_API_KEY` in `.env`) and the cost ledger of the question-writing calls |
 | `legalrag delete-run NAME` | Delete a chunking run with its chunks and vectors (asks first) |
 | `make fresh-rebuild` | Rebuild from nothing into a scratch database and compare |
+| `make ci-fixture-fetch`, `make gate` | Download the quality-gate fixture (a Release asset) and run the gate: retrieval floors and the replay of recorded answers. CI runs it on every push |
 
 ## First retrieval results
 

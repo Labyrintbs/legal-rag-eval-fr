@@ -3,6 +3,9 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"  # Mondays 06:00 UTC: catches what breaks without a push (an action, a package, the Release asset)
 
 jobs:
   checks:
