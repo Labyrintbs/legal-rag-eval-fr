@@ -524,3 +524,7 @@ Entry template:
 - Fixture against the full database (same question vectors, 61 dev questions with gold): identical rankings and metrics, nDCG@10 0.738, Recall@5 0.800, Recall@20 0.926, Hit@5 0.902, MRR@10 0.670.
 - Floors (`eval/gate_floors.json`) are the baseline minus 0.02. Four deliberate breakages, each caught: search order reversed and worst chunk per article (retrieval floors); threshold 0.60 and units cut to one (replay of the 65 recorded dev replies, outcome and cited articles).
 - First CI run (Linux x86, floors set on the Mac arm64): the gate passed; one older test failed because CI forces colours and the codes split "--final" in an error message (fixed in the test); two tokenizer tests skip in CI. Second run green in 48 s.
+
+## 2026-11-13: the 7 comparison chunking runs deleted from the local database
+- Deleted with `legalrag delete-run` (size-512, header-full, header-llm, header-collapse, header-last2, header-label, header-none; 85,704 chunks and as many vectors), then `VACUUM FULL` and `REINDEX`. Only `default` stays, as the service uses it. Their vectors remain in the Releases `embeddings-bge-m3-variants-v1` and `embeddings-bge-m3-header-llm-v1`, so a 0c comparison can be reloaded with `make load-chunks` and `make load-embeddings`.
+- Database 1.5 GB to 304 MB; the real search query (exact scan, one random vector, 400 chunks) 0.34 s to 0.10 s when warm (0.78 s to 0.32 s cold); `db-check` 11 of 11 pass; 370 tests pass. The earlier estimate of 8 times faster was too high: 3 times measured.
