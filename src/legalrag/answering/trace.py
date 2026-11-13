@@ -19,6 +19,7 @@ OUTCOMES = (
     "answered", "refused_weak_retrieval", "refused_by_model", "invalid_citation",
     "parse_error", "llm_error", "rate_limited", "llm_disabled",
 )  # the same list as the CHECK of migration 0003
+FEEDBACK_KINDS = ("wrong_answer", "wrong_citation", "missing_article", "other")  # the CHECK of migration 0005
 FAILURES = ("refused_weak_retrieval", "refused_by_model", "invalid_citation", "parse_error", "llm_error")
 # rate_limited and llm_disabled say how the service was run, not that the system could not answer
 
@@ -92,10 +93,12 @@ def record(conn: psycopg.Connection, trace: Trace) -> int:
     return trace_id
 
 
-def set_feedback(conn: psycopg.Connection, request_id: str, value: int, comment: str | None = None) -> bool:
-    """Thumbs up (1) or down (-1) on a request; False if there is no such request."""
-    done = conn.execute("UPDATE query_traces SET feedback = %s, feedback_comment = %s WHERE request_id = %s",
-                        (value, comment, request_id)).rowcount == 1
+def set_feedback(conn: psycopg.Connection, request_id: str, value: int, comment: str | None = None,
+                 kind: str | None = None) -> bool:
+    """Thumbs up (1) or down (-1) on a request, with an optional kind and comment; False if there is no such request.
+    A new vote replaces the old one."""
+    done = conn.execute("UPDATE query_traces SET feedback = %s, feedback_comment = %s, feedback_kind = %s WHERE request_id = %s",
+                        (value, comment, kind, request_id)).rowcount == 1
     conn.commit()
     return done
 

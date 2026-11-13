@@ -1,7 +1,7 @@
 # Code map
 
 The code is in folders by job. A module may import from its own folder and from the folders above it in this list, never
-from the ones below: `corpus` < `index` < `answering` < `experiments` < `evaluation` < `cli`. Shared helpers go to the
+from the ones below: `corpus` < `index` < `answering` < `experiments` < `evaluation` < `web` < `cli`. Shared helpers go to the
 lowest folder that needs them (`corpus/labels.py`, `corpus/text.py`, `index/embed.py`). `llm.py` (the DeepSeek client and the
 spend ledger) sits beside them and imports nothing from the folders.
 
@@ -16,12 +16,13 @@ spend ledger) sits beside them and imports nothing from the folders.
 | `answering/` | what a request to the service goes through | `search`, `units`, `answer`, `rag` (the LlamaIndex layer), `articlenum`, `limits`, `trace`, `logs` |
 | `experiments/` | the step 0c options that are not in the final setup | `rerank`, `rewrite`, `sparse`, `keyword`, `headsentence` |
 | `evaluation/` | measuring: gold, metrics, judges, outside datasets | `gold`, `goldjudge`, `draw`, `questiongen`, `metrics`, `evaluate`, `smoke`, `sanity`, `answermetrics`, `claimjudge`, `labelsheet`, `claimrag`, `citationcompare`, `cifixture` |
+| `web/` | the HTTP service (step 0f): the API and its reply shapes, and the real wiring | `app`, `schemas`, `build` |
 | `cli/` | the `legalrag` command, one module per job | `corpus`, `index`, `evaluation`, `service`, and `common` (paths and helpers they share) |
 | top level | the model client | `llm` |
 
 ## `tests/` and `scripts/`
 
-`tests/<folder>/test_<module>.py` for the modules above; `tests/gate/` is the quality gate of CI (step 0e, see `docs/decisions/0007-step-0e-quality-gate.md`); `tests/conftest.py` (database fixtures) and `tests/fixtures/` stay at
+`tests/<folder>/test_<module>.py` for the modules above (`tests/web/` needs the serve extra); `tests/gate/` is the quality gate of CI (step 0e, see `docs/decisions/0007-step-0e-quality-gate.md`); `tests/conftest.py` (database fixtures) and `tests/fixtures/` stay at
 the top, and `tests/test_llm.py` tests `llm.py`.
 
 | `scripts/` folder | Holds |

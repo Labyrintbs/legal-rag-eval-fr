@@ -107,6 +107,18 @@ def service_status_cmd() -> None:
                f"per client {settings.per_minute} a minute and {settings.per_day} a day")
 
 
+@app.command("serve")
+def serve_cmd(
+    host: Annotated[str, typer.Option(help="Address to listen on; behind a proxy keep the default")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Port to listen on")] = 8000,
+) -> None:
+    """Start the web service: one process, since bge-m3 is loaded in it (needs the embed and serve extras,
+    DEEPSEEK_API_KEY and TRACE_SECRET; CLIENT_IP_HEADER names the header of the proxy that carries the visitor's address)."""
+    import uvicorn  # the serve extra
+
+    uvicorn.run("legalrag.web.build:production_app", factory=True, host=host, port=port, workers=1, proxy_headers=False)
+
+
 @app.command("llm-balance")
 def llm_balance_cmd(
     label: Annotated[str, typer.Option(help="Name of this snapshot, e.g. before-pilot")] = "",

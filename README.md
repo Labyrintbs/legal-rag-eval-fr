@@ -53,6 +53,7 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 | `make llm-balance`, `make llm-ledger` | DeepSeek balance snapshot (needs `DEEPSEEK_API_KEY` in `.env`) and the cost ledger of the question-writing calls |
 | `legalrag delete-run NAME` | Delete a chunking run with its chunks and vectors (asks first) |
 | `make fresh-rebuild` | Rebuild from nothing into a scratch database and compare |
+| `legalrag serve` | Start the web service on 127.0.0.1:8000 (one process; needs `uv sync --extra serve --extra embed`, `DEEPSEEK_API_KEY` and `TRACE_SECRET`). API: `POST /ask`, `POST /search`, `POST /feedback`, `GET /health`, docs at `/api/docs` |
 | `make ci-fixture-fetch`, `make gate` | Download the quality-gate fixture (a Release asset) and run the gate: retrieval floors and the replay of recorded answers. CI runs it on every push |
 
 ## First retrieval results
@@ -72,5 +73,5 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 - [EXPERIMENT.md](EXPERIMENT.md): every change to data processing and chunking, and the measurements, newest last.
 - [docs/decisions/](docs/decisions/): design decisions (database design, decisions of step 0a).
 - [docs/data_profiles/](docs/data_profiles/): statistics and spot checks of each source, smoke notes.
-- `src/legalrag/`: the code, in folders by job (`corpus/`, `index/`, `answering/`, `evaluation/`, `experiments/`, `cli/`). Tests in `tests/` and scripts in `scripts/` mirror them; migrations in `migrations/`. [docs/CODE_MAP.md](docs/CODE_MAP.md) says what each folder holds and where every old file went.
+- `src/legalrag/`: the code, in folders by job (`corpus/`, `index/`, `answering/`, `evaluation/`, `experiments/`, `web/`, `cli/`). Tests in `tests/` and scripts in `scripts/` mirror them; migrations in `migrations/`. [docs/CODE_MAP.md](docs/CODE_MAP.md) says what each folder holds and where every old file went.
 - [CLAUDE.md](CLAUDE.md): rules for working with the AI assistant on this repo.

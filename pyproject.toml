@@ -23,7 +23,13 @@ dependencies = [
 # Embedding job only (GPU laptop); keeps the Mac install light.
 embed = ["sentence-transformers", "torch"]
 # The service (step 0d, decision 4 of docs/decisions/0006): LlamaIndex around our retrieval; pinned, its API changes between versions.
-serve = ["llama-index-core==0.14.25", "llama-index-llms-deepseek==0.4.1"]
+# Step 0f adds the web layer (FastAPI, uvicorn); running it for real also needs the embed extra (bge-m3 loads in the process).
+serve = [
+    "fastapi>=0.162.7",
+    "llama-index-core==0.14.25",
+    "llama-index-llms-deepseek==0.4.1",
+    "uvicorn>=0.54.0",
+]
 
 [dependency-groups]
 dev = [
