@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from legalrag.evaluation import relevance
+from legalrag.evaluation import answer_relevance as relevance
 
 
 def unit(*values):

@@ -188,6 +188,53 @@ def render_pairs(pairs: list[tuple[str, str, str, str]], sheet: str) -> str:
     return PAGE.format(items="\n".join(_pair_item(*p) for p in pairs), sheet=html.escape(sheet), intro=COVERAGE_INTRO)
 
 
+ANSWER_RELEVANCE = ("addresses", "partly", "does not address")
+ANSWER_RELEVANCE_INTRO = """<p>Each item has a <b>question</b> and an <b>answer</b>. Does the answer respond to what was asked? Do not judge
+whether it is true or complete, and do not use what you know of the law. <b>addresses</b>: it gives information that responds to
+the question, even if short (for a question built on a false premise: it says so and gives the right rule).
+<b>partly</b>: it responds to only a part, or to a closely related question. <b>does not address</b>: it is about another
+subject. Some items pair an answer with a question it was not written for.</p>"""
+
+
+def _answer_relevance_item(key: str, question: str, answer: str) -> str:
+    key = html.escape(key)
+    lines = "".join(f"<blockquote>{html.escape(line)}</blockquote>" for line in answer.split("\n") if line.strip())
+    return (f'<section data-id="{key}"><h2>{key} <small>answer relevancy</small></h2><p class="q">{html.escape(question)}</p>'
+            f'<p class="meta">Answer:</p>{lines}<p>Does the answer respond to the question? {_radios(f"{key}|label", ANSWER_RELEVANCE)}</p>'
+            f'<p><input type="text" name="{key}|note" placeholder="note (optional)" size="60"></p></section>')
+
+
+def render_answer_relevance(items: list[tuple[str, str, str]], sheet: str) -> str:
+    """The sheet of (key, question, answer) items for the hand check of the answer relevancy judge."""
+    return PAGE.format(items="\n".join(_answer_relevance_item(*i) for i in items), sheet=html.escape(sheet),
+                       intro=ANSWER_RELEVANCE_INTRO)
+
+
+MINISTRY = ("agrees", "not covered", "contradicts")
+MINISTRY_INTRO = """<p>Each item has a <b>question</b>, <b>our answer</b>, and the <b>official text</b> of the ministry of labour on the same
+question (open it below the answer). Compare the two only, not with what you know of the law. <b>agrees</b>: no statement of
+our answer contradicts the text, and the text covers the main point of the answer. <b>not covered</b>: nothing contradicts the
+text, but the text does not cover the main point of the answer. <b>contradicts</b>: a statement of our answer says something
+different from the text (another number, delay, person, the opposite, a condition the text rules out). Saying less than the
+text, or adding a detail it does not give, is not a contradiction. The text may be more recent than the articles our answer
+cites: note it if that seems to be the reason.</p>"""
+
+
+def _ministry_item(key: str, question: str, answer: str, official: str) -> str:
+    key = html.escape(key)
+    lines = "".join(f"<blockquote>{html.escape(line)}</blockquote>" for line in answer.split("\n") if line.strip())
+    return (f'<section data-id="{key}"><h2>{key} <small>ministry check</small></h2><p class="q">{html.escape(question)}</p>'
+            f'<p class="meta">Our answer:</p>{lines}<details open><summary>Official text</summary>'
+            f'<blockquote>{html.escape(official)}</blockquote></details>'
+            f'<p>Our answer against the official text? {_radios(f"{key}|label", MINISTRY)}</p>'
+            f'<p><input type="text" name="{key}|note" placeholder="note (optional)" size="60"></p></section>')
+
+
+def render_ministry(items: list[tuple[str, str, str, str]], sheet: str) -> str:
+    """The sheet of (key, question, our answer, official text) items for the hand check of the ministry check."""
+    return PAGE.format(items="\n".join(_ministry_item(*i) for i in items), sheet=html.escape(sheet), intro=MINISTRY_INTRO)
+
+
 def render(rows: list[dict], sheet: str, checks: list[dict] | None = None) -> str:
     items = [_item(r) for r in rows] + [_check_item(c) for c in checks or []]
     return PAGE.format(items="\n".join(items), sheet=html.escape(sheet), intro=INTRO)

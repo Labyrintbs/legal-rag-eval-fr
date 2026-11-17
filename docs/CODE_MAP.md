@@ -15,7 +15,7 @@ spend ledger) sits beside them and imports nothing from the folders.
 | `index/` | vectors and the database | `config`, `db`, `store`, `dbcheck`, `embed` |
 | `answering/` | what a request to the service goes through | `search`, `units`, `answer`, `rag` (the LlamaIndex layer), `articlenum`, `limits`, `trace`, `logs` |
 | `experiments/` | the step 0c options that are not in the final setup | `rerank`, `rewrite`, `sparse`, `keyword`, `headsentence` |
-| `evaluation/` | measuring: gold, metrics, judges, outside datasets | `gold`, `goldjudge`, `draw`, `questiongen`, `metrics`, `evaluate`, `smoke`, `sanity`, `answermetrics`, `claimjudge`, `labelsheet`, `claimrag`, `citationcompare`, `cifixture` |
+| `evaluation/` | measuring: gold, metrics, judges, outside datasets | `gold`, `goldjudge`, `draw`, `questiongen`, `metrics`, `evaluate`, `smoke`, `sanity`, `answermetrics`, `claimjudge`, `labelsheet`, `claimrag`, `citationcompare`, `cifixture`, `answer_relevance`, `ministry`, `judgecall` |
 | `web/` | the HTTP service (step 0f): the API and its reply shapes, and the real wiring | `app`, `schemas`, `build` |
 | `cli/` | the `legalrag` command, one module per job | `corpus`, `index`, `evaluation`, `service`, and `common` (paths and helpers they share) |
 | top level | the model client | `llm` |

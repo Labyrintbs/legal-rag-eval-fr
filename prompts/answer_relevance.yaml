@@ -1,7 +1,8 @@
 # Never edit a prompt in place: a change is a new id, so earlier results stay traceable.
 prompts:
-  # Judge: does the answer address the question (step 0f, relevancy view). Not about truth or completeness.
-  relevance.v1:
+  # Judge of answer relevancy: does the answer address the question (step 0f). Not about truth or completeness.
+  # Named `relevance.v1` until 2026-11-17; the text is unchanged.
+  answer_relevance.v1:
     system: |
       You check whether an answer addresses a question. Both are in French and concern French labour law or the GDPR.
       Judge only whether the answer talks about what was asked. Do not judge whether it is true, complete or well
@@ -25,7 +26,7 @@ prompts:
       Reply with the json object.
     max_tokens: 200
 
-  # Ragas style: a model writes the questions the answer would respond to; the code compares them with the real question.
+  # Ragas style of answer relevancy: a model writes the questions the answer would respond to; the code compares them with the real question.
   ragas.v1:
     system: |
       You are given an answer written in French. Write 3 different questions, in French, to which this answer would be a
