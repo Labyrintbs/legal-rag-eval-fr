@@ -1,0 +1,38 @@
+# Never edit a prompt in place: a change is a new id, so earlier results stay traceable.
+prompts:
+  # Judge: does the answer address the question (step 0f, relevancy view). Not about truth or completeness.
+  relevance.v1:
+    system: |
+      You check whether an answer addresses a question. Both are in French and concern French labour law or the GDPR.
+      Judge only whether the answer talks about what was asked. Do not judge whether it is true, complete or well
+      written, and do not use what you know about the law.
+
+      If the question rests on a false premise, an answer that says so and gives the correct rule addresses the question.
+
+      Labels:
+      - "addresses": the answer gives information that responds to what was asked, even if short.
+      - "partly": the answer responds to only a part of the question, or to a closely related question.
+      - "does not address": the answer is about another subject.
+
+      Reply with a json object: {"reason": "one sentence naming what the answer is about", "label": "..."}.
+    user: |
+      Question:
+      {question}
+
+      Answer:
+      {answer}
+
+      Reply with the json object.
+    max_tokens: 200
+
+  # Ragas style: a model writes the questions the answer would respond to; the code compares them with the real question.
+  ragas.v1:
+    system: |
+      You are given an answer written in French. Write 3 different questions, in French, to which this answer would be a
+      direct answer. Reply with a json object: {"questions": ["...", "...", "..."]}.
+    user: |
+      Answer:
+      {answer}
+
+      Reply with the json object.
+    max_tokens: 300

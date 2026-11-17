@@ -29,6 +29,27 @@ def faithfulness(verdicts: list[dict]) -> dict:
             "answers_with_not_supported": sum("not supported" in xs for xs in by_answer.values())}
 
 
+def answer_level(verdicts: list[dict], rows: list[dict]) -> dict:
+    """The verdicts counted per answer, as a reader meets them: every claim supported, a partly supported claim and
+    no unsupported one, or at least one unsupported claim; and by kind of question. An answer with a claim the judge
+    could not judge is left out. The judge flags about a quarter of good claims, so an answer with several claims is
+    flagged more often than a claim is: only `with_not_supported` is close to a rate of errors."""
+    by_answer: dict[str, list[dict]] = defaultdict(list)
+    for v in verdicts:
+        by_answer[v["key"].split("|")[0]].append(v)
+    kind = {r["id"]: r["kind"] for r in rows}
+    judged = {a: [v["label"] for v in vs] for a, vs in by_answer.items() if all(v.get("label") for v in vs)}
+    by_kind: dict[str, dict[str, int]] = {}
+    for a, labels in judged.items():
+        counts = by_kind.setdefault(kind[a], {"answers": 0, "all_supported": 0, "with_not_supported": 0})
+        counts["answers"] += 1
+        counts["all_supported"] += all(x == "supported" for x in labels)
+        counts["with_not_supported"] += "not supported" in labels
+    total = {key: sum(c[key] for c in by_kind.values()) for key in ("answers", "all_supported", "with_not_supported")}
+    return {**total, "partly_only": total["answers"] - total["all_supported"] - total["with_not_supported"],
+            "left_out_for_judge_errors": len(by_answer) - len(judged), "by_kind": by_kind}
+
+
 def citations(rows: list[dict]) -> dict:
     """For the answered answerable questions: how many cite a gold or a primary gold article, and the share of the
     cited articles that are gold. A cited article that is not gold may still be right: the gold lists are not complete."""

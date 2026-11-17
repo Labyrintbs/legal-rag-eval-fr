@@ -23,6 +23,20 @@ def test_faithfulness_counts_claims_and_answers_and_keeps_the_judge_errors_apart
     assert (f["answers"], f["answers_all_supported"], f["answers_with_not_supported"]) == (2, 0, 1)
 
 
+def test_the_answer_level_view_counts_answers_by_their_worst_claim_and_by_kind():
+    verdicts = [{"key": "a1|claim0", "label": "supported"}, {"key": "a1|claim1", "label": "supported"},
+                {"key": "a2|claim0", "label": "supported"}, {"key": "a2|claim1", "label": "partly"},
+                {"key": "a3|claim0", "label": "partly"}, {"key": "a3|claim1", "label": "not supported"},
+                {"key": "f1|claim0", "label": "not supported"},
+                {"key": "a4|claim0", "label": "supported"}, {"key": "a4|claim1", "error": "ValueError"}]
+    rows = [row("a1"), row("a2"), row("a3"), row("a4"), row("f1", kind="false_premise")]
+    level = am.answer_level(verdicts, rows)
+    assert (level["answers"], level["all_supported"], level["partly_only"], level["with_not_supported"]) == (4, 1, 1, 2)
+    assert level["left_out_for_judge_errors"] == 1
+    assert level["by_kind"] == {"answerable": {"answers": 3, "all_supported": 1, "with_not_supported": 1},
+                                "false_premise": {"answers": 1, "all_supported": 0, "with_not_supported": 1}}
+
+
 def test_citations_count_gold_and_primary_among_answered_answerable_questions():
     rows = [row("a1"), row("a2", cited=("L9", "L1")), row("a3", cited=("L9",)), row("a4", cited=("L2",), primary=("L3",)),
             row("r1", outcome="refused_by_model"), row("f1", kind="false_premise")]

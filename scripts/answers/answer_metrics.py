@@ -33,7 +33,8 @@ def main() -> None:
         JUDGE.mkdir(parents=True, exist_ok=True)
         verdict_file.write_text("".join(json.dumps(v, ensure_ascii=False) + "\n" for v in verdicts))
     result = {"tag": args.tag, "judge": {"model": args.model, "prompt": args.prompt},
-              "faithfulness": answermetrics.faithfulness(verdicts), "citations": answermetrics.citations(rows),
+              "faithfulness": answermetrics.faithfulness(verdicts), "answer_level": answermetrics.answer_level(verdicts, rows),
+              "citations": answermetrics.citations(rows),
               "refusals": answermetrics.refusals(rows), "passages": answermetrics.passages(rows),
               "cost": answermetrics.cost(rows)}
     (PILOT / f"metrics_{args.tag}.json").write_text(json.dumps(result, indent=1) + "\n")
