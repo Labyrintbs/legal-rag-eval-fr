@@ -23,6 +23,7 @@ class Settings:
     # Only safe when the service can be reached through that proxy alone, since any visitor could write the header.
     client_ip_header: str | None = None
     feedback_per_minute: int = 10  # per client
+    search_per_minute: int = 30  # per client; /search costs no model call but uses the CPU (about 4 searches a second in all)
     code_version: str | None = None  # a deploy with another code version starts with an empty cache (decision 4)
     data_version: str | None = None
 
@@ -62,6 +63,16 @@ def hit_trace(engine: rag.AnswerEngine, settings: Settings, reply: schemas.AskRe
         code_version=settings.code_version, data_version=settings.data_version, cache_key=key)
 
 
+def limited_trace(engine: rag.AnswerEngine, settings: Settings, reply: schemas.AskReply, question: str, client: str | None,
+                  key: str) -> trace.Trace:
+    """The trace of a request refused by the cached-replies limit: it does not count toward any limit."""
+    return trace.Trace(
+        request_id=reply.request_id, lang="fr", question=question, mode="answer", outcome="rate_limited", client_hash=client,
+        refusal_reason=reply.reason, retrieved=[{"label": a.label, "score": a.similarity} for a in reply.articles],
+        model=engine.model, prompt_id=engine.prompt_id, code_version=settings.code_version, data_version=settings.data_version,
+        cache_key=key)
+
+
 def lookup(connect, key: str, request_id: str) -> dict | None:
     """A failure of the cache is logged and counts as a miss."""
     try:
@@ -99,11 +110,19 @@ def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, quest
     key = cache_key(engine, settings, question)
     stored = None if warm else lookup(connect, key, request_id)
     reply = from_cache(stored, request_id) if stored is not None else None
-    if reply is not None and (engine.gate is None or engine.gate.check_cached(client).allowed):
-        elapsed = round((time.monotonic() - started) * 1000)
-        write_trace(connect, hit_trace(engine, settings, reply, question, client, key, elapsed))
-        log_event(log, "ask", request_id, outcome="cache_hit", total_ms=elapsed, cost_usd=0)
-        return reply, 200
+    if reply is not None:
+        verdict = engine.gate.check_cached(client) if engine.gate else None
+        if verdict is None or verdict.allowed:
+            elapsed = round((time.monotonic() - started) * 1000)
+            write_trace(connect, hit_trace(engine, settings, reply, question, client, key, elapsed))
+            log_event(log, "ask", request_id, outcome="cache_hit", total_ms=elapsed, cost_usd=0)
+            return reply, 200
+        # over the cached-replies limit: refuse with the stored articles; a fresh model call would only cost money
+        refused = schemas.AskReply(request_id=request_id, outcome=verdict.outcome, reason=verdict.reason,
+                                   articles=reply.articles, retry_after=verdict.retry_after)
+        write_trace(connect, limited_trace(engine, settings, refused, question, client, key))
+        log_event(log, "ask", request_id, outcome=verdict.outcome, total_ms=round((time.monotonic() - started) * 1000), cost_usd=0)
+        return refused, verdict.status
     result = engine.respond(question, client, warm=warm).metadata["result"]
     write_trace(connect, result_trace(engine, settings, result, request_id, question, "answer", client, key))
     log_event(log, "ask", request_id, outcome=result.outcome, total_ms=result.total_ms, cost_usd=result.cost_usd)

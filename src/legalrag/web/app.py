@@ -5,6 +5,7 @@ the limits count the traces. The work of /ask (cache, engine, traces) is in `ask
 """
 
 import logging
+import math
 import threading
 import time
 from collections import defaultdict, deque
@@ -46,6 +47,13 @@ class Recent:
             events.append(now)
             return True
 
+    def retry_after(self, key: str, now: float | None = None) -> int:
+        """Seconds until the oldest event of this client leaves the window and one more is allowed."""
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            events = self.events[key]
+            return max(1, math.ceil(events[0] + self.seconds - now)) if events else 1
+
 
 def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = None,
                warm_questions: list[str] | None = None) -> FastAPI:
@@ -62,6 +70,7 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
     app = FastAPI(title="legal-rag-eval-fr", docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
                   lifespan=lifespan)
     feedback_window = Recent(settings.feedback_per_minute)
+    search_window = Recent(settings.search_per_minute)
 
     # The routes below set a status or a header on `response` (a draft FastAPI hands in) and return the data: FastAPI
     # then checks it against `response_model` before sending. See docs/decisions/0008 (build notes).
@@ -79,6 +88,9 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
     def search_route(body: schemas.AskRequest, request: Request) -> schemas.SearchReply:
         request_id = trace.new_request_id()
         client = trace.client_hash(client_address(request, settings.client_ip_header))
+        if not search_window.allow(client or "-"):  # no model money, but every search embeds the question on the CPU
+            raise HTTPException(429, "too many searches, try again in a moment",
+                                headers={"Retry-After": str(search_window.retry_after(client or "-"))})
         started = time.monotonic()
         hits = rag.hits_of(engine.retriever.retrieve(body.question))
         weak = search.is_weak(hits, engine.threshold)
@@ -102,7 +114,8 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
     def feedback(body: schemas.FeedbackRequest, request: Request) -> dict:
         client = trace.client_hash(client_address(request, settings.client_ip_header))
         if not feedback_window.allow(client or "-"):
-            raise HTTPException(429, "too many feedback messages, try again in a minute", headers={"Retry-After": "60"})
+            raise HTTPException(429, "too many feedback messages, try again in a moment",
+                                headers={"Retry-After": str(feedback_window.retry_after(client or "-"))})
         with connect() as conn:
             if not trace.set_feedback(conn, body.request_id, body.value, body.comment, body.kind):
                 raise HTTPException(404, "no such request")

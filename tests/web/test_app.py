@@ -66,20 +66,20 @@ def url(database_name):
     return with_database(database_url(), database_name)
 
 
-def engine_for(url, llm=None, nodes=None, gate=True, threshold=0.55):
+def engine_for(url, llm=None, nodes=None, gate=True, threshold=0.55, limit_settings=None):
     """An answer engine with a fake search and a fake model, over the throwaway database."""
     return rag.AnswerEngine(
         retriever=FakeRetriever(nodes if nodes is not None else [node(), node(0.65, "L1221-20")]),
         postprocessor=rag.NumberUnits(), llm=llm or FakeLLM(), prompt=PROMPT, model="deepseek-flash", prompt_id="answer.v3",
-        threshold=threshold, gate=limits.Limits(lambda: db.connect(url)) if gate else None)
+        threshold=threshold, gate=limits.Limits(lambda: db.connect(url), limit_settings) if gate else None)
 
 
 @pytest.fixture
 def make(url, conn):
     """A client of the app over the throwaway database, with a fake search and a fake model."""
 
-    def build_client(llm=None, nodes=None, settings=None, gate=True, threshold=0.55, warm=None):
-        engine = engine_for(url, llm, nodes, gate, threshold)
+    def build_client(llm=None, nodes=None, settings=None, gate=True, threshold=0.55, warm=None, limit_settings=None):
+        engine = engine_for(url, llm, nodes, gate, threshold, limit_settings)
         return TestClient(web.create_app(engine, lambda: db.connect(url), settings, warm))
 
     conn.execute("DELETE FROM query_traces")
@@ -239,6 +239,7 @@ def test_a_cached_entry_made_for_another_version_of_the_reply_shape_is_a_miss(ur
 def test_the_window_of_recent_events_forgets_after_its_time():
     recent = web.Recent(2, seconds=60)
     assert [recent.allow("a", now=t) for t in (0, 1, 2)] == [True, True, False]
+    assert recent.retry_after("a", now=10) == 50 and recent.retry_after("nobody", now=10) == 1  # the event of t=0 leaves at 60
     assert recent.allow("b", now=2) and recent.allow("a", now=61)
 
 
@@ -321,11 +322,35 @@ def test_a_cached_reply_is_served_when_the_model_is_off_or_the_budget_is_used_up
     assert llm.calls == 1
 
 
-def test_cached_replies_still_count_for_the_minute_limit(make):
-    client = make()
-    assert [client.post("/ask", json=ASK).status_code for _ in range(5)] == [200] * 5  # one model call, four from the cache
-    sixth = client.post("/ask", json=ASK)
-    assert sixth.status_code == 429 and sixth.json()["outcome"] == "rate_limited" and sixth.json()["articles"]
+def test_cached_replies_do_not_use_the_model_allowance_of_the_minute(make):
+    llm = FakeLLM()
+    client = make(llm)  # 5 model answers a minute
+    assert [client.post("/ask", json=ASK).status_code for _ in range(6)] == [200] * 6  # one model call, five from the cache
+    for i in range(4):  # the allowance is almost untouched: four more fresh questions are answered
+        assert client.post("/ask", json={"question": f"Autre question {i} ?"}).status_code == 200
+    assert llm.calls == 5 and client.post("/ask", json={"question": "Une sixième ?"}).status_code == 429
+
+
+def test_cached_replies_have_their_own_limit_and_over_it_the_client_is_refused_without_a_model_call(make, conn):
+    llm = FakeLLM()
+    client = make(llm, limit_settings=limits.Settings(per_minute_cached=3))
+    statuses = [client.post("/ask", json=ASK).status_code for _ in range(4)]  # one model answer, then 3 cached replies
+    refused = client.post("/ask", json=ASK)
+    assert statuses == [200] * 4 and refused.status_code == 429 and llm.calls == 1
+    body = refused.json()
+    assert body["outcome"] == "rate_limited" and "cached replies" in body["reason"] and body["articles"] and int(refused.headers["Retry-After"]) >= 1
+    assert traced(conn, body["request_id"])[1] == "rate_limited"
+    assert client.post("/ask", json={"question": "Une autre question ?"}).status_code == 200  # a fresh question is not blocked
+
+
+def test_search_is_limited_per_client_and_the_wait_is_told(make):
+    behind = make(settings=web.Settings(client_ip_header="x-forwarded-for", search_per_minute=3))
+    alice, bob = {"x-forwarded-for": "203.0.113.7"}, {"x-forwarded-for": "198.51.100.2"}
+    assert [behind.post("/search", json=ASK, headers=alice).status_code for _ in range(3)] == [200] * 3
+    refused = behind.post("/search", json=ASK, headers=alice)
+    assert refused.status_code == 429 and 1 <= int(refused.headers["Retry-After"]) <= 60
+    assert behind.post("/search", json=ASK, headers=bob).status_code == 200  # another client is not affected
+    assert behind.post("/ask", json=ASK, headers=alice).status_code == 200  # nor is /ask for the same client
 
 
 def test_a_thumbs_down_from_the_client_who_got_the_reply_removes_it_from_the_cache(make, conn):
