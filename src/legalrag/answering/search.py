@@ -53,6 +53,18 @@ def top_chunks(conn: psycopg.Connection, run_id: int, lang: str, vector, k: int 
     return best_chunk_per_article(rows, k)
 
 
+def named_chunks(conn: psycopg.Connection, run_id: int, lang: str, vector, keys: list[str], model: str = MODEL) -> list[Hit]:
+    """The best chunk of each article named by number (keys "source|kind|number", see `articlenum`) that exists, in the
+    order of `keys`, with its similarity to the question."""
+    if not keys:
+        return []
+    sql = HITS.replace("WHERE ", "WHERE a.source_code || '|' || a.kind || '|' || a.article_num = ANY(%s) AND ", 1)
+    with _exact_scan(conn):
+        rows = conn.execute(sql, (vector, keys, model, run_id, lang, vector, CHUNKS_SEARCHED)).fetchall()
+    found = {h.label: h for h in best_chunk_per_article(rows, len(keys))}
+    return [found[label] for label in (article_label(*key.split("|")) for key in keys) if label in found]
+
+
 def is_weak(hits: list[Hit], threshold: float = WEAK_THRESHOLD) -> bool:
     """True when nothing was found or the best chunk is not close enough to the question."""
     return not hits or hits[0].similarity < threshold

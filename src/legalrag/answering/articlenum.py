@@ -8,7 +8,8 @@ import psycopg
 
 from legalrag.corpus.labels import article_label
 
-CODE_NUMBER = re.compile(r"(?<![\w*-])([LRD]\*?\d{4}(?:-\d+)+)(?![\w-])")
+# "L1221-13", "L. 1221-13", "R*3231-4"; a lowercase letter only when attached ("l1221-13"), since "l 2008-596" is not an article
+CODE_NUMBER = re.compile(r"(?<![\w*-])(?:([LRD])\.?\s?|([lrd]))(\*?\d{4}(?:-\d+)+)(?![\w-])")
 GDPR_ARTICLE = re.compile(r"\b(?:article|art\.?)\s+(\d{1,3})\b", re.IGNORECASE)
 GDPR_RECITAL = re.compile(r"\b(?:considérant|recital)\s+(\d{1,3})\b", re.IGNORECASE)
 GDPR_NAME = re.compile(r"\b(?:RGPD|GDPR)\b", re.IGNORECASE)
@@ -29,11 +30,16 @@ def named_articles(question: str) -> list[tuple[str, str, str]]:
     """(source_code, kind, article_num) of every article the question names, in the order of the text.
     Bare numbers ("article 17") count only when the question names the GDPR, since the Code du travail
     numbers always carry a letter."""
-    found = [("code_travail", "article", m.group(1)) for m in CODE_NUMBER.finditer(question)]
+    found = [("code_travail", "article", (m.group(1) or m.group(2)).upper() + m.group(3)) for m in CODE_NUMBER.finditer(question)]
     if GDPR_NAME.search(question):
         found += [("rgpd", "article", m.group(1)) for m in GDPR_ARTICLE.finditer(question)]
     found += [("rgpd", "recital", m.group(1)) for m in GDPR_RECITAL.finditer(question)]
     return list(dict.fromkeys(found))
+
+
+def named_keys(question: str) -> list[str]:
+    """The named articles as "source|kind|number" keys, for a search restricted to them."""
+    return ["|".join(n) for n in named_articles(question)]
 
 
 def lookup(conn: psycopg.Connection, question: str, lang: str) -> list[tuple[str, str]]:

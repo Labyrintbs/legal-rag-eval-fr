@@ -20,26 +20,39 @@ from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
 from pydantic import ValidationError
 
 from legalrag import llm as costs
-from legalrag.answering import answer, limits, search
+from legalrag.answering import answer, articlenum, limits, search
 from legalrag.answering.units import Unit, split_units
 from legalrag.index.embed import MODEL, embed_queries
 
 
 class LegalRetriever(BaseRetriever):
-    """Our exact dense search: one node per article (its best chunk), the score is the cosine similarity."""
+    """Our exact dense search: one node per article (its best chunk), the score is the cosine similarity.
+    With `article_rule` the articles that the question names by number come first (decision of 0f part 3); their
+    nodes carry `named` in the metadata."""
 
     def __init__(self, connect: Callable[[], psycopg.Connection], run_id: int, embedder, lang: str,
-                 k: int = search.TOP_ARTICLES, model: str = MODEL) -> None:
+                 k: int = search.TOP_ARTICLES, model: str = MODEL, article_rule: bool = False) -> None:
         super().__init__()
         self.connect, self.run_id, self.embedder, self.lang, self.k, self.model = connect, run_id, embedder, lang, k, model
+        self.article_rule = article_rule
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
-        vector = embed_queries([query_bundle.query_str], self.embedder)[0]
+        question = query_bundle.query_str
+        vector = embed_queries([question], self.embedder)[0]
         with self.connect() as conn:
             hits = search.top_chunks(conn, self.run_id, self.lang, vector, self.k, self.model)
+            named = search.named_chunks(conn, self.run_id, self.lang, vector, articlenum.named_keys(question), self.model) \
+                if self.article_rule else []
+        labels = {h.label for h in named}
+        ranking = (named + [h for h in hits if h.label not in labels])[: self.k]
         return [NodeWithScore(node=TextNode(id_=f"{h.label}#{h.chunk_index}", text=h.text, metadata={
             "label": h.label, "chunk_index": h.chunk_index, "header": h.header, "section_path": h.section_path,
-            "url": h.url}), score=h.similarity) for h in hits]
+            "url": h.url, "named": h.label in labels}), score=h.similarity) for h in ranking]
+
+
+def names_article(nodes: list[NodeWithScore]) -> bool:
+    """True when the question named an article that exists: the weak-retrieval check does not apply then."""
+    return any(n.node.metadata.get("named") for n in nodes)
 
 
 class NumberUnits(BaseNodePostprocessor):
@@ -84,7 +97,7 @@ class AnswerEngine(CustomQueryEngine):
         nodes = self.retriever.retrieve(question)
         hits = hits_of(nodes)
         retrieval_ms = round((time.monotonic() - started) * 1000)
-        if search.is_weak(hits, self.threshold):
+        if search.is_weak(hits, self.threshold) and not names_article(nodes):
             top = f"{hits[0].similarity:.2f}" if hits else "none"
             result = answer.Result("refused_weak_retrieval", f"(no answer: nothing close enough found, best {top})", hits,
                                    reason=f"top similarity {top} below {self.threshold:.2f}", retrieval_ms=retrieval_ms)

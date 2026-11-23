@@ -92,8 +92,9 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
             raise HTTPException(429, "too many searches, try again in a moment",
                                 headers={"Retry-After": str(search_window.retry_after(client or "-"))})
         started = time.monotonic()
-        hits = rag.hits_of(engine.retriever.retrieve(body.question))
-        weak = search.is_weak(hits, engine.threshold)
+        nodes = engine.retriever.retrieve(body.question)
+        hits = rag.hits_of(nodes)
+        weak = search.is_weak(hits, engine.threshold) and not rag.names_article(nodes)
         elapsed = round((time.monotonic() - started) * 1000)
         result = answer.Result("refused_weak_retrieval" if weak else "answered", "", hits, retrieval_ms=elapsed, total_ms=elapsed)
         asking.write_trace(connect, asking.result_trace(engine, settings, result, request_id, body.question, "search", client, None))

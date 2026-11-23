@@ -30,6 +30,12 @@ class FakeConn:
     ("Quelle est la durée du préavis ?", []),
     ("La loi 2008-596 du 25 juin 2008", []),
     ("L1221-13 et L1221-13 encore", [("code_travail", "article", "L1221-13")]),
+    ("Que dit l'article L. 1221-13 ?", [("code_travail", "article", "L1221-13")]),
+    ("Et l'article R 1454-14 ?", [("code_travail", "article", "R1454-14")]),
+    ("Et R. *3231-4 ?", [("code_travail", "article", "R*3231-4")]),
+    ("l'article l1221-13", [("code_travail", "article", "L1221-13")]),
+    ("la loi de l 2008-596", []),  # a lowercase letter counts only when attached to the number
+    ("Que dit l'article 1221-13 ?", []),  # no letter
 ])
 def test_named_articles(text, expected):
     assert articlenum.named_articles(text) == expected

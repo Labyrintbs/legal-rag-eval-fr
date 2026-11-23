@@ -156,6 +156,35 @@ def test_the_retriever_wraps_the_search_and_keeps_the_best_chunk_of_each_article
     assert rag.hits_of(nodes)[1] == hits[1]
 
 
+def test_with_the_article_rule_the_named_article_comes_first_and_is_marked(monkeypatch):
+    hits = [search.Hit("L1", 0, "h1", "texte un", 0.8, "p1", "u1"), search.Hit("L1221-13", 1, "h2", "texte deux", 0.5, "p2", "u2")]
+    named = [search.Hit("L1221-13", 1, "h2", "texte deux", 0.5, "p2", "u2")]
+    monkeypatch.setattr(search, "top_chunks", lambda conn, run, lang, vector, k, model: hits)
+    monkeypatch.setattr(search, "named_chunks", lambda conn, run, lang, vector, keys, model: named if keys else [])
+
+    @contextmanager
+    def connect():
+        yield None
+
+    embedder = SimpleNamespace(encode_queries=lambda texts, batch: np.ones((len(texts), 4), dtype=np.float32))
+    plain = rag.LegalRetriever(connect, 1, embedder, "fr")
+    ruled = rag.LegalRetriever(connect, 1, embedder, "fr", article_rule=True)
+    nodes = ruled.retrieve("Que dit l'article L. 1221-13 ?")
+    assert [(n.node.metadata["label"], n.node.metadata["named"]) for n in nodes] == [("L1221-13", True), ("L1", False)]
+    assert rag.names_article(nodes)
+    assert not rag.names_article(ruled.retrieve("Quelle durée ?"))  # no number: the plain ranking
+    assert [n.node.metadata["label"] for n in plain.retrieve("Que dit l'article L1221-13 ?")] == ["L1", "L1221-13"]  # rule off
+
+
+def test_a_named_article_is_answered_even_when_the_search_is_weak_and_an_unnamed_weak_search_is_still_refused():
+    weak = node(0.50)
+    weak.node.metadata["named"] = True
+    llm = FakeLLM(GOOD)
+    assert ask([weak], llm).outcome == "answered" and len(llm.calls) == 1
+    llm = FakeLLM(GOOD)
+    assert ask([node(0.50)], llm).outcome == "refused_weak_retrieval" and llm.calls == []
+
+
 def test_the_post_processor_adds_the_units_without_touching_the_text():
     nodes = rag.NumberUnits().postprocess_nodes([node()])
     assert nodes[0].node.text == TRIAL and len(nodes[0].node.metadata["units"]) == 4

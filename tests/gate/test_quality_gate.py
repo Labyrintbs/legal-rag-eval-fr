@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from conftest import with_database
 
-from legalrag.answering import rag
+from legalrag.answering import articlenum, rag
 from legalrag.evaluation import cifixture, evaluate, gold
 from legalrag.evaluation.questiongen import load_prompts
 from legalrag.index import db
@@ -100,6 +100,19 @@ def test_replayed_model_replies_give_the_recorded_outcomes_and_citations(loaded,
         if (result.outcome, cited) != (recorded["outcome"], recorded["cited"]):
             differences.append((q.id, result.outcome, cited, recorded["outcome"], recorded["cited"]))
     assert not differences, differences
+
+
+def test_the_article_rule_puts_a_named_article_of_the_fixture_first_in_any_spelling(loaded, fixture, questions):
+    url, run_id = loaded
+    numbered = {g.article for q in questions for g in q.gold if g.source == "code_travail" and g.grade == 2}
+    articles = sorted(a for a in numbered if articlenum.CODE_NUMBER.fullmatch(a))[:10]  # not the annexes
+    asked = {f"Que dit l'article {spelling} ?": article for article in articles
+             for spelling in (article, f"{article[0]}. {article[1:]}", article.lower())}
+    embedder = RecordedEmbedder({text: fixture.question_vectors[0] for text in asked})  # the vector does not matter here
+    retriever = rag.LegalRetriever(lambda: db.connect(url), run_id, embedder, "fr", article_rule=True)
+    first = {text: retriever.retrieve(text)[0].node.metadata["label"] for text in asked}
+    wrong = {text: label for text, label in first.items() if label != asked[text]}
+    assert articles and not wrong, wrong
 
 
 def test_no_data_secrets_or_vectors_are_tracked_by_git():

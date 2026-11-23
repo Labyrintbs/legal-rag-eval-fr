@@ -48,7 +48,7 @@ def production_engine() -> tuple[rag.AnswerEngine, Settings]:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (RUN,)).fetchone()[0]
         data_version = os.environ.get("DATA_VERSION") or cache.data_version(conn, RUN)
     engine = rag.AnswerEngine(
-        retriever=rag.LegalRetriever(db.connect, run_id, embedder, "fr"), postprocessor=rag.NumberUnits(), llm=llm,
+        retriever=rag.LegalRetriever(db.connect, run_id, embedder, "fr", article_rule=True), postprocessor=rag.NumberUnits(), llm=llm,
         prompt=prompt, model=MODEL, prompt_id=PROMPT_ID, gate=limits.Limits(db.connect))
     settings = Settings(client_ip_header=os.environ.get("CLIENT_IP_HEADER") or None,
                         code_version=os.environ.get("CODE_VERSION") or "dev", data_version=data_version)
