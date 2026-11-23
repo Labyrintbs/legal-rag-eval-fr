@@ -5,6 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from legalrag import cli
+from legalrag.answering import cache as answer_cache
 from legalrag.cli import index as index_cli
 from legalrag.index import db, embed, store
 
@@ -76,3 +77,25 @@ def test_delete_run_yes_skips_the_question_and_an_unknown_run_is_refused(deleted
     assert runner.invoke(cli.app, ["delete-run", "r", "--yes"]).exit_code == 0
     assert runner.invoke(cli.app, ["delete-run", "nope", "--yes"]).exit_code != 0
     assert deleted == ["r"]
+
+
+@pytest.fixture
+def cache_calls(monkeypatch):
+    """Stub the database and the cache: 3 valid and 2 expired entries; returns the names of the calls."""
+    calls = []
+    monkeypatch.setattr(db, "connect", lambda: contextlib.nullcontext(object()))
+    monkeypatch.setattr(answer_cache, "counts", lambda _: (3, 2))
+    monkeypatch.setattr(answer_cache, "clear", lambda _: calls.append("clear") or 5)
+    monkeypatch.setattr(answer_cache, "purge", lambda _: calls.append("purge") or 2)
+    return calls
+
+
+def test_cache_clear_shows_the_counts_and_waits_for_confirmation(cache_calls):
+    refused = runner.invoke(cli.app, ["cache", "clear"], input="n\n")
+    assert "3 valid and 2 expired" in refused.output and refused.exit_code != 0 and cache_calls == []
+    assert runner.invoke(cli.app, ["cache", "clear", "--yes"]).exit_code == 0 and cache_calls == ["clear"]
+
+
+def test_cache_purge_removes_the_expired_entries_without_asking(cache_calls):
+    result = runner.invoke(cli.app, ["cache", "purge"])
+    assert result.exit_code == 0 and "2 expired entries deleted, 3 valid ones kept" in result.output and cache_calls == ["purge"]

@@ -1,6 +1,7 @@
 import json
 import threading
 import time
+from functools import partial
 from types import SimpleNamespace
 
 import psycopg
@@ -10,16 +11,15 @@ from conftest import with_database
 pytest.importorskip("llama_index.core")
 pytest.importorskip("fastapi")
 
-from fastapi.exceptions import ResponseValidationError
 from fastapi.testclient import TestClient
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, TextNode
 
-from legalrag.answering import limits, rag, trace
+from legalrag.answering import cache, limits, rag, trace
 from legalrag.index import db
 from legalrag.index.config import database_url
 from legalrag.web import app as web
-from legalrag.web import build, schemas
+from legalrag.web import asking, build, schemas, warm
 
 TRIAL = ("Le contrat de travail à durée indéterminée peut comporter une période d'essai dont la durée maximale est : "
          "1° Pour les ouvriers et les employés, de deux mois ; 2° Pour les agents de maîtrise et les techniciens, de trois mois ; "
@@ -66,18 +66,24 @@ def url(database_name):
     return with_database(database_url(), database_name)
 
 
+def engine_for(url, llm=None, nodes=None, gate=True, threshold=0.55):
+    """An answer engine with a fake search and a fake model, over the throwaway database."""
+    return rag.AnswerEngine(
+        retriever=FakeRetriever(nodes if nodes is not None else [node(), node(0.65, "L1221-20")]),
+        postprocessor=rag.NumberUnits(), llm=llm or FakeLLM(), prompt=PROMPT, model="deepseek-flash", prompt_id="answer.v3",
+        threshold=threshold, gate=limits.Limits(lambda: db.connect(url)) if gate else None)
+
+
 @pytest.fixture
 def make(url, conn):
     """A client of the app over the throwaway database, with a fake search and a fake model."""
 
-    def build_client(llm=None, nodes=None, settings=None, gate=True, threshold=0.55):
-        engine = rag.AnswerEngine(
-            retriever=FakeRetriever(nodes if nodes is not None else [node(), node(0.65, "L1221-20")]),
-            postprocessor=rag.NumberUnits(), llm=llm or FakeLLM(), prompt=PROMPT, model="deepseek-flash", prompt_id="answer.v3",
-            threshold=threshold, gate=limits.Limits(lambda: db.connect(url)) if gate else None)
-        return TestClient(web.create_app(engine, lambda: db.connect(url), settings))
+    def build_client(llm=None, nodes=None, settings=None, gate=True, threshold=0.55, warm=None):
+        engine = engine_for(url, llm, nodes, gate, threshold)
+        return TestClient(web.create_app(engine, lambda: db.connect(url), settings, warm))
 
     conn.execute("DELETE FROM query_traces")
+    conn.execute("DELETE FROM answer_cache")  # cache rows are committed by the app: they would leak into the next test
     conn.execute("UPDATE service_flags SET value = true WHERE name = 'llm_enabled'")
     conn.commit()
     return build_client
@@ -122,9 +128,9 @@ def test_a_failed_model_is_a_502_with_the_articles(make):
 def test_the_sixth_question_in_a_minute_gets_a_429_with_retry_after_and_the_articles(make):
     llm = FakeLLM()
     client = make(llm)
-    for _ in range(5):
-        assert client.post("/ask", json={"question": "Quelle durée ?"}).status_code == 200
-    reply = client.post("/ask", json={"question": "Quelle durée ?"})
+    for i in range(5):  # different questions: an identical one would come from the cache, without the model
+        assert client.post("/ask", json={"question": f"Quelle durée {i} ?"}).status_code == 200
+    reply = client.post("/ask", json={"question": "Quelle durée 5 ?"})
     assert reply.status_code == 429 and reply.json()["outcome"] == "rate_limited" and reply.json()["articles"]
     assert int(reply.headers["Retry-After"]) >= 1 and llm.calls == 5
 
@@ -205,9 +211,9 @@ def test_a_failed_trace_write_does_not_break_the_answer(make, monkeypatch):
 
 def test_health_says_whether_written_answers_are_on(make, conn):
     client = make()
-    assert client.get("/health").json() == {"status": "ok", "llm_enabled": True}
+    assert client.get("/health").json() == {"status": "ok", "llm_enabled": True, "cache_warm": "off"}
     limits.set_llm_enabled(conn, False)
-    assert client.get("/health").json() == {"status": "ok", "llm_enabled": False}
+    assert client.get("/health").json() == {"status": "ok", "llm_enabled": False, "cache_warm": "off"}
 
 
 def database_down():
@@ -218,14 +224,16 @@ def test_health_is_a_503_when_the_database_is_down():
     engine = rag.AnswerEngine(retriever=FakeRetriever([node()]), postprocessor=rag.NumberUnits(), llm=FakeLLM(), prompt=PROMPT,
                               model="deepseek-flash", prompt_id="answer.v3")
     reply = TestClient(web.create_app(engine, database_down)).get("/health")
-    assert reply.status_code == 503 and reply.json() == {"status": "database_unavailable", "llm_enabled": None}
+    assert reply.status_code == 503 and reply.json() == {"status": "database_unavailable", "llm_enabled": None, "cache_warm": None}
 
 
-def test_a_reply_that_does_not_fit_the_template_is_refused_and_not_sent(make, monkeypatch):
-    # FastAPI checks what /ask returns against AskReply: a reply without request_id is refused (a 500 in production)
-    monkeypatch.setattr(schemas, "reply_of", lambda result, request_id: {"outcome": "answered"})
-    with pytest.raises(ResponseValidationError):
-        make().post("/ask", json={"question": "Quelle durée ?"})
+def test_a_cached_entry_made_for_another_version_of_the_reply_shape_is_a_miss(url, conn, make):
+    llm = FakeLLM()
+    client = make(llm)
+    key = asking.cache_key(engine_for(url), web.Settings(), ASK["question"])
+    cache.put(conn, key, "answered", {"outcome": "answered", "a_field_that_no_longer_exists": 1})
+    reply = client.post("/ask", json=ASK).json()
+    assert reply["cached"] is False and reply["outcome"] == "answered" and llm.calls == 1
 
 
 def test_the_window_of_recent_events_forgets_after_its_time():
@@ -252,3 +260,136 @@ def test_the_embedder_lets_only_a_few_calls_in_together():
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert peak == 2
+
+
+ASK = {"question": "Quelle durée pour un cadre ?"}
+
+
+def cached_entries(conn):
+    return conn.execute("SELECT count(*) FROM answer_cache").fetchone()[0]
+
+
+def test_the_same_question_twice_costs_one_model_call_and_the_second_reply_says_it_is_cached(make, conn):
+    llm = FakeLLM()
+    client = make(llm)
+    first = client.post("/ask", json=ASK).json()
+    second = client.post("/ask", json={"question": "  QUELLE durée pour un CADRE ?  "}).json()  # the same after normalising
+    assert llm.calls == 1 and first["cached"] is False and second["cached"] is True
+    assert second["request_id"] != first["request_id"]
+    assert {k: v for k, v in second.items() if k not in ("request_id", "cached")} == {k: v for k, v in first.items() if k not in ("request_id", "cached")}
+    mode, outcome, _, _, text = traced(conn, second["request_id"])
+    assert (mode, outcome, text) == ("answer", "cache_hit", None)
+    keys = conn.execute("SELECT cache_key, cost_usd FROM query_traces WHERE request_id IN (%s, %s) ORDER BY id",
+                        (first["request_id"], second["request_id"])).fetchall()
+    assert keys[0][0] == keys[1][0] and keys[0][0] and keys[1][1] == 0
+
+
+def test_a_refusal_by_the_model_is_cached_too(make):
+    llm = FakeLLM(REFUSAL)
+    client = make(llm)
+    client.post("/ask", json=ASK)
+    second = client.post("/ask", json=ASK).json()
+    assert llm.calls == 1 and second["cached"] is True and second["outcome"] == "refused_by_model"
+
+
+def test_a_weak_search_and_a_model_failure_are_never_cached(make, conn):
+    assert make(nodes=[node(0.40)]).post("/ask", json=ASK).json()["outcome"] == "refused_weak_retrieval"
+    assert make(FakeLLM(error=TimeoutError())).post("/ask", json=ASK).status_code == 502
+    assert cached_entries(conn) == 0
+
+
+def test_another_code_version_does_not_find_the_reply_of_an_older_one(make):
+    llm = FakeLLM()
+    old = make(llm, settings=web.Settings(code_version="v1"))
+    old.post("/ask", json=ASK)
+    new = make(llm, settings=web.Settings(code_version="v2"))
+    assert new.post("/ask", json=ASK).json()["cached"] is False and llm.calls == 2
+    assert old.post("/ask", json=ASK).json()["cached"] is True and llm.calls == 2
+
+
+def test_a_cached_reply_is_served_when_the_model_is_off_or_the_budget_is_used_up(make, conn):
+    llm = FakeLLM()
+    client = make(llm)
+    client.post("/ask", json=ASK)
+    limits.set_llm_enabled(conn, False)
+    assert client.post("/ask", json=ASK).json()["cached"] is True
+    limits.set_llm_enabled(conn, True)
+    conn.execute("UPDATE query_traces SET cost_usd = 1")  # the day's budget is used up
+    conn.commit()
+    assert client.post("/ask", json=ASK).json()["cached"] is True
+    assert client.post("/ask", json={"question": "Une autre question ?"}).status_code == 503  # a new one still needs the model
+    assert llm.calls == 1
+
+
+def test_cached_replies_still_count_for_the_minute_limit(make):
+    client = make()
+    assert [client.post("/ask", json=ASK).status_code for _ in range(5)] == [200] * 5  # one model call, four from the cache
+    sixth = client.post("/ask", json=ASK)
+    assert sixth.status_code == 429 and sixth.json()["outcome"] == "rate_limited" and sixth.json()["articles"]
+
+
+def test_a_thumbs_down_from_the_client_who_got_the_reply_removes_it_from_the_cache(make, conn):
+    client = make()
+    request_id = client.post("/ask", json=ASK).json()["request_id"]
+    client.post("/feedback", json={"request_id": request_id, "value": 1})
+    assert cached_entries(conn) == 1  # a thumbs up keeps it
+    client.post("/feedback", json={"request_id": request_id, "value": -1})
+    assert cached_entries(conn) == 0
+
+
+def test_a_thumbs_down_from_another_client_leaves_the_cache_alone_and_one_on_a_cached_reply_removes_it(make, conn):
+    behind = make(settings=web.Settings(client_ip_header="x-forwarded-for"))
+    alice, bob = {"x-forwarded-for": "203.0.113.7"}, {"x-forwarded-for": "198.51.100.2"}
+    first = behind.post("/ask", json=ASK, headers=alice).json()["request_id"]
+    behind.post("/feedback", json={"request_id": first, "value": -1}, headers=bob)
+    assert cached_entries(conn) == 1  # bob did not get alice's reply
+    served = behind.post("/ask", json=ASK, headers=bob).json()
+    assert served["cached"] is True
+    behind.post("/feedback", json={"request_id": served["request_id"], "value": -1}, headers=bob)
+    assert cached_entries(conn) == 0  # bob got that reply, from the cache
+
+
+def test_the_warm_up_asks_each_example_once_without_the_client_limits_and_skips_the_cached_ones(url, conn, make):
+    make()  # empties the tables
+    llm, connect, settings = FakeLLM(), partial(db.connect, url), web.Settings()
+    engine = engine_for(url, llm)
+    questions = [f"Question {i} ?" for i in range(7)]  # more than the 5 a minute of one client
+    status = warm.run(engine, connect, settings, questions, warm.Status())
+    assert (status.state, status.asked, status.stored, status.skipped, status.stopped) == ("done", 7, 7, 0, None)
+    assert llm.calls == 7 and cached_entries(conn) == 7
+    assert conn.execute("SELECT count(*) FROM query_traces WHERE client_hash IS NOT NULL").fetchone()[0] == 0
+    again = warm.run(engine, connect, settings, [*questions[:2], "Question neuve ?"], warm.Status())
+    assert (again.asked, again.skipped) == (1, 2) and llm.calls == 8
+    assert TestClient(web.create_app(engine, connect, settings)).post("/ask", json={"question": questions[0]}).json()["cached"]
+
+
+def test_the_warm_up_stops_when_the_model_is_off_and_never_raises(url, conn, make):
+    make()
+    connect, settings = partial(db.connect, url), web.Settings()
+    limits.set_llm_enabled(conn, False)
+    stopped = warm.run(engine_for(url), connect, settings, ["Question 1 ?", "Question 2 ?"], warm.Status())
+    assert (stopped.state, stopped.asked, stopped.stored, stopped.stopped) == ("done", 1, 0, "llm_disabled")
+    broken = warm.run(engine_for(url), database_down, settings, ["Question 1 ?"], warm.Status())
+    assert (broken.state, broken.stopped) == ("done", "OperationalError")
+
+
+def test_the_service_warms_the_cache_in_the_background_at_startup(make):
+    llm = FakeLLM()
+    with make(llm, warm=["Question une ?"]) as client:  # the `with` runs the startup of the app
+        for _ in range(100):
+            if client.get("/health").json()["cache_warm"] == "done":
+                break
+            time.sleep(0.05)
+        assert client.get("/health").json()["cache_warm"] == "done" and llm.calls == 1
+        assert client.post("/ask", json={"question": "Question une ?"}).json()["cached"] is True
+
+
+def test_the_example_questions_are_read_from_a_yaml_file(tmp_path):
+    path = tmp_path / "examples.yaml"
+    path.write_text("questions:\n  - ' Quelle durée ? '\n  - Que dit la loi ?\n")
+    assert warm.load_questions(path) == ["Quelle durée ?", "Que dit la loi ?"]
+    path.write_text("- Quelle durée ?\n")
+    assert warm.load_questions(path) == ["Quelle durée ?"]
+    path.write_text("questions: [1, 2]\n")
+    with pytest.raises(ValueError, match="list of questions"):
+        warm.load_questions(path)

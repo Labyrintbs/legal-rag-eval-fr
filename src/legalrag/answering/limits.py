@@ -1,6 +1,7 @@
 """Rate limits and the kill switch (step 0d, decisions 13 to 15). Before a model call, `decide` counts the
 requests in `query_traces` and reads the `llm_enabled` flag; search is never limited. The service must trace
-every request, limited ones included, for the counts to be right.
+every request, limited ones included, for the counts to be right. A reply from the answer cache (step 0f, decision 4)
+is checked by `decide_cached`: only the minute limit applies.
 """
 
 from collections.abc import Callable
@@ -11,6 +12,10 @@ import psycopg
 
 # requests that did not reach the model cost nothing and do not count
 NOT_COUNTED = ("rate_limited", "llm_disabled", "refused_weak_retrieval")
+# a reply from the answer cache does not use the day's quota either, but the minute limit still counts it (decision 4)
+NOT_COUNTED_PER_DAY = (*NOT_COUNTED, "cache_hit")
+COUNTED = ("SELECT count(*), min(created_at) FROM query_traces WHERE client_hash IS NOT DISTINCT FROM %s::text "
+           "AND mode = 'answer' AND outcome <> ALL(%s) AND created_at >= %s")
 
 
 @dataclass(frozen=True)
@@ -47,8 +52,18 @@ def _seconds_until(moment: datetime, now: datetime) -> int:
     return max(1, int((moment - now).total_seconds()) + 1)
 
 
-def decide(conn: psycopg.Connection, client: str | None, settings: Settings, now: datetime | None = None) -> Decision:
-    """Whether this client may have a written answer now. Clients with no address share one count."""
+def _minute_limit(conn: psycopg.Connection, client: str | None, settings: Settings, now: datetime) -> Decision | None:
+    in_minute, oldest = conn.execute(COUNTED, (client, list(NOT_COUNTED), now - timedelta(minutes=1))).fetchone()
+    if in_minute < settings.per_minute:
+        return None
+    wait = _seconds_until(oldest + timedelta(minutes=1), now)
+    return Decision(False, "rate_limited", f"more than {settings.per_minute} questions a minute, retry in {wait} s", 429, wait)
+
+
+def decide(conn: psycopg.Connection, client: str | None, settings: Settings, now: datetime | None = None,
+           per_client: bool = True) -> Decision:
+    """Whether this client may have a written answer now. Clients with no address share one count. `per_client` False
+    leaves out the client limits and keeps the switch and the daily budget: the cache warm-up has no client."""
     now = now or datetime.now(UTC)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     next_day = _seconds_until(day_start + timedelta(days=1), now)
@@ -58,17 +73,20 @@ def decide(conn: psycopg.Connection, client: str | None, settings: Settings, now
                          (day_start,)).fetchone()[0]
     if spent >= settings.cost_per_day_usd:
         return Decision(False, "rate_limited", "the daily budget of the service is used up", 503, next_day)
-    counted = ("SELECT count(*), min(created_at) FROM query_traces WHERE client_hash IS NOT DISTINCT FROM %s::text "
-               "AND mode = 'answer' AND outcome <> ALL(%s) AND created_at >= %s")
-    minute_start = now - timedelta(minutes=1)
-    in_minute, oldest = conn.execute(counted, (client, list(NOT_COUNTED), minute_start)).fetchone()
-    if in_minute >= settings.per_minute:
-        wait = _seconds_until(oldest + timedelta(minutes=1), now)
-        return Decision(False, "rate_limited", f"more than {settings.per_minute} questions a minute, retry in {wait} s", 429, wait)
-    in_day = conn.execute(counted, (client, list(NOT_COUNTED), day_start)).fetchone()[0]
+    if not per_client:
+        return ALLOWED
+    if blocked := _minute_limit(conn, client, settings, now):
+        return blocked
+    in_day = conn.execute(COUNTED, (client, list(NOT_COUNTED_PER_DAY), day_start)).fetchone()[0]
     if in_day >= settings.per_day:
         return Decision(False, "rate_limited", f"more than {settings.per_day} questions today", 429, next_day)
     return ALLOWED
+
+
+def decide_cached(conn: psycopg.Connection, client: str | None, settings: Settings, now: datetime | None = None) -> Decision:
+    """Whether this client may have a reply from the cache now. It costs nothing, so the switch and the daily budget do
+    not apply (cached replies keep working when the cap is used up); only the minute limit does."""
+    return _minute_limit(conn, client, settings, now or datetime.now(UTC)) or ALLOWED
 
 
 class Limits:
@@ -77,6 +95,10 @@ class Limits:
     def __init__(self, connect: Callable[[], psycopg.Connection], settings: Settings | None = None) -> None:
         self.connect, self.settings = connect, settings or Settings()
 
-    def check(self, client: str | None) -> Decision:
+    def check(self, client: str | None, per_client: bool = True) -> Decision:
         with self.connect() as conn:
-            return decide(conn, client, self.settings)
+            return decide(conn, client, self.settings, per_client=per_client)
+
+    def check_cached(self, client: str | None) -> Decision:
+        with self.connect() as conn:
+            return decide_cached(conn, client, self.settings)

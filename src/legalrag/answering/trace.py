@@ -17,8 +17,8 @@ from psycopg.types.json import Jsonb
 
 OUTCOMES = (
     "answered", "refused_weak_retrieval", "refused_by_model", "invalid_citation",
-    "parse_error", "llm_error", "rate_limited", "llm_disabled",
-)  # the same list as the CHECK of migration 0003
+    "parse_error", "llm_error", "rate_limited", "llm_disabled", "cache_hit",
+)  # the same list as the CHECK of migration 0006
 FEEDBACK_KINDS = ("wrong_answer", "wrong_citation", "missing_article", "other")  # the CHECK of migration 0005
 FAILURES = ("refused_weak_retrieval", "refused_by_model", "invalid_citation", "parse_error", "llm_error")
 # rate_limited and llm_disabled say how the service was run, not that the system could not answer
@@ -48,6 +48,7 @@ class Trace:
     total_ms: int | None = None
     code_version: str | None = None
     data_version: str | None = None
+    cache_key: str | None = None  # the answer cache entry that this request was looked up under
 
 
 def new_request_id() -> str:
@@ -75,11 +76,11 @@ def _scores(retrieved: list[dict]) -> tuple[float | None, float | None]:
 INSERT = (
     "INSERT INTO query_traces (request_id, lang, question, question_sha256, client_hash, mode, outcome, "
     "refusal_reason, error, retrieved, top_score, score_gap, cited, answer, model, prompt_id, tokens_in, "
-    "tokens_out, tokens_cached, cost_usd, retrieval_ms, llm_ms, total_ms, code_version, data_version) "
+    "tokens_out, tokens_cached, cost_usd, retrieval_ms, llm_ms, total_ms, code_version, data_version, cache_key) "
     "VALUES (%(request_id)s, %(lang)s, %(question)s, %(question_sha256)s, %(client_hash)s, %(mode)s, %(outcome)s, "
     "%(refusal_reason)s, %(error)s, %(retrieved)s, %(top_score)s, %(score_gap)s, %(cited)s, %(answer)s, %(model)s, "
     "%(prompt_id)s, %(tokens_in)s, %(tokens_out)s, %(tokens_cached)s, %(cost_usd)s, %(retrieval_ms)s, %(llm_ms)s, "
-    "%(total_ms)s, %(code_version)s, %(data_version)s) RETURNING id"
+    "%(total_ms)s, %(code_version)s, %(data_version)s, %(cache_key)s) RETURNING id"
 )
 
 

@@ -8,14 +8,16 @@ from typing import Annotated
 import typer
 
 from legalrag import llm
-from legalrag.answering import limits, trace
+from legalrag.answering import cache, limits, trace
 from legalrag.index import db
 
 app = typer.Typer(no_args_is_help=True)
 traces_app = typer.Typer(no_args_is_help=True, help="Look at the traces of the service: failures, summary, purge, export.")
 service_app = typer.Typer(no_args_is_help=True, help="Switch the written answers of the running service on or off.")
+cache_app = typer.Typer(no_args_is_help=True, help="The answer cache: purge, clear, warm.")
 app.add_typer(traces_app, name="traces")
 app.add_typer(service_app, name="service")
+app.add_typer(cache_app, name="cache")
 
 
 @traces_app.command("failures")
@@ -105,6 +107,48 @@ def service_status_cmd() -> None:
     typer.echo(f"written answers: {'ON' if enabled else 'OFF'}")
     typer.echo(f"today (UTC): {requests} requests, {spent:.4f} of {settings.cost_per_day_usd:.2f} USD used; "
                f"per client {settings.per_minute} a minute and {settings.per_day} a day")
+
+
+@cache_app.command("purge")
+def cache_purge_cmd() -> None:
+    """Delete the expired entries of the answer cache."""
+    with db.connect() as conn:
+        removed = cache.purge(conn)
+        live, _ = cache.counts(conn)
+    typer.echo(f"{removed} expired entries deleted, {live} valid ones kept")
+
+
+@cache_app.command("clear")
+def cache_clear_cmd(yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation")] = False) -> None:
+    """Delete every entry of the answer cache (asks first): the next questions go to the model again."""
+    with db.connect() as conn:
+        live, expired = cache.counts(conn)
+        typer.echo(f"{live} valid and {expired} expired entries will be deleted.")
+        if not yes:
+            typer.confirm("Delete them?", abort=True)
+        cache.clear(conn)
+    typer.echo("deleted")
+
+
+@cache_app.command("warm")
+def cache_warm_cmd(
+    file: Annotated[Path, typer.Argument(help="YAML file: a list of example questions")],
+    yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation")] = False,
+) -> None:
+    """Ask the example questions through the real path and store the replies (spends model money; asks first).
+    Needs the same settings as `serve`; the service does this by itself at startup when CACHE_WARM_FILE is set."""
+    from legalrag.web import build, warm  # the serve and embed extras
+
+    questions = warm.load_questions(file)
+    engine, settings = build.production_engine()
+    todo = warm.pending(engine, db.connect, settings, questions)
+    typer.echo(f"{len(questions)} questions, {len(todo)} not cached yet: about {len(todo) * 0.0004:.4f} USD (0.0004 each, measured on dev answers)")
+    if not todo:
+        return
+    if not yes:
+        typer.confirm("Ask them now?", abort=True)
+    status = warm.run(engine, db.connect, settings, questions, warm.Status())
+    typer.echo(f"asked {status.asked}, stored {status.stored}" + (f", stopped by {status.stopped}" if status.stopped else ""))
 
 
 @app.command("serve")

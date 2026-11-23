@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from legalrag.answering import answer, search
 
@@ -43,7 +43,14 @@ class FeedbackRequest(BaseModel):
         return (value or "").strip() or None
 
 
-class CitationOut(BaseModel):
+class Reply(BaseModel):
+    """What we send. It refuses a field it does not know: AskReply(reson="...") is an error, and not a silent default
+    for `reason`. FastAPI does not check an object that already is the model, so the check happens here, when it is built."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CitationOut(Reply):
     """The proof of a claim: the article ("L1221-19"), the exact words cited, and where to read them."""
 
     label: str
@@ -53,14 +60,14 @@ class CitationOut(BaseModel):
     url: str
 
 
-class ClaimOut(BaseModel):
+class ClaimOut(Reply):
     """One sentence of the answer with its citations, e.g. "Quatre mois pour un cadre." cited to L1221-19."""
 
     text: str
     citations: list[CitationOut]
 
 
-class ArticleOut(BaseModel):
+class ArticleOut(Reply):
     """One of the 5 articles the search found, sent in every reply even when there is no answer."""
 
     label: str
@@ -73,24 +80,26 @@ class ArticleOut(BaseModel):
 # The one reply shape of /ask, whatever the outcome (decision 2). Two examples:
 #   answered: {"outcome": "answered", "claims": [{"text": "...", "citations": [...]}], "articles": [...]}
 #   limit hit (HTTP 429): {"outcome": "rate_limited", "reason": "...", "retry_after": 42, "claims": [], "articles": [...]}
-class AskReply(BaseModel):
+class AskReply(Reply):
     request_id: str  # the page sends it back with a vote (FeedbackRequest.request_id)
     outcome: str  # "answered", "refused_by_model", "rate_limited", ... (answer.Result.outcome)
     reason: str | None = None  # why there is no answer, when there is none
     claims: list[ClaimOut] = []  # empty unless the outcome is "answered"
     articles: list[ArticleOut] = []
     retry_after: int | None = None  # seconds to wait, only for a limit
+    cached: bool = False  # true when the reply was stored by an earlier identical question (it cost nothing)
     disclaimer: str = DISCLAIMER
 
 
-class HealthReply(BaseModel):
-    """GET /health: {"status": "ok", "llm_enabled": true}, or HTTP 503 {"status": "database_unavailable"}."""
+class HealthReply(Reply):
+    """GET /health: {"status": "ok", "llm_enabled": true, "cache_warm": "done"}, or HTTP 503 {"status": "database_unavailable"}."""
 
     status: str
     llm_enabled: bool | None = None  # whether written answers are on; unknown when the database is down
+    cache_warm: Literal["off", "running", "done"] | None = None  # the cache warm-up at startup; "off" without a list of questions
 
 
-class SearchReply(BaseModel):
+class SearchReply(Reply):
     request_id: str
     articles: list[ArticleOut]
     weak: bool  # nothing close enough was found (below the threshold of the answer path)

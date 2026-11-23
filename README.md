@@ -53,7 +53,8 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 | `make llm-balance`, `make llm-ledger` | DeepSeek balance snapshot (needs `DEEPSEEK_API_KEY` in `.env`) and the cost ledger of the question-writing calls |
 | `legalrag delete-run NAME` | Delete a chunking run with its chunks and vectors (asks first) |
 | `make fresh-rebuild` | Rebuild from nothing into a scratch database and compare |
-| `legalrag serve` | Start the web service on 127.0.0.1:8000 (one process; needs `uv sync --extra serve --extra embed`, `DEEPSEEK_API_KEY` and `TRACE_SECRET`). API: `POST /ask`, `POST /search`, `POST /feedback`, `GET /health`, docs at `/api/docs` |
+| `legalrag serve` | Start the web service on 127.0.0.1:8000 (one process; needs `uv sync --extra serve --extra embed`, `DEEPSEEK_API_KEY` and `TRACE_SECRET`). API: `POST /ask`, `POST /search`, `POST /feedback`, `GET /health`, docs at `/api/docs`. Identical questions are answered from a cache (7 days); `CACHE_WARM_FILE` names a YAML list of example questions to ask in the background at startup |
+| `legalrag cache purge\|clear\|warm FILE` | Delete the expired cache entries; empty the cache (asks first); ask the example questions of a file and store the replies (spends model money, asks first) |
 | `make ci-fixture-fetch`, `make gate` | Download the quality-gate fixture (a Release asset) and run the gate: retrieval floors and the replay of recorded answers. CI runs it on every push |
 
 ## First retrieval results

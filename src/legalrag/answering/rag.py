@@ -77,8 +77,9 @@ class AnswerEngine(CustomQueryEngine):
     def custom_query(self, query_str: str) -> Response:
         return self.respond(query_str)
 
-    def respond(self, question: str, client: str | None = None) -> Response:
-        """Search, then the weak check, then the limits, then the model; the articles come back in every case."""
+    def respond(self, question: str, client: str | None = None, warm: bool = False) -> Response:
+        """Search, then the weak check, then the limits, then the model; the articles come back in every case.
+        `warm` (the cache warm-up has no client) leaves out the per-client limits and keeps the switch and the budget."""
         started = time.monotonic()
         nodes = self.retriever.retrieve(question)
         hits = hits_of(nodes)
@@ -88,7 +89,7 @@ class AnswerEngine(CustomQueryEngine):
             result = answer.Result("refused_weak_retrieval", f"(no answer: nothing close enough found, best {top})", hits,
                                    reason=f"top similarity {top} below {self.threshold:.2f}", retrieval_ms=retrieval_ms)
         else:
-            verdict = self.gate.check(client) if self.gate else limits.ALLOWED
+            verdict = (self.gate.check(client, per_client=False) if warm else self.gate.check(client)) if self.gate else limits.ALLOWED
             if verdict.allowed:
                 result = self.ask(question, self.postprocessor.postprocess_nodes(nodes), hits, retrieval_ms)
             else:

@@ -112,6 +112,34 @@ def test_the_daily_budget_stops_every_client_with_503_until_midnight(conn):
     assert decide(conn, "someone-new").allowed
 
 
+def test_cache_hits_count_for_the_minute_but_not_for_the_day(conn):
+    add(conn, 30, outcome="cache_hit", ago=timedelta(minutes=5))  # a day's quota of cached replies...
+    assert decide(conn).allowed  # ...does not use the quota for a model call
+    add(conn, 5, outcome="cache_hit")
+    verdict = decide(conn)
+    assert not verdict.allowed and "minute" in verdict.reason
+
+
+def test_a_cached_reply_needs_only_the_minute_limit_not_the_switch_or_the_budget(conn):
+    assert limits.decide_cached(conn, "c1", SETTINGS, NOW) == limits.ALLOWED
+    limits.set_llm_enabled(conn, False)
+    add(conn, 2, client="a", cost_usd=0.05)  # the day's budget is used up
+    assert limits.decide_cached(conn, "someone-new", SETTINGS, NOW).allowed
+    add(conn, 5, client="c1")
+    verdict = limits.decide_cached(conn, "c1", SETTINGS, NOW)
+    assert (verdict.allowed, verdict.outcome, verdict.status) == (False, "rate_limited", 429)
+
+
+def test_the_warm_up_decision_keeps_the_switch_and_the_budget_but_not_the_client_limits(conn):
+    add(conn, 30, client=None)  # would block a client with no address
+    assert limits.decide(conn, None, SETTINGS, NOW, per_client=False).allowed
+    limits.set_llm_enabled(conn, False)
+    assert limits.decide(conn, None, SETTINGS, NOW, per_client=False).outcome == "llm_disabled"
+    limits.set_llm_enabled(conn, True)
+    add(conn, 2, client="a", cost_usd=0.05)
+    assert limits.decide(conn, None, SETTINGS, NOW, per_client=False).status == 503
+
+
 def test_limits_wrapper_opens_its_own_connection(conn, database_name):
     gate = limits.Limits(lambda: db.connect(with_database(database_url(), database_name)), SETTINGS)
     assert gate.check("c1").allowed
