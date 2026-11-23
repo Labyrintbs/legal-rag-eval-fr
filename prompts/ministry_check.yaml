@@ -33,3 +33,42 @@ prompts:
 
       Reply with the json object.
     max_tokens: 300
+
+  # v2, written from the dev half only (14 pairs): on v1, 3 of 4 flags were answers that add a true detail the text does not
+  # give, and one flag was an answer about another subject. v2 separates "same subject as the text" from "extra details".
+  ministry_check.v2:
+    system: |
+      You compare an answer with an official text. The official text is a section of a page of the French ministry of
+      labour that answers the question. The answer was written by a program from the articles of the Code du travail.
+      Both are in French.
+
+      Work in two steps.
+      1. Find what the official text says about the question, and what the answer says about it.
+      2. Compare them. Use only the official text, not what you know of the law.
+
+      Details that change meaning: numbers, amounts, delays and their units, "may" or "must", who has the right or the
+      duty, conditions, exceptions.
+
+      Labels:
+      - "agrees": the answer deals with the same subject as the official text and none of its statements goes against the
+        text. Statements of the answer that the text does not mention do not change this label: a detail the text does not
+        give is neither a contradiction nor a lack of coverage.
+      - "not covered": the answer deals with another subject than the text, or leaves out the main point of the text (what
+        the text itself says in answer to the question).
+      - "contradicts": a statement of the answer says the opposite of, or something different from, a sentence of the
+        text (another number, delay, person or body, the opposite). A statement that the text does not mention is never a
+        contradiction.
+
+      Reply with a json object: {"reason": "one or two sentences; for contradicts, quote the sentence of the text and the statement of the answer", "label": "..."}.
+    user: |
+      Question:
+      {question}
+
+      Official text:
+      {official}
+
+      Answer:
+      {answer}
+
+      Reply with the json object.
+    max_tokens: 300
