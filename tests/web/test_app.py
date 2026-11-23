@@ -3,12 +3,14 @@ import threading
 import time
 from types import SimpleNamespace
 
+import psycopg
 import pytest
 from conftest import with_database
 
 pytest.importorskip("llama_index.core")
 pytest.importorskip("fastapi")
 
+from fastapi.exceptions import ResponseValidationError
 from fastapi.testclient import TestClient
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, TextNode
@@ -206,6 +208,24 @@ def test_health_says_whether_written_answers_are_on(make, conn):
     assert client.get("/health").json() == {"status": "ok", "llm_enabled": True}
     limits.set_llm_enabled(conn, False)
     assert client.get("/health").json() == {"status": "ok", "llm_enabled": False}
+
+
+def database_down():
+    raise psycopg.OperationalError("the database is down")
+
+
+def test_health_is_a_503_when_the_database_is_down():
+    engine = rag.AnswerEngine(retriever=FakeRetriever([node()]), postprocessor=rag.NumberUnits(), llm=FakeLLM(), prompt=PROMPT,
+                              model="deepseek-flash", prompt_id="answer.v3")
+    reply = TestClient(web.create_app(engine, database_down)).get("/health")
+    assert reply.status_code == 503 and reply.json() == {"status": "database_unavailable", "llm_enabled": None}
+
+
+def test_a_reply_that_does_not_fit_the_template_is_refused_and_not_sent(make, monkeypatch):
+    # FastAPI checks what /ask returns against AskReply: a reply without request_id is refused (a 500 in production)
+    monkeypatch.setattr(schemas, "reply_of", lambda result, request_id: {"outcome": "answered"})
+    with pytest.raises(ResponseValidationError):
+        make().post("/ask", json={"question": "Quelle durée ?"})
 
 
 def test_the_window_of_recent_events_forgets_after_its_time():

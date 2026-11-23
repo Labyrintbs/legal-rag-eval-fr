@@ -83,6 +83,13 @@ class AskReply(BaseModel):
     disclaimer: str = DISCLAIMER
 
 
+class HealthReply(BaseModel):
+    """GET /health: {"status": "ok", "llm_enabled": true}, or HTTP 503 {"status": "database_unavailable"}."""
+
+    status: str
+    llm_enabled: bool | None = None  # whether written answers are on; unknown when the database is down
+
+
 class SearchReply(BaseModel):
     request_id: str
     articles: list[ArticleOut]

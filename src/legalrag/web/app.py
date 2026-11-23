@@ -11,8 +11,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 
 import psycopg
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Response
 
 from legalrag.answering import answer, limits, rag, search, trace
 from legalrag.answering.logs import log_event
@@ -75,14 +74,17 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
         except Exception as error:  # noqa: BLE001 - tracing must never break a request
             log_event(log, "trace_failed", request_id, logging.ERROR, error=type(error).__name__)
 
-    @app.get("/health")
-    def health() -> JSONResponse:
+    # The routes below set a status or a header on `response` (a draft FastAPI hands in) and return the data: FastAPI
+    # then checks it against `response_model` before sending. See docs/decisions/0008 (build notes).
+    @app.get("/health", response_model=schemas.HealthReply, responses={503: {"model": schemas.HealthReply}})
+    def health(response: Response) -> schemas.HealthReply:
         try:
             with connect() as conn:
                 enabled = limits.llm_enabled(conn)
         except psycopg.Error:
-            return JSONResponse({"status": "database_unavailable"}, status_code=503)
-        return JSONResponse({"status": "ok", "llm_enabled": enabled})
+            response.status_code = 503
+            return schemas.HealthReply(status="database_unavailable")
+        return schemas.HealthReply(status="ok", llm_enabled=enabled)
 
     @app.post("/search", response_model=schemas.SearchReply)
     def search_route(body: schemas.AskRequest, request: Request) -> schemas.SearchReply:
@@ -99,15 +101,16 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
 
     @app.post("/ask", response_model=schemas.AskReply, responses={429: {"model": schemas.AskReply}, 502: {"model": schemas.AskReply},
                                                                   503: {"model": schemas.AskReply}})
-    def ask(body: schemas.AskRequest, request: Request) -> JSONResponse:
+    def ask(body: schemas.AskRequest, request: Request, response: Response) -> schemas.AskReply:
         request_id = trace.new_request_id()
         client = trace.client_hash(client_address(request, settings.client_ip_header))
         result = engine.respond(body.question, client).metadata["result"]
         write_trace(result, request_id, body.question, "answer", client)
         log_event(log, "ask", request_id, outcome=result.outcome, total_ms=result.total_ms, cost_usd=result.cost_usd)
-        status = 502 if result.outcome in UPSTREAM_FAILURES else result.status
-        headers = {"Retry-After": str(result.retry_after)} if result.retry_after else {}
-        return JSONResponse(schemas.reply_of(result, request_id).model_dump(), status_code=status, headers=headers)
+        response.status_code = 502 if result.outcome in UPSTREAM_FAILURES else result.status
+        if result.retry_after:
+            response.headers["Retry-After"] = str(result.retry_after)
+        return schemas.reply_of(result, request_id)
 
     @app.post("/feedback")
     def feedback(body: schemas.FeedbackRequest, request: Request) -> dict:
