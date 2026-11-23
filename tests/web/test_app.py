@@ -363,6 +363,27 @@ def test_the_warm_up_asks_each_example_once_without_the_client_limits_and_skips_
     assert TestClient(web.create_app(engine, connect, settings)).post("/ask", json={"question": questions[0]}).json()["cached"]
 
 
+def test_the_warmed_examples_are_pinned_and_a_thumbs_down_keeps_them_but_the_vote_is_saved(url, conn, make):
+    client = make()
+    warm.run(engine_for(url), partial(db.connect, url), web.Settings(), [ASK["question"]], warm.Status())
+    assert conn.execute("SELECT pinned, expires_at > now() + interval '100 years' FROM answer_cache").fetchone() == (True, True)
+    served = client.post("/ask", json=ASK).json()  # a visitor clicks the example
+    assert served["cached"] is True
+    client.post("/feedback", json={"request_id": served["request_id"], "value": -1, "kind": "wrong_answer"})
+    assert cached_entries(conn) == 1  # the example stays
+    assert conn.execute("SELECT feedback, feedback_kind FROM query_traces WHERE request_id = %s", (served["request_id"],)).fetchone() == (-1, "wrong_answer")
+
+
+def test_an_example_that_a_visitor_already_caused_to_be_stored_is_pinned_and_not_asked_again(url, conn, make):
+    llm = FakeLLM()
+    client = make(llm)
+    client.post("/ask", json=ASK)  # a visitor types the same question first
+    assert conn.execute("SELECT pinned FROM answer_cache").fetchone() == (False,)
+    status = warm.run(engine_for(url, llm), partial(db.connect, url), web.Settings(), [ASK["question"]], warm.Status())
+    assert (status.asked, status.skipped, llm.calls) == (0, 1, 1)
+    assert conn.execute("SELECT pinned FROM answer_cache").fetchone() == (True,)
+
+
 def test_the_warm_up_stops_when_the_model_is_off_and_never_raises(url, conn, make):
     make()
     connect, settings = partial(db.connect, url), web.Settings()

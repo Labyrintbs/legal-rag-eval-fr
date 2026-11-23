@@ -105,6 +105,19 @@ def test_feedback_is_stored_for_a_known_request_and_limited_to_up_or_down(conn):
         trace.set_feedback(conn, t.request_id, 5)
 
 
+def test_votes_lists_the_thumbs_of_normal_answers_newest_first_and_can_keep_only_the_thumbs_down(conn):
+    for request_id, outcome, value, kind in (("a", "answered", 1, None), ("b", "answered", -1, "wrong_citation"),
+                                             ("c", "cache_hit", -1, "other")):
+        trace.record(conn, make(outcome, request_id=request_id))
+        trace.set_feedback(conn, request_id, value, f"comment {request_id}" if kind else None, kind)
+    trace.record(conn, make(request_id="d"))  # no vote: not listed
+    everything = trace.votes(conn, timedelta(days=1))
+    assert [(v["feedback"], v["feedback_kind"], v["outcome"], v["feedback_comment"]) for v in everything] == [
+        (-1, "other", "cache_hit", "comment c"), (-1, "wrong_citation", "answered", "comment b"), (1, None, "answered", None)]
+    assert [v["feedback"] for v in trace.votes(conn, timedelta(days=1), down_only=True)] == [-1, -1]
+    assert len(trace.votes(conn, timedelta(days=1), limit=1)) == 1
+
+
 def test_export_writes_unreviewed_candidates_and_never_overwrites(conn, tmp_path):
     trace.record(conn, make("refused_weak_retrieval", question="Q1", retrieved=RETRIEVED))
     trace.record(conn, make("answered"))

@@ -38,6 +38,22 @@ def traces_failures_cmd(
     typer.echo(f"{len(rows)} failures in the last {days:g} days")
 
 
+@traces_app.command("feedback")
+def traces_feedback_cmd(
+    days: Annotated[float, typer.Option(help="How far back to look")] = 7,
+    down_only: Annotated[bool, typer.Option("--down-only", help="Only the thumbs-down")] = False,
+    limit: Annotated[int, typer.Option(help="Most rows to print")] = 50,
+) -> None:
+    """The votes of visitors (thumbs, kind, comment), newest first: the way to read what visitors say."""
+    with db.connect() as conn:
+        rows = trace.votes(conn, timedelta(days=days), down_only, limit)
+    for r in rows:
+        served = "from the cache" if r["outcome"] == "cache_hit" else r["outcome"]
+        typer.echo(f"{r['created_at']:%Y-%m-%d %H:%M} {'DOWN' if r['feedback'] < 0 else 'up  '} {r['feedback_kind'] or '-':<16} "
+                   f"{served:<24} {r['question'][:80]!r}" + (f"\n    comment: {r['feedback_comment']}" if r["feedback_comment"] else ""))
+    typer.echo(f"{len(rows)} votes in the last {days:g} days")
+
+
 @traces_app.command("summary")
 def traces_summary_cmd(days: Annotated[float, typer.Option(help="How far back to look")] = 1) -> None:
     """Requests by outcome, share answered, tokens, cost and time of the answered ones."""

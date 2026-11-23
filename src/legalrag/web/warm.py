@@ -1,7 +1,8 @@
 """The cache warm-up (step 0f, decision 4): the example questions asked once through the real path, so that the first
 visitor who clicks an example gets a stored reply. The service runs it in the background at startup, and
-`legalrag cache warm` runs it by hand. It skips what is already cached (a restart costs nothing), never fails the
-launch, and stops when the model is switched off, the daily budget is used up or the model fails.
+`legalrag cache warm` runs it by hand. The replies are pinned: they do not expire and a thumbs-down does not remove
+them. It skips what is already cached (a restart costs nothing), never fails the launch, and stops when the model is
+switched off, the daily budget is used up or the model fails.
 """
 
 import logging
@@ -46,9 +47,11 @@ def run(engine: rag.AnswerEngine, connect, settings: asking.Settings, questions:
     """Ask each question that is not cached yet. Never raises: a failure is logged and ends the run."""
     status.state = "running"
     try:
-        todo = pending(engine, connect, settings, questions)
-        status.skipped = len(questions) - len(todo)
-        for question in todo:
+        for question in questions:
+            with connect() as conn:  # an example that is already cached (maybe by a visitor) is pinned, not asked again
+                if cache.pin(conn, asking.cache_key(engine, settings, question)):
+                    status.skipped += 1
+                    continue
             reply, _ = asking.answer_question(engine, connect, settings, question, client=None, warm=True)
             status.asked += 1
             if reply.outcome in cache.CACHEABLE:

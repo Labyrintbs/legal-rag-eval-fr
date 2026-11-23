@@ -81,10 +81,10 @@ def from_cache(stored: dict, request_id: str) -> schemas.AskReply | None:
         return None
 
 
-def store(connect, key: str, outcome: str, reply: schemas.AskReply) -> None:
+def store(connect, key: str, outcome: str, reply: schemas.AskReply, pinned: bool = False) -> None:
     try:
         with connect() as conn:
-            cache.put(conn, key, outcome, reply.model_dump(mode="json", exclude=set(NOT_STORED)))
+            cache.put(conn, key, outcome, reply.model_dump(mode="json", exclude=set(NOT_STORED)), pinned=pinned)
     except Exception as error:  # noqa: BLE001 - the cache must never break a request
         log_event(log, "cache_failed", reply.request_id, logging.ERROR, error=type(error).__name__)
 
@@ -109,5 +109,5 @@ def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, quest
     log_event(log, "ask", request_id, outcome=result.outcome, total_ms=result.total_ms, cost_usd=result.cost_usd)
     reply = schemas.reply_of(result, request_id)
     if result.outcome in cache.CACHEABLE:
-        store(connect, key, result.outcome, reply)
+        store(connect, key, result.outcome, reply, pinned=warm)  # only the warm-up asks the example questions
     return reply, 502 if result.outcome in UPSTREAM_FAILURES else result.status

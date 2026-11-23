@@ -75,6 +75,18 @@ def test_delete_says_whether_there_was_an_entry(conn):
     assert cache.delete(conn, key()) is True and cache.delete(conn, key()) is False
 
 
+def test_a_pinned_entry_does_not_expire_and_pin_keeps_an_existing_entry_in_place(conn):
+    cache.put(conn, key("example"), "answered", REPLY, NOW, pinned=True)
+    far = NOW + timedelta(days=3650)
+    assert cache.get(conn, key("example"), far) == REPLY and cache.purge(conn, far) == 0
+    cache.put(conn, key("visitor"), "answered", REPLY, NOW)  # stored after a visitor's question, expires in 7 days
+    assert cache.pin(conn, key("visitor"), NOW) is True
+    assert cache.get(conn, key("visitor"), far, count=False) == REPLY
+    assert cache.pin(conn, key("never asked"), NOW) is False
+    cache.put(conn, key("old"), "answered", REPLY, NOW - cache.TTL - timedelta(days=1))
+    assert cache.pin(conn, key("old"), NOW) is False  # an expired entry is not brought back
+
+
 def add_trace(conn, request_id, client, cache_key):
     trace.record(conn, trace.Trace(request_id=request_id, lang="fr", question="q", mode="answer", outcome="answered",
                                    client_hash=client, cache_key=cache_key))
@@ -91,6 +103,12 @@ def test_a_vote_removes_the_entry_only_for_the_client_who_got_the_reply(conn):
     assert cache.drop_for_vote(conn, "unknown", "alice") is False
     assert cache.counts(conn)[0] == 1
     assert cache.drop_for_vote(conn, "r1", "alice") is True and cache.counts(conn)[0] == 0
+
+
+def test_a_vote_keeps_a_pinned_entry(conn):
+    cache.put(conn, key(), "answered", REPLY, NOW, pinned=True)
+    add_trace(conn, "r1", "alice", key())
+    assert cache.drop_for_vote(conn, "r1", "alice") is False and cache.counts(conn)[0] == 1
 
 
 def test_the_data_version_changes_with_the_corpus_and_the_chunking_run(conn):

@@ -104,6 +104,16 @@ def set_feedback(conn: psycopg.Connection, request_id: str, value: int, comment:
     return done
 
 
+def votes(conn: psycopg.Connection, since: timedelta, down_only: bool = False, limit: int = 50) -> list[dict]:
+    """The latest votes of visitors with their kind and comment, newest first. `failures` lists only requests that the
+    system could not answer: a thumbs-down on a normal answer is listed here."""
+    where = "feedback = -1" if down_only else "feedback IS NOT NULL"
+    with conn.cursor(row_factory=dict_row) as cur:
+        return cur.execute(
+            "SELECT created_at, feedback, feedback_kind, feedback_comment, question, outcome, cache_key IS NOT NULL AS cacheable "
+            f"FROM query_traces WHERE {where} AND created_at >= now() - %s ORDER BY id DESC LIMIT %s", (since, limit)).fetchall()
+
+
 def failures(conn: psycopg.Connection, since: timedelta, outcomes: tuple[str, ...] = FAILURES, limit: int = 50) -> list[dict]:
     """The latest requests the system could not answer, with what retrieval found, newest first."""
     with conn.cursor(row_factory=dict_row) as cur:
