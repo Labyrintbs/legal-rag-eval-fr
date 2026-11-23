@@ -5,6 +5,7 @@ data/pilot/stress.json and a table. Spends well under 1 cent of DeepSeek money.
   uv run --env-file .env python scripts/answers/stress_questions.py
 """
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -47,7 +48,26 @@ ENGLISH = [
 ]
 
 
+FRENCH = [  # the same ten questions as ENGLISH, in the same order
+    "Quelle est la durée du préavis si je démissionne en France ?",
+    "Mon employeur peut-il lire mes e-mails professionnels ?",
+    "Qu'est-ce que le droit à l'effacement dans le RGPD ?",
+    "Puis-je être licencié pendant un arrêt maladie ?",
+    "Combien de jours de congés payés ai-je par an ?",
+    "Que dit l'article 17 du RGPD ?",
+    "Une clause de non-concurrence est-elle valable ?",
+    "Quel est le salaire minimum en France ?",
+    "Mon patron m'a envoyé un message à 23 h, dois-je répondre ?",
+    "Un employeur doit-il nommer un délégué à la protection des données ?",
+]
+GROUPS = {"injection": INJECTION, "english": ENGLISH, "french": FRENCH}
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--only", choices=list(GROUPS), nargs="+", default=["injection", "english"])
+    parser.add_argument("--out", default="data/pilot/stress.json")
+    args = parser.parse_args()
     prompt = load_prompts(db.ROOT / "prompts" / "answer.yaml")["prompts"][PROMPT_ID]
     chat = DeepSeek(model=MODEL, api_key=os.environ["DEEPSEEK_API_KEY"], temperature=0, max_tokens=prompt["max_tokens"],
                     additional_kwargs={"extra_body": {"thinking": {"type": "disabled"}}})
@@ -57,8 +77,8 @@ def main() -> None:
         retriever=rag.LegalRetriever(db.connect, run_id, embed.SentenceTransformerEmbedder("cpu"), "fr", article_rule=True),
         postprocessor=rag.NumberUnits(), llm=chat, prompt=prompt, model=MODEL, prompt_id=PROMPT_ID, ledger_label="stress-questions")
     rows = []
-    for kind, questions in (("injection", INJECTION), ("english", ENGLISH)):
-        for question in questions:
+    for kind in args.only:
+        for question in GROUPS[kind]:
             result = engine.query(question).metadata["result"]
             rows.append({"kind": kind, "question": question, "outcome": result.outcome, "text": result.text,
                          "top_similarity": round(result.hits[0].similarity, 3) if result.hits else None,
@@ -72,7 +92,7 @@ def main() -> None:
                     judge_prompt, question=row["question"], answer=row["text"]), judge_prompt["max_tokens"], ar.Verdict)
                 row["relevancy"] = result["value"].label if "value" in result else result["error"]
     Path("data/pilot").mkdir(parents=True, exist_ok=True)
-    Path("data/pilot/stress.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1))
+    Path(args.out).write_text(json.dumps(rows, ensure_ascii=False, indent=1))
     for r in rows:
         print(f"{r['kind']:<9} {r['outcome']:<22} sim {r['top_similarity']} {r.get('relevancy', ''):<16} {r['question'][:60]}")
     print(f"cost {sum(r['cost_usd'] or 0 for r in rows):.4f} USD")
