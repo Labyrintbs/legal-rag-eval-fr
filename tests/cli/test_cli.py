@@ -12,6 +12,15 @@ from legalrag.index import db, embed, store
 runner = CliRunner()
 
 
+def test_the_service_starts_without_the_web_server_access_log(monkeypatch):
+    """The access log of uvicorn prints the visitor's raw address; the privacy notice says that it is not kept."""
+    uvicorn = pytest.importorskip("uvicorn")
+    started = {}
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: started.update(kwargs))
+    assert runner.invoke(cli.app, ["serve"]).exit_code == 0
+    assert started["access_log"] is False and started["workers"] == 1
+
+
 def git(path, *args):
     subprocess.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],

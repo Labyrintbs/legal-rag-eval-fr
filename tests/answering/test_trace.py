@@ -1,7 +1,7 @@
 import io
 import json
 import logging
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import psycopg
 import pytest
@@ -93,6 +93,118 @@ def test_purge_deletes_only_traces_past_their_expiry(conn):
     assert trace.purge(conn) == 1
     assert [r[0] for r in conn.execute("SELECT question FROM query_traces").fetchall()] == ["new"]
     assert trace.purge(conn) == 0
+
+
+def request_id(sampled: bool, taken: set[str] = frozenset()) -> str:
+    """A request id that is in the 1-in-20 sample (or not)."""
+    while (candidate := trace.new_request_id()) in taken or trace.in_sample(candidate) != sampled:
+        pass
+    return candidate
+
+
+def old(conn, request_id_, days=8):
+    conn.execute("UPDATE query_traces SET created_at = now() - make_interval(days => %s) WHERE request_id = %s", (days, request_id_))
+    conn.commit()
+
+
+def test_the_sample_is_chosen_the_same_way_in_python_and_in_sql(conn):
+    ids = [f"request-{i}" for i in range(200)]  # fixed ids: the test gives the same result every time
+    in_sql = [conn.execute("SELECT (('x' || substr(md5(%s), 1, 8))::bit(32)::bigint %% 20) = 0", (i,)).fetchone()[0] for i in ids]
+    assert in_sql == [trace.in_sample(i) for i in ids] and any(in_sql) and not all(in_sql)
+
+
+def test_scrub_erases_the_text_of_old_ordinary_requests_and_keeps_failures_votes_comments_and_the_sample(conn):
+    rows = {  # name: (outcome, sampled, vote, comment, age in days)
+        "ordinary": ("answered", False, None, None, 8), "cached": ("cache_hit", False, None, None, 8),
+        "limited": ("rate_limited", False, None, None, 8),
+        "failure": ("refused_by_model", False, None, None, 8), "thumb_up": ("answered", False, 1, None, 8),
+        "thumb_down": ("answered", False, -1, None, 8), "comment": ("answered", False, 1, "merci", 8),
+        "sample": ("answered", True, None, None, 8), "young": ("answered", False, None, None, 2),
+    }
+    ids = {}
+    for name, (outcome, sampled, vote, comment, days) in rows.items():
+        ids[name] = request_id(sampled, set(ids.values()))
+        trace.record(conn, make(outcome, request_id=ids[name], question=f"question {name}", answer="réponse", client_hash="c1"))
+        if vote:
+            trace.set_feedback(conn, ids[name], vote, comment)
+        old(conn, ids[name], days)
+    assert trace.erasable(conn) == 3
+    assert trace.scrub(conn) == 3
+    state = {name: conn.execute("SELECT question, answer, question_sha256, client_hash, erased_at IS NOT NULL FROM query_traces "
+                                "WHERE request_id = %s", (i,)).fetchone() for name, i in ids.items()}
+    for name in ("ordinary", "cached", "limited"):
+        assert state[name] == ("", None, None, None, True), name
+    for name in ("failure", "thumb_up", "thumb_down", "comment", "sample", "young"):
+        question, answer, digest, client, erased = state[name]
+        assert question == f"question {name}" and answer == "réponse" and digest and client == "c1" and not erased, name
+    assert trace.scrub(conn) == 0 and trace.erasable(conn) == 0  # nothing more to erase, and the rows are counted once
+    assert trace.summary(conn, timedelta(days=30))["requests"] == len(rows)  # the statistics do not lose a request
+
+
+def test_scrub_edges_the_exact_cutoff_search_rows_a_sample_of_all_and_a_sample_of_none(conn):
+    now = datetime(2026, 11, 24, 12, 0, tzinfo=UTC)
+    rows = {"at_the_cutoff": 7.0, "just_older": 7.001, "just_younger": 6.999}
+    ids = {}
+    for name, days in rows.items():
+        t = make(request_id=request_id(False), question=name)
+        ids[name] = t.request_id
+        trace.record(conn, t)
+        conn.execute("UPDATE query_traces SET created_at = %s WHERE request_id = %s", (now - timedelta(days=days), t.request_id))
+    search = make(mode="search", request_id=request_id(False), question="search text", answer=None)
+    trace.record(conn, search)
+    conn.execute("UPDATE query_traces SET created_at = %s WHERE request_id = %s", (now - timedelta(days=9), search.request_id))
+    conn.commit()
+    assert trace.erasable(conn, now) == 2  # the row exactly at the cutoff is kept: the rule is "older than"
+    assert trace.scrub(conn, now) == 2
+    erased = {name: conn.execute("SELECT erased_at IS NOT NULL FROM query_traces WHERE request_id = %s", (i,)).fetchone()[0]
+              for name, i in ids.items()}
+    assert erased == {"at_the_cutoff": False, "just_older": True, "just_younger": False}
+    assert conn.execute("SELECT count(*) FROM query_traces WHERE mode = 'search' AND question = ''").fetchone()[0] == 1  # search rows too
+    assert trace.scrub(conn, now, every=1) == 0 and trace.erasable(conn, now, every=1) == 0  # every=1: everyone is in the sample
+
+
+def test_with_a_sample_of_one_nothing_is_erased_and_with_a_huge_one_almost_nothing_is_kept(conn):
+    ids = [request_id(False) for _ in range(3)]
+    for i in ids:
+        trace.record(conn, make(request_id=i))
+        old(conn, i, 10)
+    assert trace.erasable(conn, every=1) == 0
+    assert trace.erasable(conn, every=10**9) == 3
+
+
+def test_a_row_with_an_empty_comment_string_counts_as_a_comment_and_keeps_its_text(conn):
+    t = make(request_id=request_id(False))
+    trace.record(conn, t)
+    conn.execute("UPDATE query_traces SET feedback_comment = '' WHERE request_id = %s", (t.request_id,))
+    old(conn, t.request_id)
+    assert trace.erasable(conn) == 0  # a stored comment, even empty, is a trace of a human act: kept until it expires
+
+
+def test_the_purge_deletes_an_erased_row_when_it_expires(conn):
+    t = make(request_id=request_id(False))
+    trace.record(conn, t)
+    old(conn, t.request_id, 10)
+    trace.scrub(conn)
+    conn.execute("UPDATE query_traces SET expires_at = now() - interval '1 minute' WHERE request_id = %s", (t.request_id,))
+    assert trace.purge(conn) == 1 and conn.execute("SELECT count(*) FROM query_traces").fetchone()[0] == 0
+
+
+def test_the_summary_keeps_translations_apart_from_the_requests(conn):
+    trace.record(conn, make("answered", cost_usd=0.0004, total_ms=1500))
+    trace.record(conn, make("answered", mode="translate", question="", cost_usd=0.0002))
+    s = trace.summary(conn, timedelta(days=1))
+    assert s["requests"] == 1 and s["by_outcome"] == {"answered": 1} and s["answered"]["cost_usd"] == pytest.approx(0.0004)
+    assert s["translations"] == {"n": 1, "cost_usd": pytest.approx(0.0002)}
+
+
+def test_a_vote_records_when_it_came_and_a_late_vote_on_an_erased_request_is_kept_without_text(conn):
+    t = make(request_id=request_id(False))
+    trace.record(conn, t)
+    old(conn, t.request_id)
+    trace.scrub(conn)
+    assert trace.set_feedback(conn, t.request_id, -1, "faux", "wrong_answer")
+    assert conn.execute("SELECT question, feedback, feedback_at IS NOT NULL FROM query_traces WHERE request_id = %s",
+                        (t.request_id,)).fetchone() == ("", -1, True)
 
 
 def test_feedback_is_stored_for_a_known_request_and_limited_to_up_or_down(conn):

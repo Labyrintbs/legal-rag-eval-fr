@@ -66,19 +66,23 @@ def traces_summary_cmd(days: Annotated[float, typer.Option(help="How far back to
     a = s["answered"]
     typer.echo(f"answered: {a['tokens_in']} tokens in, {a['tokens_out']} out, {a['cost_usd']:.4f} USD, "
                f"time median {a['p50_ms'] or 0:.0f} ms, 95th percentile {a['p95_ms'] or 0:.0f} ms")
+    typer.echo(f"English translations of answers: {s['translations']['n']}, {s['translations']['cost_usd']:.4f} USD")
 
 
 @traces_app.command("purge")
 def traces_purge_cmd(yes: Annotated[bool, typer.Option("--yes", help="Do not ask for confirmation")] = False) -> None:
-    """Delete the traces past their 30-day expiry; asks first."""
+    """Erase the text of ordinary requests older than 7 days, then delete the traces past their 30-day expiry; asks first.
+    Run it every hour (the schedule is a deployment task): the privacy page promises both."""
     with db.connect() as conn:
-        n = trace.expired(conn)
-        typer.echo(f"{n} expired traces will be deleted.")
-        if n and not yes:
-            typer.confirm("Delete them?", abort=True)
-        if n:
+        to_erase, to_delete = trace.erasable(conn), trace.expired(conn)
+        typer.echo(f"{to_erase} ordinary requests will have their text erased, {to_delete} expired traces will be deleted.")
+        if (to_erase or to_delete) and not yes:
+            typer.confirm("Go on?", abort=True)
+        if to_erase:
+            trace.scrub(conn)
+        if to_delete:
             trace.purge(conn)
-    typer.echo("deleted" if n else "nothing to delete")
+    typer.echo("done" if to_erase or to_delete else "nothing to do")
 
 
 @traces_app.command("export")
@@ -176,7 +180,9 @@ def serve_cmd(
     DEEPSEEK_API_KEY and TRACE_SECRET; CLIENT_IP_HEADER names the header of the proxy that carries the visitor's address)."""
     import uvicorn  # the serve extra
 
-    uvicorn.run("legalrag.web.build:production_app", factory=True, host=host, port=port, workers=1, proxy_headers=False)
+    # access_log off: uvicorn's own access log prints the visitor's raw address, which the privacy notice says is not kept
+    uvicorn.run("legalrag.web.build:production_app", factory=True, host=host, port=port, workers=1, proxy_headers=False,
+                access_log=False)
 
 
 @app.command("llm-balance")

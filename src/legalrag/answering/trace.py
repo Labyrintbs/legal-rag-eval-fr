@@ -29,7 +29,7 @@ class Trace:
     request_id: str
     lang: str
     question: str
-    mode: str  # answer or search
+    mode: str  # answer, search, or translate (the English translation of an answer: a model call, never counted as an answer)
     outcome: str
     client_hash: str | None = None
     refusal_reason: str | None = None
@@ -98,8 +98,8 @@ def set_feedback(conn: psycopg.Connection, request_id: str, value: int, comment:
                  kind: str | None = None) -> bool:
     """Thumbs up (1) or down (-1) on a request, with an optional kind and comment; False if there is no such request.
     A new vote replaces the old one."""
-    done = conn.execute("UPDATE query_traces SET feedback = %s, feedback_comment = %s, feedback_kind = %s WHERE request_id = %s",
-                        (value, comment, kind, request_id)).rowcount == 1
+    done = conn.execute("UPDATE query_traces SET feedback = %s, feedback_comment = %s, feedback_kind = %s, feedback_at = now() "
+                        "WHERE request_id = %s", (value, comment, kind, request_id)).rowcount == 1
     conn.commit()
     return done
 
@@ -128,17 +128,54 @@ def summary(conn: psycopg.Connection, since: timedelta) -> dict:
     """Requests by outcome, the share answered, tokens, cost and the median and 95th percentile of the total time."""
     with conn.cursor(row_factory=dict_row) as cur:
         by_outcome = {r["outcome"]: r["n"] for r in cur.execute(
-            "SELECT outcome, count(*) AS n FROM query_traces WHERE created_at >= now() - %s GROUP BY outcome", (since,)
-        ).fetchall()}
+            "SELECT outcome, count(*) AS n FROM query_traces WHERE created_at >= now() - %s AND mode <> 'translate' "
+            "GROUP BY outcome", (since,)).fetchall()}
+        translations = cur.execute(
+            "SELECT count(*) AS n, coalesce(sum(cost_usd), 0)::float AS cost_usd FROM query_traces "
+            "WHERE created_at >= now() - %s AND mode = 'translate'", (since,)).fetchone()
         totals = cur.execute(
             "SELECT count(*) AS n, coalesce(sum(tokens_in), 0) AS tokens_in, coalesce(sum(tokens_out), 0) AS tokens_out, "
             "coalesce(sum(cost_usd), 0)::float AS cost_usd, "
             "percentile_cont(0.5) WITHIN GROUP (ORDER BY total_ms) AS p50_ms, "
             "percentile_cont(0.95) WITHIN GROUP (ORDER BY total_ms) AS p95_ms "
-            "FROM query_traces WHERE created_at >= now() - %s AND outcome = 'answered'", (since,)).fetchone()
+            "FROM query_traces WHERE created_at >= now() - %s AND outcome = 'answered' AND mode <> 'translate'", (since,)).fetchone()
     n = sum(by_outcome.values())
     return {"requests": n, "by_outcome": by_outcome, "answered_share": by_outcome.get("answered", 0) / n if n else None,
-            "answered": totals}
+            "answered": totals, "translations": translations}
+
+
+TEXT_DAYS = 7  # how long the text of an ordinary request is kept (the other rows keep it until they expire, 30 days)
+SAMPLE_EVERY = 20  # one ordinary request in 20 keeps its text, to see the quality of the traffic without selection
+# Ordinary: not a failure, no vote, no comment, not in the sample. The sample is chosen by the id of the request, so that the
+# same request is always in or out: the first 8 hexadecimal digits of its md5, modulo SAMPLE_EVERY.
+ORDINARY = (
+    "erased_at IS NULL AND created_at < %(cutoff)s AND NOT (outcome = ANY(%(failures)s)) "
+    "AND feedback IS NULL AND feedback_comment IS NULL "
+    "AND (('x' || substr(md5(request_id), 1, 8))::bit(32)::bigint %% %(every)s) <> 0"
+)
+
+
+def in_sample(request_id: str, every: int = SAMPLE_EVERY) -> bool:
+    """True when the request keeps its text for 30 days although it is ordinary (the same rule as the SQL above)."""
+    return int(hashlib.md5(request_id.encode()).hexdigest()[:8], 16) % every == 0  # a sampling key, not security
+
+
+def scrub_params(now: datetime | None, text_days: float, every: int) -> dict:
+    return {"cutoff": (now or datetime.now(UTC)) - timedelta(days=text_days), "failures": list(FAILURES), "every": every}
+
+
+def erasable(conn: psycopg.Connection, now: datetime | None = None, text_days: float = TEXT_DAYS, every: int = SAMPLE_EVERY) -> int:
+    return conn.execute(f"SELECT count(*) FROM query_traces WHERE {ORDINARY}", scrub_params(now, text_days, every)).fetchone()[0]
+
+
+def scrub(conn: psycopg.Connection, now: datetime | None = None, text_days: float = TEXT_DAYS, every: int = SAMPLE_EVERY) -> int:
+    """Erase the text of ordinary requests older than `text_days`: the question, the answer, the hash of the question and the
+    hash of the address. The outcome, the scores and the cited articles stay, so the statistics do not change."""
+    done = conn.execute(
+        "UPDATE query_traces SET question = '', answer = NULL, question_sha256 = NULL, client_hash = NULL, erased_at = %(now)s "
+        f"WHERE {ORDINARY}", {**scrub_params(now, text_days, every), "now": now or datetime.now(UTC)}).rowcount
+    conn.commit()
+    return done
 
 
 def expired(conn: psycopg.Connection, now: datetime | None = None) -> int:
