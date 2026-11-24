@@ -286,7 +286,7 @@ def test_a_change_of_language_keeps_the_opened_entries_open_and_a_deleted_one_is
     start(page, 'lang = "en"; drawHistory()')
     assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, False]
     assert run(page, "toggles().map((b) => b.textContent)") == ["Show the answer", "Hide the answer"]
-    assert "Answer of" in run(page, "byClass(registry.history, 'hist-body')[1].textContent")  # written in the new language
+    assert "Answer given on" in run(page, "byClass(registry.history, 'hist-body')[1].textContent")  # written in the new language
     start(page, "toggles()[1].click(); drawHistory()")  # closed by the visitor: stays closed
     assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, True]
     start(page, "toggles()[0].click(); byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # open then delete
@@ -298,7 +298,7 @@ def test_the_reasons_of_the_service_are_french_so_the_english_page_does_not_repe
     assert "déjà en cours" in run(page, "replyNode(limited, 429, 2).textContent")
     start(page, 'lang = "en"')
     text = run(page, "replyNode(limited, 429, 2).textContent")
-    assert "déjà en cours" not in text and "Try again in 2 s" in text
+    assert "déjà en cours" not in text and "Try again in 2 seconds" in text
     give(page, "refused", {**REPLY, "outcome": "refused_by_model", "claims": [], "reason": "Aucun texte ne traite de ce sujet."})
     text = run(page, "replyNode(refused, 200, null).textContent")
     assert "Reason given by the service (in French): Aucun texte ne traite de ce sujet." in text
@@ -361,7 +361,7 @@ def test_the_date_line_of_an_opened_entry_says_answer_or_result_in_both_language
     dated = "byClass(registry.history, 'hist-body').map((b) => b.children.filter((c) => c.className === 'count')[0].textContent.split(' ').slice(0, 2).join(' '))"
     assert run(page, dated) == ["Résultat du", "Réponse du"]
     start(page, 'lang = "en"; drawHistory()')
-    assert run(page, dated) == ["Result of", "Answer of"]
+    assert run(page, dated) == ["Result given", "Answer given"]
 
 
 def test_the_english_headings_say_that_the_passages_and_articles_are_in_french(page):
@@ -559,7 +559,7 @@ def test_a_damaged_entry_says_it_is_unreadable_instead_of_doing_nothing_and_the_
         start(page, f"toggles()[{index}].click()")
     assert body_text(page, 0) == body_text(page, 1) == "Cette entrée est illisible. Vous pouvez la supprimer."  # a text for the claims, a citation without units
     assert "Quatre mois pour un cadre." in body_text(page, 2) and "masqué" not in body_text(page, 2)  # masked as a text: no notice, the answer is shown
-    assert "pii_passport" in body_text(page, 3) and "Quatre mois pour un cadre." in body_text(page, 3)  # a kind of data this page does not know
+    assert "des données personnelles" in body_text(page, 3) and "Quatre mois pour un cadre." in body_text(page, 3)  # a kind of data this page does not know
     assert "Quatre mois pour un cadre." in body_text(page, 4) and "Réponse du" not in body_text(page, 4)  # a date that cannot be read: no date line
     assert "Réponse du" in body_text(page, 5)
 
@@ -586,7 +586,7 @@ def test_a_second_delete_within_half_a_second_is_ignored_so_a_double_click_remov
 def test_a_missing_text_shows_its_key_and_does_not_break_the_page(page):
     assert run(page, "t('not_a_key')") == "not_a_key"
     give(page, "reply", {**REPLY, "masked": ["passport"], "question_masked": "Q"})
-    assert "pii_passport" in run(page, "maskedNotice(reply).textContent")
+    assert "des données personnelles" in run(page, "maskedNotice(reply).textContent")
 
 
 def test_wording_details_the_masked_question_label_the_edit_button_and_the_path_heading(page):
@@ -726,9 +726,9 @@ def test_the_history_page_says_so_when_it_is_empty_and_follows_the_language(page
     start(page, "drawHistory()")
     assert run(page, "registry.history.textContent") == "Aucune question pour le moment. La liste de cet onglet disparaît quand vous le fermez : cochez la case ci-dessus pour la garder sur cet appareil."
     start(page, 'lang = "en"; drawHistory()')
-    assert run(page, "registry.history.textContent") == "No question yet. This tab's list is lost when you close the tab: tick the box above to keep it on this device."
+    assert run(page, "registry.history.textContent") == "No questions yet. This tab's list is lost when you close the tab: tick the box above to keep it on this device."
     start(page, 'window.localStorage.setItem("keep_history", "1"); drawHistory()')  # a kept history has no such hint
-    assert run(page, "registry.history.textContent") == "No question yet."
+    assert run(page, "registry.history.textContent") == "No questions yet."
 
 
 def test_ticking_the_keep_box_moves_the_history_and_unticking_moves_it_back(page):
@@ -847,7 +847,7 @@ def test_the_page_follows_the_language_for_the_messages_it_builds(page):
     give(page, "reply", REPLY)
     start(page, 'lang = "en"')
     assert "Answer (in French)" in run(page, "replyNode(reply, 200, null).textContent") and "Cited passages" in run(page, "replyNode(reply, 200, null).textContent")
-    assert "Too many requests from you. Try again in 9 s." in run(page, "replyNode(reply, 429, 9).textContent")
+    assert "Too many requests from you. Try again in 9 seconds." in run(page, "replyNode(reply, 429, 9).textContent")
 
 
 # ---- notices of the result area ----
@@ -919,10 +919,9 @@ def test_a_translation_that_fails_says_so_and_lets_the_visitor_try_again(page, s
     assert run(page, "byTag(box, 'button')[0].disabled") is False  # the button is back
 
 
-@pytest.mark.parametrize("status", [410, 404])
-def test_an_answer_the_service_no_longer_holds_cannot_be_translated_and_the_button_does_not_come_back(page, status):
+def test_an_answer_the_service_no_longer_holds_cannot_be_translated_and_the_button_does_not_come_back(page):
     give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
-    fake_fetch(page, status, {"detail": "this answer is no longer stored"})
+    fake_fetch(page, 410, {"detail": "this answer is no longer stored"})
     start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
     assert "ne garde plus cette réponse (7 jours)" in run(page, "box.textContent")
     assert run(page, "byTag(box, 'button')[0].disabled") is True and run(page, "requests.length") == 1
@@ -931,6 +930,72 @@ def test_an_answer_the_service_no_longer_holds_cannot_be_translated_and_the_butt
     give(page, "fresh", {**REPLY, "question_fr": "Quelle durée ?"})
     start(page, 'lang = "en"; globalThis.box2 = englishBlock(fresh); byTag(box2, "button")[0].click()')
     assert "no longer holds this answer (7 days)" in run(page, "box2.textContent")
+
+
+def test_a_404_on_a_translation_says_the_service_never_had_the_answer_and_is_not_remembered_as_gone(page):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, 404, {"detail": "no such answer"})
+    start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
+    assert "n'a pas gardé cette réponse" in run(page, "box.textContent") and "7 jours" not in run(page, "box.textContent")
+    assert run(page, "reply.english_gone === undefined") is True and run(page, "byTag(box, 'button')[0].disabled") is False
+
+
+def test_an_entry_older_than_seven_days_says_at_once_that_its_answer_cannot_be_translated(page):
+    history_page(page, ("How long?", {**REPLY, "question_fr": "Quelle durée ?"}))
+    fake_fetch(page, 200, {"english": "x"})
+    start(page, "toggles()[0].click()")
+    assert run(page, "byTag(byClass(registry.history, 'en-answer')[0], 'button').length") == 1  # today: the button
+    start(page, """const list = JSON.parse(window.sessionStorage.data.history);
+      list[0].at = new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(); window.sessionStorage.data.history = JSON.stringify(list);
+      openEntries.clear(); drawHistory(); toggles()[0].click()""")
+    assert run(page, "byTag(byClass(registry.history, 'en-answer')[0], 'button').length") == 0
+    assert "ne garde plus cette réponse" in run(page, "byClass(registry.history, 'en-answer')[0].textContent")
+    assert run(page, "requests.length") == 0  # nothing was asked of the service
+
+
+def test_a_failed_translation_of_the_question_is_told_as_such_and_has_no_vote_or_articles(page):
+    result_area(page)
+    fake_fetch(page, 502, {**REPLY, "outcome": "llm_error", "claims": [], "articles": [], "reason": "La traduction de la question a échoué."})
+    start(page, 'ask("How long?", true)')
+    assert run(page, "registry.result.textContent") == "La traduction de votre question a échoué. Réessayez, ou écrivez-la en français."
+    start(page, 'lang = "en"; show()')
+    assert run(page, "registry.result.textContent") == "The translation of your question failed. Try again, or write it in French."
+    fake_fetch(page, 502, {**REPLY, "outcome": "llm_error", "claims": [], "articles": []})  # the model failed on a French question: no articles to show
+    start(page, 'ask("Quelle durée ?")')
+    assert run(page, "registry.result.textContent").startswith("The AI model did not answer. Try again in a moment.")
+    assert "shown below" not in run(page, "registry.result.textContent")
+    fake_fetch(page, 502, {**REPLY, "outcome": "llm_error", "claims": []})  # with articles: they are shown
+    start(page, 'ask("Quelle durée 2 ?")')
+    assert "The articles found are shown below." in run(page, "registry.result.textContent")
+
+
+def test_the_english_notice_names_the_masked_labels_in_english_and_an_unknown_kind_is_personal_data(page):
+    labels = ["[e-mail]", "[date de naissance]", "[IBAN]", "[numéro de sécurité sociale]", "[carte bancaire]", "[téléphone]"]
+    give(page, "reply", {**REPLY, "masked": ["birth", "nir", "card", "phone", "email", "iban"], "question_masked": " ".join(labels)})
+    start(page, 'lang = "en"')
+    text = run(page, "maskedNotice(reply).textContent")
+    assert "[e-mail] [date of birth] [IBAN] [social security number] [bank card] [telephone]" in text
+    assert "é" not in text.split("avoid")[0].split("question with the masked part")[1]  # no French label is left in the quoted question
+    start(page, 'lang = "fr"')
+    assert "[numéro de sécurité sociale]" in run(page, "maskedNotice(reply).textContent")  # the French page keeps them
+    give(page, "odd", {**REPLY, "masked": ["passport", "email"], "question_masked": "Q"})
+    start(page, 'lang = "en"')
+    assert "personal data, an e-mail address" in run(page, "maskedNotice(odd).textContent")
+
+
+def test_the_list_says_to_make_room_only_when_there_is_something_to_delete(page):
+    history_page(page, ("A ?", REPLY))
+    start(page, "const full = makeStore({ full: true }); full.data.history = window.sessionStorage.data.history; window.sessionStorage = full; drawHistory()")
+    assert "Supprimez des entrées" in run(page, "registry.history.children[0].textContent")
+    start(page, "full.data.history = '[]'; drawHistory()")
+    assert "Supprimez" not in run(page, "registry.history.children[0].textContent")
+
+
+def test_the_english_messages_say_seconds_and_the_ai_model(page):
+    start(page, 'lang = "en"')
+    assert run(page, "t('limited', { n: 7 })") == "Too many requests from you. Try again in 7 seconds."
+    assert run(page, "t('network')") == "The service is not responding. Try again in a moment."
+    assert run(page, "t('upstream')").startswith("The AI model did not answer.")
 
 
 def test_the_notes_of_failed_tries_do_not_pile_up_and_a_later_success_replaces_them(page):

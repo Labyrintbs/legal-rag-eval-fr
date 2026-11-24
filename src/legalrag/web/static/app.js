@@ -11,7 +11,8 @@ const T = {
     history_edit: "Modifier cette question", history_delete: "Supprimer cette entrée",
     history_empty_tab: "La liste de cet onglet disparaît quand vous le fermez : cochez la case ci-dessus pour la garder sur cet appareil.",
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
-    history_full: "Le navigateur refuse d'écrire (stockage plein ou bloqué) : les nouvelles questions ne seront pas gardées. Supprimez des entrées pour faire de la place.",
+    history_full: "Le navigateur refuse d'écrire (stockage plein ou bloqué) : les nouvelles questions ne seront pas gardées.",
+    history_full_hint: "Supprimez des entrées pour faire de la place.",
     history_unreadable: "Cette entrée est illisible. Vous pouvez la supprimer.",
     history_dated: "Réponse du {date} : la loi a pu changer depuis.", history_dated_result: "Résultat du {date} : la loi a pu changer depuis.",
     busy: "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse.",
@@ -25,6 +26,10 @@ const T = {
     translate_failed: "La traduction n'a pas pu être faite. · The translation could not be made.", empty: "Écrivez une question.", network: "Le service ne répond pas. Réessayez dans un instant.",
     invalid: "La question doit avoir entre 1 et 500 caractères.", limited: "Trop de demandes de votre part. Réessayez dans {n} s.",
     unavailable: "Le service est momentanément indisponible", upstream: "Le modèle n'a pas répondu. Les articles trouvés sont montrés ci-dessous.",
+    upstream_none: "Le modèle n'a pas répondu. Réessayez dans un instant.",
+    translate_question_failed: "La traduction de votre question a échoué. Réessayez, ou écrivez-la en français.",
+    translate_unknown: "Le service n'a pas gardé cette réponse : la traduction n'est pas possible.",
+    pii_other: "des données personnelles",
     noanswer: "Pas de réponse : les textes de ce service ne permettent pas de répondre.", weak: "Pas de réponse : rien de suffisamment proche n'a été trouvé dans les textes.",
     scope: "Ce service ne contient que le Code du travail et le RGPD (pas les conventions collectives, pas la jurisprudence).",
     next: "Pour un cas précis, consultez un avocat, l'inspection du travail ou Légifrance.", why: "Raison donnée par le service :",
@@ -41,14 +46,15 @@ const T = {
     pii_nir: "un numéro de sécurité sociale", pii_birth: "une date de naissance",
   },
   en: {
-    history_empty: "No question yet.", history_show: "Show the answer", history_hide: "Hide the answer",
+    history_empty: "No questions yet.", history_show: "Show the answer", history_hide: "Hide the answer",
     history_show_result: "Show the result", history_hide_result: "Hide the result", history_answered: "Answered", history_noanswer: "No answer",
     history_edit: "Edit this question", history_delete: "Delete this entry",
     history_empty_tab: "This tab's list is lost when you close the tab: tick the box above to keep it on this device.",
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
-    history_full: "The browser refuses to write (storage full or blocked): new questions will not be kept. Delete entries to make room.",
+    history_full: "The browser refuses to write (storage full or blocked): new questions will not be kept.",
+    history_full_hint: "Delete entries to make room.",
     history_unreadable: "This entry cannot be read. You can delete it.",
-    history_dated: "Answer of {date}: the law may have changed since.", history_dated_result: "Result of {date}: the law may have changed since.",
+    history_dated: "Answer given on {date}: the law may have changed since.", history_dated_result: "Result given on {date}: the law may have changed since.",
     busy: "Another question is already in progress from your connection: wait for its answer.",
     failed: "The service had a problem. Try again in a moment.",
     loaded: "Question taken from your history: change it if you wish, then send it.",
@@ -56,9 +62,13 @@ const T = {
     not_saved: "This answer could not be kept in the history: the browser refuses or is full.",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit the French", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
-    english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service does not answer. Try again in a moment.",
-    invalid: "The question must be 1 to 500 characters long.", limited: "Too many requests from you. Try again in {n} s.",
-    unavailable: "The service is temporarily unavailable", upstream: "The model did not answer. The articles found are shown below.",
+    english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service is not responding. Try again in a moment.",
+    invalid: "The question must be 1 to 500 characters long.", limited: "Too many requests from you. Try again in {n} seconds.",
+    unavailable: "The service is temporarily unavailable", upstream: "The AI model did not answer. The articles found are shown below.",
+    upstream_none: "The AI model did not answer. Try again in a moment.",
+    translate_question_failed: "The translation of your question failed. Try again, or write it in French.",
+    translate_unknown: "The service did not keep this answer: it cannot be translated.",
+    pii_other: "personal data",
     noanswer: "No answer: the texts of this service do not allow one.", weak: "No answer: nothing close enough was found in the texts.",
     scope: "This service contains only the French labour code and the GDPR (no collective agreements, no case law).",
     next: "For a specific case, consult a lawyer, the labour inspectorate or Légifrance.", why: "Reason given by the service (in French):",
@@ -280,11 +290,20 @@ function refusalCard(message, reply, history = false) {
   return box;
 }
 
+// The labels the service writes in place of a masked identifier are French (answering/pii.py); the English page names them in English.
+const PLACEHOLDERS_EN = { "[date de naissance]": "[date of birth]", "[numéro de sécurité sociale]": "[social security number]",
+  "[carte bancaire]": "[bank card]", "[téléphone]": "[telephone]" };
+
+function placeholdersIn(text) {
+  if (lang !== "en" || typeof text !== "string") return text;
+  return Object.entries(PLACEHOLDERS_EN).reduce((result, [french, english]) => result.split(french).join(english), text);
+}
+
 // Tells the visitor what the personal-data filter masked in the question, and the question that was really used.
 function maskedNotice(reply) {
   if (!reply || !Array.isArray(reply.masked) || !reply.masked.length) return null;
-  const what = [...new Set(reply.masked)].map((kind) => t(`pii_${kind}`)).join(", ");
-  return make("p", { class: "notice", text: t("masked_intro", { what, question: reply.question_masked }) });
+  const what = [...new Set(reply.masked)].map((kind) => (`pii_${kind}` in T[lang] ? t(`pii_${kind}`) : t("pii_other"))).join(", ");
+  return make("p", { class: "notice", text: t("masked_intro", { what, question: placeholdersIn(reply.question_masked) }) });
 }
 
 function show() {
@@ -332,11 +351,13 @@ function withMarkers(text) {
 }
 
 // The English translation of an answer, on request, for a visitor who asked in English or has the page in English.
+const ANSWER_KEPT_MS = 7 * 24 * 3600 * 1000; // the service keeps an answer 7 days (TTL of answering/cache.py)
+
 function englishBlock(reply) {
   if (reply.outcome !== "answered" || !(reply.question_fr || lang === "en")) return "";
   if (reply.english) return savedEnglish(reply); // already asked for: shown again after a change of language, never requested twice
   const box = make("div", { class: "en-answer" });
-  if (reply.english_gone) { // the service no longer holds the answer: asking again would change nothing
+  if (reply.english_gone || (reply.at && Date.now() - Date.parse(reply.at) > ANSWER_KEPT_MS)) { // the service no longer holds the answer
     box.append(make("span", { class: "count", text: t("translate_gone") }));
     return box;
   }
@@ -374,7 +395,10 @@ async function askEnglishOnce(reply, box, button) {
       return;
     }
     if (response.status === 429) message = t("limited", { n: Number(response.headers.get("Retry-After")) || 60 });
-    if (response.status === 410 || response.status === 404) { // the service keeps an answer 7 days; the button stays off, also after a redraw
+    if (response.status === 404) { // the service never had this answer: not remembered, a proxy fault could look the same
+      message = t("translate_unknown");
+    }
+    if (response.status === 410) { // the service keeps an answer 7 days; the button stays off, also after a redraw
       button.note.textContent = ` ${t("translate_gone")}`;
       reply.english_gone = true;
       refreshHistory(updateEntry(reply.request_id, { english_gone: true }));
@@ -400,7 +424,7 @@ function replyNode(reply, status, retryAfter, history = false) {
   if (status === 429 && reply && reply.busy) return problemCard(t("busy"), { ...reply, reason: null }, history);
   if (status === 429) return problemCard(t("limited", { n: retryAfter || (reply && reply.retry_after) || 60 }), reply, history);
   if (status === 503) return problemCard(`${t("unavailable")}.`, reply, history);
-  if (status === 502) return problemCard(t("upstream"), reply, history);
+  if (status === 502) return problemCard(t(reply && Array.isArray(reply.articles) && reply.articles.length ? "upstream" : "upstream_none"), reply, history);
   if (status !== 200 || !reply || typeof reply !== "object") return problemCard(t("failed"), null, history); // 500, 504, 404...: never a refusal
   if (reply.outcome === "answered") {
     return Array.isArray(reply.claims) && reply.claims.length ? answerCard(reply, history) : problemCard(t("failed"), null, history);
@@ -415,7 +439,10 @@ const REFUSALS = ["refused_by_model", "invalid_citation"]; // the other outcome 
 function drawReply() {
   const { reply, status, retryAfter } = last;
   let node;
-  try { node = replyNode(reply, status, retryAfter); } catch (e) { node = problemCard(t("failed"), null); } // a reply of the wrong shape
+  try {
+    // a failed translation of the question is a 502 too, but it has no articles and nothing to vote on
+    node = status === 502 && last.translating ? problemCard(t("translate_question_failed"), null) : replyNode(reply, status, retryAfter);
+  } catch (e) { node = problemCard(t("failed"), null); } // a reply of the wrong shape
   document.getElementById("result").append(node);
 }
 
@@ -446,10 +473,10 @@ async function ask(question, translate = false, fromField = false) {
     if (reply !== null && typeof reply !== "object") reply = null; // a text or a number is no reply
     if (fromField && reply && response.status !== 422) reply.question_fr = question;
     last = { reply: response.status === 422 ? null : reply, status: response.status, retryAfter: Number(response.headers.get("Retry-After")) || null,
-      original: typed };
+      original: typed, translating: translate };
     if (response.status === 200 && reply) last.notSaved = addToHistory(typed, reply, fromField ? previous : null) === false;
   } catch (e) {
-    last = { reply: null, status: 0, original: typed };
+    last = { reply: null, status: 0, original: typed, translating: translate };
   } finally {
     asking = null;
     go.disabled = false;
@@ -674,7 +701,7 @@ function fillBody(entry, body) {
     const key = entry.reply.outcome === "answered" ? "history_dated" : "history_dated_result";
     const date = formatDate(entry.at);
     const dated = date ? make("p", { class: "count", text: t(key, { date }) }) : null;
-    body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
+    body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode({ ...entry.reply, at: entry.at }, 200, null, true)].filter(Boolean));
   } catch (e) {
     body.replaceChildren(make("p", { class: "status problem", text: t("history_unreadable") }));
   }
@@ -723,7 +750,8 @@ function drawHistory(focusAt = null) {
   const rows = list.map(historyEntry);
   const confirm = document.getElementById("confirm");
   if (confirm && !rows.length) confirm.hidden = true; // nothing left to erase
-  const full = state === "full" ? [make("p", { class: "status problem", text: t("history_full") })] : [];
+  const hint = rows.length ? ` ${t("history_full_hint")}` : "";
+  const full = state === "full" ? [make("p", { class: "status problem", text: `${t("history_full")}${hint}` })] : [];
   root.replaceChildren(...full, ...(rows.length ? rows.map((r) => r.row) : [make("p", { class: "count", text: empty })]));
   if (focusAt !== null) (rows.length ? rows[Math.min(focusAt, rows.length - 1)].toggle : document.getElementById("keep")).focus();
 }
