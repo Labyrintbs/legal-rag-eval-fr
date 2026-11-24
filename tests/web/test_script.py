@@ -181,7 +181,7 @@ def test_a_refused_storage_a_full_one_or_a_damaged_history_never_breaks_the_page
         assert run(page, "readHistory()") == [], damaged
 
 
-def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_vote_or_translation(page):
+def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_a_vote(page):
     history_elements(page)
     give(page, "reply", {**REPLY, "question_fr": "Quelle durée pour un cadre ?"})
     start(page, 'addToHistory("What is the probation period?", reply); addToHistory("Autre ?", { ...reply, request_id: "b", question_fr: null }); setupHistory()')
@@ -192,7 +192,7 @@ def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_vo
     assert run(page, "byClass(registry.history, 'hist-body')[0].hidden") is True  # the other stays closed
     shown = run(page, "walk(registry.history).filter((n) => n.tag === '#text').map((n) => n.text).join('|')")
     assert "Quatre mois pour un cadre." in shown and "Quelle durée pour un cadre ?" in shown  # the answer and the translated question
-    assert run(page, "byClass(registry.history, 'vote').length + byClass(registry.history, 'en-answer').length") == 0
+    assert run(page, "byClass(registry.history, 'vote').length") == 0
     start(page, "toggles()[1].click()")  # a second click hides it again
     assert run(page, "byClass(registry.history, 'hist-body')[1].hidden") is True
 
@@ -399,12 +399,42 @@ def test_the_erase_question_takes_the_focus_on_cancel_gives_it_back_and_is_not_a
     assert run(page, "[registry.confirm.hidden, readHistory().length, document.activeElement === registry.clear]") == [True, 0, True]
 
 
+def test_edit_this_question_offers_the_translation_again_only_for_a_question_that_was_translated(page):
+    history_page(page, ("Probation period?", {**REPLY, "question_fr": "Quelle période d'essai ?"}), ("Quelle durée ?", {**REPLY, "request_id": "b"}))
+    start(page, "byTag(byClass(registry.history, 'hist')[1], 'button')[1].click()")  # the English one
+    assert run(page, "[window.sessionStorage.data.prefill, window.sessionStorage.data.prefill_english, window.location.href]") == ["Probation period?", "1", "/"]
+    page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
+      registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] }); registry.english.hidden = true;""")
+    start(page, "setup()")  # the first page
+    assert run(page, "registry.question.value") == "Probation period?"
+    assert run(page, "registry.english.hidden") is False  # "Probation period?" alone would not look English to the script
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[1].click(); registry.english.hidden = true; setup()")
+    assert run(page, "registry.question.value") == "Quelle durée ?" and run(page, "registry.english.hidden") is True
+
+
+def test_asking_again_from_the_french_line_keeps_the_english_question_and_replaces_the_first_entry(page):
+    result_area(page)
+    fake_fetch(page, 200, {**REPLY, "question_fr": "Quelle période d'essai ?"})
+    start(page, 'ask("Probation period?", true)')
+    fake_fetch(page, 200, {**REPLY, "request_id": "second"})
+    start(page, 'ask("Quelle période d\'essai pour un cadre ?", false, true)')  # the corrected French line
+    entries = run(page, "readHistory()")
+    assert [(e["id"], e["question"]) for e in entries] == [("second", "Probation period?")]  # one entry, the English kept
+    assert entries[0]["reply"]["question_fr"] == "Quelle période d'essai pour un cadre ?"
+    start(page, 'ask("Quelle période d\'essai pour un directeur ?", false, true)')  # and again
+    assert run(page, "readHistory().map((e) => e.question)") == ["Probation period?"]
+    fake_fetch(page, 200, {**REPLY, "request_id": "third"})
+    start(page, 'ask("Autre question ?")')  # a new question starts a new entry
+    assert run(page, "readHistory().length") == 2
+
+
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
     page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
       registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] });""")
     start(page, 'window.sessionStorage.setItem("prefill", "x".repeat(600)); setup()')
     assert run(page, "registry.question.value.length") == 500 and run(page, "registry.count.textContent") == "500 / 500"
-    assert run(page, "'prefill' in window.sessionStorage.data") is False  # taken once: a reload shows an empty box
+    assert run(page, "Object.keys(window.sessionStorage.data)") == []  # taken once: a reload shows an empty box
+    assert "Question reprise de votre historique" in run(page, "registry.result.textContent")
     start(page, "registry.question.value = ''; setup()")
     assert run(page, "registry.question.value") == ""
     start(page, "window.sessionStorage = makeStore({ broken: true }); setup()")  # refused storage: an empty box, no error
@@ -444,11 +474,15 @@ def test_an_answer_is_one_paragraph_with_numbered_citations_one_tag_per_source_a
     assert run(page, "byClass(replyNode(reply, 200, null), 'vote').length") == 1
 
 
-def test_an_answer_drawn_from_the_history_has_no_vote_translation_or_list_of_articles(page):
+def test_an_answer_drawn_from_the_history_has_no_vote_or_list_of_articles_and_offers_the_translation_only_while_none_is_kept(page):
     give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
-    assert run(page, "byClass(replyNode(reply, 200, null), 'en-answer').length") == 1  # the live answer offers it
-    assert run(page, "byClass(replyNode(reply, 200, null, true), 'en-answer').length + byClass(replyNode(reply, 200, null, true), 'vote').length"
-               " + byClass(replyNode(reply, 200, null, true), 'found').length") == 0
+    assert run(page, "byClass(replyNode(reply, 200, null, true), 'vote').length + byClass(replyNode(reply, 200, null, true), 'found').length") == 0
+    assert run(page, "byTag(byClass(replyNode(reply, 200, null, true), 'en-answer')[0], 'button').length") == 1  # asked in English: the button
+    give(page, "kept", {**REPLY, "question_fr": "Quelle durée ?", "english": "Four months. [1]"})
+    node = "byClass(replyNode(kept, 200, null, true), 'en-answer')[0]"
+    assert run(page, f"byTag({node}, 'button').length") == 0 and "Four months." in run(page, f"{node}.textContent")  # kept: the text, no button
+    give(page, "french", REPLY)  # a French visitor, French page: nothing to translate
+    assert run(page, "byClass(replyNode(french, 200, null, true), 'en-answer').length") == 0
 
 
 def test_text_from_the_server_is_never_turned_into_elements(page):
@@ -550,7 +584,7 @@ def test_pressing_the_english_button_sends_only_the_request_id_and_shows_the_tra
     assert run(page, "byTag(box, 'button').length") == 0
 
 
-@pytest.mark.parametrize("status, retry, expected", [(429, "7", "Réessayez dans 7 s"), (502, None, "n'a pas pu être faite"), (410, None, "n'a pas pu être faite"),
+@pytest.mark.parametrize("status, retry, expected", [(429, "7", "Réessayez dans 7 s"), (502, None, "n'a pas pu être faite"),
                                                       (503, None, "n'a pas pu être faite")])
 def test_a_translation_that_fails_says_so_and_lets_the_visitor_try_again(page, status, retry, expected):
     give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
@@ -558,6 +592,17 @@ def test_a_translation_that_fails_says_so_and_lets_the_visitor_try_again(page, s
     start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
     assert expected in run(page, "box.textContent")
     assert run(page, "byTag(box, 'button')[0].disabled") is False  # the button is back
+
+
+@pytest.mark.parametrize("status", [410, 404])
+def test_an_answer_the_service_no_longer_holds_cannot_be_translated_and_the_button_does_not_come_back(page, status):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, status, {"detail": "this answer is no longer stored"})
+    start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
+    assert "ne garde plus cette réponse (7 jours)" in run(page, "box.textContent")
+    assert run(page, "byTag(box, 'button')[0].disabled") is True and run(page, "requests.length") == 1
+    start(page, 'lang = "en"; globalThis.box2 = englishBlock(reply); byTag(box2, "button")[0].click()')
+    assert "no longer holds this answer (7 days)" in run(page, "box2.textContent")
 
 
 def test_a_translation_request_that_cannot_reach_the_service_is_a_message_and_not_an_error(page):

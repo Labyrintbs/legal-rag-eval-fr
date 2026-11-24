@@ -13,6 +13,8 @@ const T = {
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
     history_dated: "Réponse du {date} : la loi a pu changer depuis.", history_dated_result: "Résultat du {date} : la loi a pu changer depuis.",
     busy: "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse.",
+    loaded: "Question reprise de votre historique : modifiez-la si besoin, puis envoyez-la.",
+    translate_gone: "Le service ne garde plus cette réponse (7 jours) : la traduction n'est plus possible.",
     not_saved: "Cette réponse n'a pas pu être gardée dans l'historique : le navigateur refuse ou n'a plus de place.",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
     show_english: "Traduction anglaise de cette réponse · English translation of this answer", translating_answer: "Traduction en cours…",
@@ -43,6 +45,8 @@ const T = {
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
     history_dated: "Answer of {date}: the law may have changed since.", history_dated_result: "Result of {date}: the law may have changed since.",
     busy: "Another question is already in progress from your connection: wait for its answer.",
+    loaded: "Question taken from your history: change it if you wish, then send it.",
+    translate_gone: "The service no longer holds this answer (7 days): it can no longer be translated.",
     not_saved: "This answer could not be kept in the history: the browser refuses or is full.",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
@@ -230,7 +234,7 @@ function answerCard(reply, history = false) {
   }
   const label = make("h2", { class: "label", text: t("answer") });
   if (reply.cached && !history) label.append(make("span", { class: "badge", text: t("stored") })); // days later it would mean nothing
-  if (history) return make("div", { class: "answer" }, label, claims, savedEnglish(reply), sources);
+  if (history) return make("div", { class: "answer" }, label, claims, englishBlock(reply), sources); // no vote, no list of articles
   return make("div", { class: "answer" }, label, claims, englishBlock(reply), sources, foundArticles(reply.articles) || "", voteBox(reply.request_id));
 }
 
@@ -328,6 +332,11 @@ function englishBlock(reply) {
         return;
       }
       if (response.status === 429) message = t("limited", { n: Number(response.headers.get("Retry-After")) || 60 });
+      if (response.status === 410 || response.status === 404) { // the service keeps an answer 7 days: asking again would change nothing
+        wait.remove();
+        box.append(make("span", { class: "count", text: ` ${t("translate_gone")}` }));
+        return;
+      }
     } catch (e) { /* the message below tells */ }
     wait.remove();
     button.disabled = false;
@@ -344,8 +353,7 @@ function savedEnglish(reply) {
   return make("div", { class: "en-answer" }, make("span", { class: "tr-label", text: t("english_label") }), withMarkers(reply.english));
 }
 
-// What a reply looks like. `history`: drawn from the history, where the vote and the button for the English translation
-// are not offered.
+// What a reply looks like. `history`: drawn from the history, where the vote and the list of articles are not offered.
 function replyNode(reply, status, retryAfter, history = false) {
   if (status === 0) return make("div", { class: "status problem", text: t("network") });
   if (status === 422) return make("div", { class: "status problem", text: t("invalid") });
@@ -378,15 +386,19 @@ async function ask(question, translate = false, fromField = false) {
   result.replaceChildren(make("div", { class: "status", text: t(translate ? "translating" : "searching") }));
   showResultArea();
   go.disabled = true;
+  // Asked again from the French line: the entry keeps the English the visitor wrote, and replaces the one of the first try.
+  const previous = last && last.reply ? last.reply.request_id : null;
+  const typed = fromField && last && last.original ? last.original : question;
   try {
     const response = await fetch("/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, translate }) });
     let reply = null;
     try { reply = await response.json(); } catch (e) { /* not JSON: the status tells */ }
     if (fromField && reply && response.status !== 422) reply.question_fr = question;
-    last = { reply: response.status === 422 ? null : reply, status: response.status, retryAfter: Number(response.headers.get("Retry-After")) || null };
-    if (response.status === 200 && reply) last.notSaved = addToHistory(question, reply) === false;
+    last = { reply: response.status === 422 ? null : reply, status: response.status, retryAfter: Number(response.headers.get("Retry-After")) || null,
+      original: typed };
+    if (response.status === 200 && reply) last.notSaved = addToHistory(typed, reply, fromField ? previous : null) === false;
   } catch (e) {
-    last = { reply: null, status: 0 };
+    last = { reply: null, status: 0, original: typed };
   } finally {
     go.disabled = false;
   }
@@ -455,12 +467,12 @@ function writeHistory(list) {
 }
 
 // The answer as it is kept: without the five articles of the search, which are large and not needed to read it again.
-function addToHistory(question, reply) {
+function addToHistory(question, reply, replaces = null) {
   if (!HISTORY_OUTCOMES.includes(reply.outcome)) return null; // null: nothing to keep; false: it could not be kept
   const kept = { request_id: reply.request_id, outcome: reply.outcome, reason: reply.reason, claims: reply.claims || [], articles: [],
     question_fr: reply.question_fr, masked: reply.masked, question_masked: reply.question_masked };
   const entry = { id: reply.request_id, at: new Date().toISOString(), question, reply: kept };
-  return writeHistory([entry, ...readHistory().filter((other) => other.id !== entry.id)]);
+  return writeHistory([entry, ...readHistory().filter((other) => other.id !== entry.id && other.id !== replaces)]);
 }
 
 // The English translation of an answer, once the visitor has asked for it, goes into the entry of that answer.
@@ -533,7 +545,7 @@ function historyEntry(entry, position) {
   const french = entry.reply.question_fr ? make("p", { class: "count hist-fr" }, make("span", { class: "tr-label", text: t("translated") }), " ",
     make("q", { text: entry.reply.question_fr })) : "";
   const edit = entryButton("history_edit", excerpt);
-  edit.addEventListener("click", () => editFromHistory(entry.question));
+  edit.addEventListener("click", () => editFromHistory(entry));
   const remove = entryButton("history_delete", excerpt);
   remove.addEventListener("click", () => { deleteEntry(entry.id); drawHistory(position); });
   const row = make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), " ", status,
@@ -558,9 +570,14 @@ function deleteEntry(id) {
 // "Edit this question": the question box of the first page gets the old text, ready to change and to send. Nothing is sent
 // from here. The text goes through the memory of the tab (it never reaches the service).
 const PREFILL_KEY = "prefill";
+const PREFILL_ENGLISH_KEY = "prefill_english";
 
-function editFromHistory(question) {
-  try { browserStore(false).setItem(PREFILL_KEY, question); } catch (e) { /* refused: the page opens with an empty box */ }
+// A question that was translated was written in English: the first page then offers the translation again.
+function editFromHistory(entry) {
+  try {
+    browserStore(false).setItem(PREFILL_KEY, entry.question);
+    browserStore(false).setItem(PREFILL_ENGLISH_KEY, entry.reply.question_fr ? "1" : "0");
+  } catch (e) { /* refused: the page opens with an empty box */ }
   window.location.href = "/";
 }
 
@@ -568,9 +585,11 @@ function takePrefill() {
   try {
     const store = browserStore(false);
     const text = store.getItem(PREFILL_KEY);
+    const english = store.getItem(PREFILL_ENGLISH_KEY) === "1";
     store.removeItem(PREFILL_KEY);
-    return typeof text === "string" ? text : "";
-  } catch (e) { return ""; }
+    store.removeItem(PREFILL_ENGLISH_KEY);
+    return { text: typeof text === "string" ? text : "", english };
+  } catch (e) { return { text: "", english: false }; }
 }
 
 // `focusAt`: the position of an entry that was just deleted. The focus goes to the entry now at that place (or the last one, or
@@ -631,7 +650,13 @@ function setup() {
   if (!form) return; // the other pages
   const box = document.getElementById("question");
   const prefill = takePrefill();
-  if (prefill) { box.value = prefill.slice(0, 500); updateCount(); box.focus(); }
+  if (prefill.text) {
+    box.value = prefill.text.slice(0, 500);
+    updateCount();
+    if (prefill.english) document.getElementById("english").hidden = false;
+    document.getElementById("result").replaceChildren(make("div", { class: "status", text: t("loaded") }));
+    box.focus();
+  }
   box.addEventListener("input", updateCount);
   box.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit(); });
   document.getElementById("translate").addEventListener("click", () => {
