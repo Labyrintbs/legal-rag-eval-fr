@@ -113,6 +113,7 @@ class AskReply(Reply):
     claims: list[ClaimOut] = []  # empty unless the outcome is "answered"
     articles: list[ArticleOut] = []
     retry_after: int | None = None  # seconds to wait, only for a limit
+    busy: bool = False  # true when the limit is "one question at a time": another one from the same address is still in progress
     cached: bool = False  # true when the reply was stored by an earlier identical question (it cost nothing)
     question_fr: str | None = None  # the French question that was answered, when the visitor asked for a translation
     masked: list[str] = []  # the kinds of personal identifier masked in the question ("email", "phone"...); the page tells the visitor

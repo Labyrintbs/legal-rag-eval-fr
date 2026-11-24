@@ -295,6 +295,57 @@ def test_the_reasons_of_the_service_are_french_so_the_english_page_does_not_repe
     assert "Reason given by the service (in French): Aucun texte ne traite de ce sujet." in text
 
 
+def result_area(page):
+    for name in ("go", "result"):
+        page.eval(f'registry.{name} = new FakeNode("{"button" if name == "go" else "section"}")')
+
+
+def test_the_masking_notice_is_shown_only_for_a_reply_that_used_the_question(page):
+    result_area(page)
+    masked = {**REPLY, "masked": ["email"], "question_masked": "Quelle durée ? [e-mail]", "outcome": "rate_limited", "claims": []}
+    fake_fetch(page, 429, masked, "5")
+    start(page, 'ask("Quelle durée ? a@b.fr")')
+    assert run(page, "byClass(registry.result, 'notice').length") == 0 and "Réessayez dans 5 s" in run(page, "registry.result.textContent")
+    fake_fetch(page, 200, {**REPLY, "masked": ["email"], "question_masked": "Quelle durée ? [e-mail]"})
+    start(page, 'ask("Quelle durée ? a@b.fr")')
+    assert run(page, "byClass(registry.result, 'notice').length") == 1
+
+
+def test_a_busy_reply_has_its_own_message_in_both_languages_and_no_french_reason_on_the_english_page(page):
+    give(page, "busy", {**REPLY, "outcome": "rate_limited", "claims": [], "articles": [], "busy": True, "retry_after": 2,
+                        "reason": "une autre question est déjà en cours depuis votre connexion : attendez sa réponse"})
+    assert run(page, "replyNode(busy, 429, 2).textContent") == "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse."
+    start(page, 'lang = "en"')
+    assert run(page, "replyNode(busy, 429, 2).textContent") == "Another question is already in progress from your connection: wait for its answer."
+
+
+def test_the_visitor_is_told_when_the_history_could_not_keep_the_answer_and_not_otherwise(page):
+    result_area(page)
+    fake_fetch(page, 200, REPLY)
+    start(page, 'ask("Q ?")')
+    assert "n'a pas pu être gardée" not in run(page, "registry.result.textContent")
+    start(page, "window.sessionStorage = makeStore({ broken: true })")
+    fake_fetch(page, 200, {**REPLY, "request_id": "b"})
+    start(page, 'ask("Q2 ?")')
+    assert "n'a pas pu être gardée dans l'historique" in run(page, "registry.result.textContent")
+    fake_fetch(page, 200, {**REPLY, "request_id": "c", "outcome": "cache_hit"})  # nothing to keep is not a failure
+    start(page, 'ask("Q3 ?")')
+    assert "n'a pas pu être gardée" not in run(page, "registry.result.textContent")
+
+
+def test_a_translation_already_asked_for_is_shown_again_after_a_change_of_language_without_a_new_request(page):
+    result_area(page)
+    fake_fetch(page, 200, {**REPLY, "question_fr": "Quelle durée ?"})
+    start(page, 'ask("How long?", true)')
+    fake_fetch(page, 200, {"english": "Four months. [1]"})
+    start(page, "byTag(registry.result, 'button').filter((b) => b.className === 'pill')[0].click()")
+    assert run(page, "last.reply.english") == "Four months. [1]" and run(page, "requests.length") == 1
+    start(page, 'lang = "en"; show()')  # the page is drawn again
+    assert run(page, "byClass(registry.result, 'en-answer')[0].textContent").endswith("Four months. 1")
+    assert run(page, "byClass(registry.result, 'en-answer')[0].children.filter((c) => c.tag === 'button').length") == 0
+    assert run(page, "requests.length") == 1
+
+
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
     page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
       registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] });""")

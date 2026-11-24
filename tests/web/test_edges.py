@@ -253,6 +253,7 @@ def test_a_burst_of_parallel_requests_from_one_visitor_cannot_pass_the_limit(mak
     assert set(codes) <= {200, 429} and llm.calls <= 2  # before the fix all twelve passed the check together
     busy = [r for r in replies if r.status_code == 429 and "en cours" in (r.json().get("reason") or "")]
     assert busy and all(int(r.headers["retry-after"]) >= 1 for r in busy)
+    assert all(r.json()["busy"] is True and "depuis votre connexion" in r.json()["reason"] for r in busy)  # the page words this case itself
 
 
 def test_the_slot_of_a_visitor_is_freed_after_an_error_so_that_the_next_request_works(url):

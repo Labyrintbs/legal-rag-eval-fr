@@ -12,6 +12,8 @@ const T = {
     history_empty_tab: "Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre.",
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
     history_dated: "Donné le {date} : la loi a pu changer depuis.",
+    busy: "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse.",
+    not_saved: "Cette réponse n'a pas pu être gardée dans l'historique : le navigateur refuse ou n'a plus de place.",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
     show_english: "Traduction anglaise de cette réponse · English translation of this answer", translating_answer: "Traduction en cours…",
     english_label: "Machine translation into English (the French text is authoritative) · Traduction automatique en anglais (le texte français fait foi)",
@@ -40,6 +42,8 @@ const T = {
     history_empty_tab: "This tab has no kept list: tick the box above to keep yours.",
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
     history_dated: "Given on {date}: the law may have changed since.",
+    busy: "Another question is already in progress from your connection: wait for its answer.",
+    not_saved: "This answer could not be kept in the history: the browser refuses or is full.",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
     english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service does not answer. Try again in a moment.",
@@ -236,7 +240,7 @@ function problemCard(message, reply, history = false) {
   if (reply && reply.reason && lang === "fr") box.append(make("div", { class: "count", text: reply.reason }));
   const found = reply && foundArticles(reply.articles);
   if (found) box.append(found);
-  if (reply && reply.request_id && !history) box.append(voteBox(reply.request_id));
+  if (reply && reply.request_id && !history && !reply.busy) box.append(voteBox(reply.request_id)); // a busy reply was never answered
   return box;
 }
 
@@ -267,8 +271,9 @@ function show() {
   drawReply();
   const line = translatedLine(last.reply);
   if (line) result.prepend(line);
-  const note = maskedNotice(last.reply);
+  const note = last.status === 200 ? maskedNotice(last.reply) : null; // a refused request used no question
   if (note) result.prepend(note);
+  if (last.notSaved) result.append(make("p", { class: "count", text: t("not_saved") }));
 }
 
 // When the visitor asked for a translation: the French question that was really searched.
@@ -304,6 +309,7 @@ function withMarkers(text) {
 // The English translation of an answer, on request, for a visitor who asked in English or has the page in English.
 function englishBlock(reply) {
   if (reply.outcome !== "answered" || !(reply.question_fr || lang === "en")) return "";
+  if (reply.english) return savedEnglish(reply); // already asked for: shown again after a change of language, never requested twice
   const box = make("div", { class: "en-answer" });
   const button = make("button", { type: "button", class: "pill", text: t("show_english") });
   button.addEventListener("click", async () => {
@@ -317,6 +323,7 @@ function englishBlock(reply) {
       const data = await response.json().catch(() => ({}));
       if (response.status === 200) {
         box.replaceChildren(make("span", { class: "tr-label", text: t("english_label") }), withMarkers(data.english));
+        reply.english = data.english;
         saveEnglish(reply.request_id, data.english);
         return;
       }
@@ -342,6 +349,7 @@ function savedEnglish(reply) {
 function replyNode(reply, status, retryAfter, history = false) {
   if (status === 0) return make("div", { class: "status problem", text: t("network") });
   if (status === 422) return make("div", { class: "status problem", text: t("invalid") });
+  if (status === 429 && reply && reply.busy) return problemCard(t("busy"), { ...reply, reason: null }, history);
   if (status === 429) return problemCard(t("limited", { n: retryAfter || (reply && reply.retry_after) || 60 }), reply, history);
   if (status === 503) return problemCard(`${t("unavailable")}.`, reply, history);
   if (status === 502) return problemCard(t("upstream"), reply, history);
@@ -376,7 +384,7 @@ async function ask(question, translate = false, fromField = false) {
     try { reply = await response.json(); } catch (e) { /* not JSON: the status tells */ }
     if (fromField && reply && response.status !== 422) reply.question_fr = question;
     last = { reply: response.status === 422 ? null : reply, status: response.status, retryAfter: Number(response.headers.get("Retry-After")) || null };
-    if (response.status === 200 && reply) addToHistory(question, reply);
+    if (response.status === 200 && reply) last.notSaved = addToHistory(question, reply) === false;
   } catch (e) {
     last = { reply: null, status: 0 };
   } finally {
@@ -441,17 +449,18 @@ function readHistory() {
   } catch (e) { return []; }
 }
 
+// False when the browser refused or had no room: the caller may say so.
 function writeHistory(list) {
-  try { browserStore(keepsHistory()).setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX))); } catch (e) { /* full or refused */ }
+  try { browserStore(keepsHistory()).setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX))); return true; } catch (e) { return false; }
 }
 
 // The answer as it is kept: without the five articles of the search, which are large and not needed to read it again.
 function addToHistory(question, reply) {
-  if (!HISTORY_OUTCOMES.includes(reply.outcome)) return;
+  if (!HISTORY_OUTCOMES.includes(reply.outcome)) return null; // null: nothing to keep; false: it could not be kept
   const kept = { request_id: reply.request_id, outcome: reply.outcome, reason: reply.reason, claims: reply.claims || [], articles: [],
     question_fr: reply.question_fr, masked: reply.masked, question_masked: reply.question_masked };
   const entry = { id: reply.request_id, at: new Date().toISOString(), question, reply: kept };
-  writeHistory([entry, ...readHistory().filter((other) => other.id !== entry.id)]);
+  return writeHistory([entry, ...readHistory().filter((other) => other.id !== entry.id)]);
 }
 
 // The English translation of an answer, once the visitor has asked for it, goes into the entry of that answer.

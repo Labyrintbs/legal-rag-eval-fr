@@ -202,8 +202,8 @@ def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, quest
     if gate is None or warm:
         return answer_one(engine, connect, settings, question, client, warm, translate)
     if not gate.begin(client):
-        busy = schemas.AskReply(request_id=trace.new_request_id(), outcome="rate_limited", retry_after=2,
-                                reason="une autre question est déjà en cours pour vous : attendez sa réponse")
+        busy = schemas.AskReply(request_id=trace.new_request_id(), outcome="rate_limited", retry_after=2, busy=True,
+                                reason="une autre question est déjà en cours depuis votre connexion : attendez sa réponse")
         return busy, 429
     try:
         return answer_one(engine, connect, settings, question, client, warm, translate)
