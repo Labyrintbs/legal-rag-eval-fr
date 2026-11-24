@@ -60,6 +60,7 @@ function walk(node, out = []) { out.push(node); for (const child of node.childre
 function byClass(node, name) { return walk(node).filter((n) => (n.className || "").split(" ").includes(name)); }
 function byTag(node, name) { return walk(node).filter((n) => n.tag === name); }
 function pending() { return new Promise(() => {}); }
+function toggles() { return byClass(registry.history, "hist").map((entry) => byTag(entry, "button")[0]); }  // show/hide of each entry
 """
 
 CITATION = {"label": "L1221-19", "units": [4], "passage": "3° Pour les cadres, de quatre mois.",
@@ -180,13 +181,13 @@ def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_vo
     start(page, 'addToHistory("What is the probation period?", reply); addToHistory("Autre ?", { ...reply, request_id: "b", question_fr: null }); setupHistory()')
     assert run(page, "byClass(registry.history, 'hist').length") == 2
     assert run(page, "byClass(registry.history, 'hist')[1].children.filter((c) => c.tag === 'p')[0].children[0].text") == "What is the probation period?"
-    start(page, "byTag(registry.history, 'button')[1].click()")  # the newest entry is first: the translated one is the second
+    start(page, "toggles()[1].click()")  # the newest entry is first: the translated one is the second
     assert run(page, "byClass(registry.history, 'hist-body')[1].hidden") is False
     assert run(page, "byClass(registry.history, 'hist-body')[0].hidden") is True  # the other stays closed
     shown = run(page, "walk(registry.history).filter((n) => n.tag === '#text').map((n) => n.text).join('|')")
     assert "Quatre mois pour un cadre." in shown and "Quelle durée pour un cadre ?" in shown  # the answer and the translated question
     assert run(page, "byClass(registry.history, 'vote').length + byClass(registry.history, 'en-answer').length") == 0
-    start(page, "byTag(registry.history, 'button')[1].click()")  # a second click hides it again
+    start(page, "toggles()[1].click()")  # a second click hides it again
     assert run(page, "byClass(registry.history, 'hist-body')[1].hidden") is True
 
 
@@ -204,13 +205,38 @@ def test_a_closed_entry_shows_its_status_and_the_french_question_and_a_refusal_i
                  ("Rien ?", {**REPLY, "request_id": "c", "outcome": "refused_weak_retrieval", "claims": []}))
     assert run(page, "byClass(registry.history, 'hist-status').map((n) => n.textContent)") == ["Sans réponse", "Sans réponse", "Répondu"]
     assert run(page, "byClass(registry.history, 'hist-fr').map((n) => n.textContent)") == ["Question traduite en français : Quelle période d'essai ?"]
-    assert run(page, "byTag(registry.history, 'button').map((b) => b.textContent)") == ["Afficher le résultat", "Afficher le résultat", "Afficher la réponse"]
-    start(page, "byTag(registry.history, 'button')[0].click()")
-    assert run(page, "byTag(registry.history, 'button')[0].textContent") == "Masquer le résultat"
+    assert run(page, "toggles().map((b) => b.textContent)") == ["Afficher le résultat", "Afficher le résultat", "Afficher la réponse"]
+    start(page, "toggles()[0].click()")
+    assert run(page, "toggles()[0].textContent") == "Masquer le résultat"
     start(page, 'lang = "en"; drawHistory()')
     assert run(page, "byClass(registry.history, 'hist-status').map((n) => n.textContent)") == ["No answer", "No answer", "Answered"]
-    assert run(page, "byTag(registry.history, 'button').map((b) => b.textContent)") == ["Show the result", "Show the result", "Show the answer"]
+    assert run(page, "toggles().map((b) => b.textContent)") == ["Show the result", "Show the result", "Show the answer"]
     assert run(page, "byClass(registry.history, 'hist-fr')[0].textContent") == "Question translated into French: Quelle période d'essai ?"
+
+
+def test_delete_removes_only_its_entry_and_edit_hands_the_old_question_to_the_first_page_through_the_tab_memory(page):
+    history_page(page, ("Première ?", REPLY), ("Seconde ?", {**REPLY, "request_id": "b"}))
+    assert run(page, "byClass(registry.history, 'hist').map((e) => byTag(e, 'button').map((b) => b.textContent))") == [
+        ["Afficher la réponse", "Modifier cette question", "Supprimer cette entrée"]] * 2
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete the newest
+    assert run(page, "readHistory().map((e) => e.question)") == ["Première ?"]
+    assert run(page, "byClass(registry.history, 'hist').length") == 1  # drawn again
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[1].click()")  # edit
+    assert run(page, "[window.location.href, window.sessionStorage.data.prefill, readHistory().length]") == ["/", "Première ?", 1]  # nothing is sent, nothing removed
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")
+    assert run(page, "registry.history.textContent") == "Aucune question pour le moment."
+
+
+def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
+    page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
+      registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] });""")
+    start(page, 'window.sessionStorage.setItem("prefill", "x".repeat(600)); setup()')
+    assert run(page, "registry.question.value.length") == 500 and run(page, "registry.count.textContent") == "500 / 500"
+    assert run(page, "'prefill' in window.sessionStorage.data") is False  # taken once: a reload shows an empty box
+    start(page, "registry.question.value = ''; setup()")
+    assert run(page, "registry.question.value") == ""
+    start(page, "window.sessionStorage = makeStore({ broken: true }); setup()")  # refused storage: an empty box, no error
+    assert run(page, "registry.question.value") == ""
 
 
 def test_the_history_page_says_so_when_it_is_empty_and_follows_the_language(page):
@@ -376,7 +402,7 @@ def test_a_translation_asked_for_is_kept_in_its_history_entry_and_shown_there_wi
     start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
     english = run(page, "readHistory().map((e) => e.reply.english)")
     assert english == [None, "Four months. [1]"]  # only the entry of this answer (newest first: "Other" is first)
-    start(page, "drawHistory(); byTag(registry.history, 'button')[1].click()")  # open the entry that has the translation
+    start(page, "drawHistory(); toggles()[1].click()")  # open the entry that has the translation
     assert run(page, "byClass(registry.history, 'en-answer').length") == 1
     assert "Four months." in run(page, "byClass(registry.history, 'en-answer')[0].textContent")
     assert run(page, "byClass(registry.history, 'en-answer')[0].textContent").startswith("Machine translation")

@@ -8,6 +8,7 @@ const T = {
   fr: {
     history_empty: "Aucune question pour le moment.", history_show: "Afficher la réponse", history_hide: "Masquer la réponse",
     history_show_result: "Afficher le résultat", history_hide_result: "Masquer le résultat", history_answered: "Répondu", history_noanswer: "Sans réponse",
+    history_edit: "Modifier cette question", history_delete: "Supprimer cette entrée",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
     show_english: "Traduction anglaise de cette réponse · English translation of this answer", translating_answer: "Traduction en cours…",
     english_label: "Machine translation into English (the French text is authoritative) · Traduction automatique en anglais (le texte français fait foi)",
@@ -32,6 +33,7 @@ const T = {
   en: {
     history_empty: "No question yet.", history_show: "Show the answer", history_hide: "Hide the answer",
     history_show_result: "Show the result", history_hide_result: "Hide the result", history_answered: "Answered", history_noanswer: "No answer",
+    history_edit: "Edit this question", history_delete: "Delete this entry",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
     english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service does not answer. Try again in a moment.",
@@ -488,8 +490,34 @@ function historyEntry(entry) {
   // the French question that was searched stays visible on the closed line: a visitor who cannot read French can still tell entries apart
   const french = entry.reply.question_fr ? make("p", { class: "count hist-fr" }, make("span", { class: "tr-label", text: t("translated") }), " ",
     make("q", { text: entry.reply.question_fr })) : "";
+  const edit = make("button", { type: "button", class: "pill", text: t("history_edit") });
+  edit.addEventListener("click", () => editFromHistory(entry.question));
+  const remove = make("button", { type: "button", class: "pill", text: t("history_delete") });
+  remove.addEventListener("click", () => { deleteEntry(entry.id); drawHistory(); });
   return make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), " ", status,
-    make("p", { class: "hist-q", text: entry.question }), french, toggle, body);
+    make("p", { class: "hist-q", text: entry.question }), french, make("div", { class: "hist-actions" }, toggle, edit, remove), body);
+}
+
+function deleteEntry(id) {
+  writeHistory(readHistory().filter((entry) => entry.id !== id));
+}
+
+// "Edit this question": the question box of the first page gets the old text, ready to change and to send. Nothing is sent
+// from here. The text goes through the memory of the tab (it never reaches the service).
+const PREFILL_KEY = "prefill";
+
+function editFromHistory(question) {
+  try { browserStore(false).setItem(PREFILL_KEY, question); } catch (e) { /* refused: the page opens with an empty box */ }
+  window.location.href = "/";
+}
+
+function takePrefill() {
+  try {
+    const store = browserStore(false);
+    const text = store.getItem(PREFILL_KEY);
+    store.removeItem(PREFILL_KEY);
+    return typeof text === "string" ? text : "";
+  } catch (e) { return ""; }
 }
 
 function drawHistory() {
@@ -532,6 +560,8 @@ function setup() {
   const form = document.getElementById("ask");
   if (!form) return; // the other pages
   const box = document.getElementById("question");
+  const prefill = takePrefill();
+  if (prefill) { box.value = prefill.slice(0, 500); updateCount(); box.focus(); }
   box.addEventListener("input", updateCount);
   box.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit(); });
   document.getElementById("translate").addEventListener("click", () => {
