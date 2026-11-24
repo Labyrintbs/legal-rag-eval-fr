@@ -50,7 +50,7 @@ function makeStore(options = {}) {
   return {
     data,
     getItem: (key) => { if (options.broken) throw new Error("denied"); return key in data ? data[key] : null; },
-    setItem: (key, value) => { if (options.broken) throw new Error("denied"); data[key] = String(value); },
+    setItem: (key, value) => { if (options.broken || options.full) throw new Error("denied"); data[key] = String(value); },  // full: reads still work
     removeItem: (key) => { if (options.broken) throw new Error("denied"); delete data[key]; },
   };
 }
@@ -127,9 +127,9 @@ def test_the_script_takes_a_question_for_english_only_when_english_words_win(pag
 
 def history_elements(page):
     """The elements of the history page that the script looks for."""
-    for name in ("history", "keep", "clear", "confirm", "confirm-yes", "confirm-no"):
+    for name in ("history", "keep", "clear", "confirm", "confirm-yes", "confirm-no", "keep-failed"):
         page.eval(f'registry["{name}"] = new FakeNode("{"input" if name == "keep" else "section"}")')
-    page.eval('registry.confirm.hidden = true')  # the page file starts with the question hidden
+    page.eval('registry.confirm.hidden = true; registry["keep-failed"].hidden = true')  # the page file starts with these hidden
 
 
 def test_the_history_keeps_the_answer_without_the_articles_once_per_request_and_stops_at_thirty(page):
@@ -225,12 +225,12 @@ def test_delete_removes_only_its_entry_and_edit_hands_the_old_question_to_the_fi
     history_page(page, ("Première ?", REPLY), ("Seconde ?", {**REPLY, "request_id": "b"}))
     assert run(page, "byClass(registry.history, 'hist').map((e) => byTag(e, 'button').map((b) => b.textContent))") == [
         ["Afficher la réponse", "Modifier cette question", "Supprimer cette entrée"]] * 2
-    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete the newest
+    start(page, "lastDeleteAt = 0; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete the newest
     assert run(page, "readHistory().map((e) => e.question)") == ["Première ?"]
     assert run(page, "byClass(registry.history, 'hist').length") == 1  # drawn again
     start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[1].click()")  # edit
     assert run(page, "[window.location.href, window.sessionStorage.data.prefill, readHistory().length]") == ["/", "Première ?", 1]  # nothing is sent, nothing removed
-    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")
+    start(page, "lastDeleteAt = 0; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")
     assert run(page, "registry.history.textContent").startswith("Aucune question pour le moment.")
 
 
@@ -380,11 +380,11 @@ def test_every_button_of_an_entry_says_which_question_it_is_for_and_the_show_but
 
 def test_after_a_delete_the_focus_goes_to_the_entry_now_at_that_place_then_to_the_last_then_to_the_tick_box(page):
     history_page(page, ("A ?", REPLY), ("B ?", {**REPLY, "request_id": "b"}), ("C ?", {**REPLY, "request_id": "c"}))  # shown: C, B, A
-    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete C: B is now first
+    start(page, "lastDeleteAt = 0; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete C: B is now first
     assert run(page, "document.activeElement === toggles()[0] && readHistory().map((e) => e.question).join()") == "B ?,A ?"
-    start(page, "byTag(byClass(registry.history, 'hist')[1], 'button')[2].click()")  # delete the last one (A)
+    start(page, "lastDeleteAt = 0; byTag(byClass(registry.history, 'hist')[1], 'button')[2].click()")  # delete the last one (A)
     assert run(page, "document.activeElement === toggles()[0]") is True  # the last remaining
-    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete the only one
+    start(page, "lastDeleteAt = 0; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete the only one
     assert run(page, "document.activeElement === registry.keep") is True
 
 
@@ -445,6 +445,88 @@ def test_another_tab_that_changes_the_kept_list_is_shown_here_and_a_write_never_
     assert run(page, "readHistory().map((e) => e.question)") == ["Newest from this tab", "From another tab", "From this tab"]
     start(page, 'registry.keep.checked = false; window.localStorage.data.keep_history = "1"; window.fire("storage")')
     assert run(page, "registry.keep.checked") is True  # the tick follows the other tab
+
+
+def test_ticking_keep_never_loses_the_list_when_the_device_storage_refuses_or_is_full(page):
+    history_page(page, ("A ?", REPLY), ("B ?", {**REPLY, "request_id": "b"}))
+    for options in ("{ broken: true }", "{ full: true }"):
+        start(page, f"window.localStorage = makeStore({options}); registry.keep.checked = true; registry.keep.fire('change')")
+        assert run(page, "[readHistory().length, keepsHistory(), registry.keep.checked, registry['keep-failed'].hidden]") == [2, False, False, False], options
+        assert run(page, "'history' in window.sessionStorage.data") is True  # still in the tab
+        assert run(page, "byClass(registry.history, 'hist').length") == 2
+    start(page, "window.localStorage = makeStore(); registry.keep.checked = true; registry.keep.fire('change')")  # the device works again
+    assert run(page, "[readHistory().length, keepsHistory(), registry.keep.checked, registry['keep-failed'].hidden]") == [2, True, True, True]
+    assert run(page, "['history' in window.sessionStorage.data, 'history' in window.localStorage.data]") == [False, True]
+
+
+def test_unticking_keep_never_loses_the_list_when_the_tab_storage_refuses(page):
+    history_page(page, ("A ?", REPLY))
+    start(page, "setKeepHistory(true); registry.keep.checked = true; window.sessionStorage = makeStore({ full: true }); registry.keep.checked = false; "
+                "registry.keep.fire('change')")
+    assert run(page, "[readHistory().length, keepsHistory(), registry.keep.checked, registry['keep-failed'].hidden]") == [1, True, True, False]
+    assert run(page, "'history' in window.localStorage.data") is True
+
+
+def test_a_full_storage_still_shows_the_list_with_a_message_and_a_blocked_one_says_it_cannot_keep(page):
+    history_page(page, ("A ?", REPLY), ("B ?", {**REPLY, "request_id": "b"}))
+    start(page, "const full = makeStore({ full: true }); full.data.history = window.sessionStorage.data.history; window.sessionStorage = full; drawHistory()")
+    assert run(page, "byClass(registry.history, 'hist').length") == 2  # the list can be read, so it is shown
+    assert "stockage plein ou bloqué" in run(page, "registry.history.children[0].textContent")
+    assert run(page, "toggles().length") == 2
+    start(page, "toggles()[0].click()")  # and it can still be opened
+    assert run(page, "byClass(registry.history, 'answer').length") == 1
+    start(page, "window.sessionStorage = makeStore({ broken: true }); drawHistory()")  # nothing can even be read
+    assert run(page, "byClass(registry.history, 'hist').length") == 0
+    assert "ne permet pas de garder l'historique" in run(page, "registry.history.textContent")
+
+
+def body_text(page, index):
+    """The text inside the opened entry at this place of the list."""
+    return run(page, f"byClass(registry.history, 'hist-body')[{index}].textContent")
+
+
+def test_a_damaged_entry_says_it_is_unreadable_instead_of_doing_nothing_and_the_others_still_open(page):
+    history_page(page, ("Bonne ?", REPLY))
+    start(page, """const list = readHistory();
+      const base = list[0].reply;
+      const bad = (id, changes, at) => ({ id, at: at || list[0].at, question: "Abîmée " + id, reply: { ...base, request_id: id, ...changes } });
+      window.sessionStorage.data.history = JSON.stringify([
+        bad("c1", { claims: "text" }), bad("c2", { claims: [{ text: "x", citations: [{ label: "L1" }] }] }),
+        bad("c3", { masked: "email" }), bad("c4", { masked: ["passport"], question_masked: "q" }), bad("c5", {}, "not a date"), list[0]]);
+      drawHistory();""")
+    assert run(page, "byClass(registry.history, 'hist').length") == 6
+    for index in range(6):
+        start(page, f"toggles()[{index}].click()")
+    assert body_text(page, 0) == body_text(page, 1) == "Cette entrée est illisible. Vous pouvez la supprimer."  # a text for the claims, a citation without units
+    assert "Quatre mois pour un cadre." in body_text(page, 2) and "masqué" not in body_text(page, 2)  # masked as a text: no notice, the answer is shown
+    assert "pii_passport" in body_text(page, 3) and "Quatre mois pour un cadre." in body_text(page, 3)  # a kind of data this page does not know
+    assert "Quatre mois pour un cadre." in body_text(page, 4) and "Réponse du" not in body_text(page, 4)  # a date that cannot be read: no date line
+    assert "Réponse du" in body_text(page, 5)
+
+
+def test_an_entry_without_an_id_or_a_question_or_with_a_repeated_id_is_not_listed_twice(page):
+    history_page(page)
+    start(page, """window.sessionStorage.data.history = JSON.stringify([
+      { id: "a", at: "2026-11-24T10:00:00Z", question: "Un", reply: { outcome: "answered", claims: [] } },
+      { id: "a", at: "2026-11-24T09:00:00Z", question: "Deux", reply: { outcome: "answered", claims: [] } },
+      { question: "Sans id", reply: { outcome: "answered" } }, { id: "b", question: 5, reply: {} }, { id: "c", question: "Sans réponse" }, null, 3])""")
+    assert run(page, "readHistory().map((e) => e.question)") == ["Un"]
+
+
+def test_a_second_delete_within_half_a_second_is_ignored_so_a_double_click_removes_one_entry(page):
+    history_page(page, ("A ?", REPLY), ("B ?", {**REPLY, "request_id": "b"}), ("C ?", {**REPLY, "request_id": "c"}))
+    start(page, "lastDeleteAt = 0; globalThis.clock = 1000000; Date.now = () => clock")
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # deletes C
+    start(page, "clock += 100; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # the same place, now B: a double click
+    assert run(page, "readHistory().map((e) => e.question)") == ["B ?", "A ?"]
+    start(page, "clock += 600; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # a deliberate second delete
+    assert run(page, "readHistory().map((e) => e.question)") == ["A ?"]
+
+
+def test_a_missing_text_shows_its_key_and_does_not_break_the_page(page):
+    assert run(page, "t('not_a_key')") == "not_a_key"
+    give(page, "reply", {**REPLY, "masked": ["passport"], "question_masked": "Q"})
+    assert "pii_passport" in run(page, "maskedNotice(reply).textContent")
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):

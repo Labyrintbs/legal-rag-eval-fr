@@ -11,6 +11,8 @@ const T = {
     history_edit: "Modifier cette question", history_delete: "Supprimer cette entrée",
     history_empty_tab: "Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre.",
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
+    history_full: "Le navigateur refuse d'écrire (stockage plein ou bloqué) : les nouvelles questions ne seront pas gardées. Supprimez des entrées pour faire de la place.",
+    history_unreadable: "Cette entrée est illisible. Vous pouvez la supprimer.",
     history_dated: "Réponse du {date} : la loi a pu changer depuis.", history_dated_result: "Résultat du {date} : la loi a pu changer depuis.",
     busy: "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse.",
     failed: "Le service a rencontré un problème. Réessayez dans un instant.",
@@ -44,6 +46,8 @@ const T = {
     history_edit: "Edit this question", history_delete: "Delete this entry",
     history_empty_tab: "This tab has no kept list: tick the box above to keep yours.",
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
+    history_full: "The browser refuses to write (storage full or blocked): new questions will not be kept. Delete entries to make room.",
+    history_unreadable: "This entry cannot be read. You can delete it.",
     history_dated: "Answer of {date}: the law may have changed since.", history_dated_result: "Result of {date}: the law may have changed since.",
     busy: "Another question is already in progress from your connection: wait for its answer.",
     failed: "The service had a problem. Try again in a moment.",
@@ -82,7 +86,7 @@ try { lang = localStorage.getItem("lang") === "en" ? "en" : "fr"; } catch (e) { 
 let examples = [];
 let last = null; // {reply, status, retryAfter}: kept to draw it again when the language changes
 
-const t = (key, values = {}) => T[lang][key].replace(/\{(\w+)\}/g, (_, name) => values[name]);
+const t = (key, values = {}) => (T[lang][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => values[name]); // a missing text shows its key, not an error
 
 function make(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -272,7 +276,7 @@ function refusalCard(message, reply, history = false) {
 
 // Tells the visitor what the personal-data filter masked in the question, and the question that was really used.
 function maskedNotice(reply) {
-  if (!reply || !reply.masked || !reply.masked.length) return null;
+  if (!reply || !Array.isArray(reply.masked) || !reply.masked.length) return null;
   const what = [...new Set(reply.masked)].map((kind) => t(`pii_${kind}`)).join(", ");
   return make("p", { class: "notice", text: t("masked_intro", { what, question: reply.question_masked }) });
 }
@@ -451,14 +455,12 @@ function browserStore(persistent) {
   try { return persistent ? window.localStorage : window.sessionStorage; } catch (e) { return null; }
 }
 
-// A browser in strict private mode, or with storage blocked, refuses every write: the page says so instead of looking broken.
-function storageWorks() {
-  try {
-    const store = browserStore(keepsHistory());
-    store.setItem("probe", "1");
-    store.removeItem("probe");
-    return true;
-  } catch (e) { return false; }
+// "blocked": the list cannot even be read; "full": it can be read but nothing can be written (storage full, or a strict private
+// mode); "ok". The page says so instead of looking broken, and a list that can be read is always shown.
+function storageState() {
+  const store = browserStore(keepsHistory());
+  try { store.getItem(HISTORY_KEY); } catch (e) { return "blocked"; }
+  try { store.setItem("probe", "1"); store.removeItem("probe"); return "ok"; } catch (e) { return "full"; }
 }
 
 function keepsHistory() {
@@ -468,13 +470,24 @@ function keepsHistory() {
 function readHistory() {
   try {
     const list = JSON.parse(browserStore(keepsHistory()).getItem(HISTORY_KEY) || "[]");
-    return Array.isArray(list) ? list.filter((entry) => entry && entry.reply && typeof entry.question === "string") : [];
+    if (!Array.isArray(list)) return [];
+    const seen = new Set(); // two entries with one id (a list edited by hand) would open and be deleted together
+    return list.filter((entry) => {
+      const fit = entry && typeof entry.id === "string" && typeof entry.question === "string" && entry.reply && typeof entry.reply === "object"
+        && !seen.has(entry.id);
+      if (fit) seen.add(entry.id);
+      return fit;
+    });
   } catch (e) { return []; }
 }
 
 // False when the browser refused or had no room: the caller may say so.
+function writeHistoryTo(persistent, list) {
+  try { browserStore(persistent).setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX))); return true; } catch (e) { return false; }
+}
+
 function writeHistory(list) {
-  try { browserStore(keepsHistory()).setItem(HISTORY_KEY, JSON.stringify(list.slice(0, HISTORY_MAX))); return true; } catch (e) { return false; }
+  return writeHistoryTo(keepsHistory(), list);
 }
 
 // The answer as it is kept: without the five articles of the search, which are large and not needed to read it again.
@@ -508,14 +521,17 @@ function formatDate(iso) {
   return `${d.getDate()} ${MONTHS[lang][d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Moves the list to the device (on) or back to the tab (off). The list is written to its new place first and removed from the old
+// one only when that worked, so a refusing or full storage never loses it. False when nothing could be done.
 function setKeepHistory(on) {
   const current = readHistory(); // read from the place it is in now
+  if (!writeHistoryTo(on, current)) return false;
   try {
     if (on) browserStore(true).setItem(KEEP_KEY, "1");
-    else { browserStore(true).removeItem(KEEP_KEY); browserStore(true).removeItem(HISTORY_KEY); }
-  } catch (e) { /* refused */ }
-  writeHistory(current); // goes to the place the new setting names
-  try { if (on) browserStore(false).removeItem(HISTORY_KEY); } catch (e) { /* refused */ }
+    else browserStore(true).removeItem(KEEP_KEY);
+    browserStore(!on).removeItem(HISTORY_KEY);
+  } catch (e) { return false; }
+  return true;
 }
 
 function clearHistory() {
@@ -558,19 +574,31 @@ function historyEntry(entry, position) {
   const edit = entryButton("history_edit", excerpt);
   edit.addEventListener("click", () => editFromHistory(entry));
   const remove = entryButton("history_delete", excerpt);
-  remove.addEventListener("click", () => { deleteEntry(entry.id); drawHistory(position); });
+  remove.addEventListener("click", () => {
+    if (Date.now() - lastDeleteAt < 500) return; // the second click of a double click would land on the entry that slid up
+    lastDeleteAt = Date.now();
+    deleteEntry(entry.id);
+    drawHistory(position);
+  });
   const row = make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), " ", status,
     make("p", { class: "hist-q", text: entry.question }), french, make("div", { class: "hist-actions" }, toggle, edit, remove), body);
   return { row, toggle };
 }
 
 const openEntries = new Set(); // the ids of the entries the visitor has opened
+let lastDeleteAt = 0;
 
 // The inside of an opened entry: what was masked in the question, the date of the answer, then the answer or the refusal.
+// An entry changed by hand or by another version of the page may have the wrong shape: it says so instead of doing nothing.
 function fillBody(entry, body) {
-  const key = entry.reply.outcome === "answered" ? "history_dated" : "history_dated_result";
-  const dated = make("p", { class: "count", text: t(key, { date: formatDate(entry.at) }) });
-  body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
+  try {
+    const key = entry.reply.outcome === "answered" ? "history_dated" : "history_dated_result";
+    const date = formatDate(entry.at);
+    const dated = date ? make("p", { class: "count", text: t(key, { date }) }) : null;
+    body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
+  } catch (e) {
+    body.replaceChildren(make("p", { class: "status problem", text: t("history_unreadable") }));
+  }
 }
 
 function deleteEntry(id) {
@@ -609,17 +637,24 @@ function drawHistory(focusAt = null) {
   const root = document.getElementById("history");
   if (!root) return;
   const list = readHistory();
-  if (!storageWorks()) { root.replaceChildren(make("p", { class: "status problem", text: t("history_blocked") })); return; }
+  const state = storageState();
+  if (state === "blocked") { root.replaceChildren(make("p", { class: "status problem", text: t("history_blocked") })); return; }
   const empty = `${t("history_empty")}${keepsHistory() ? "" : ` ${t("history_empty_tab")}`}`;
   const rows = list.map(historyEntry);
-  root.replaceChildren(...(rows.length ? rows.map((r) => r.row) : [make("p", { class: "count", text: empty })]));
+  const full = state === "full" ? [make("p", { class: "status problem", text: t("history_full") })] : [];
+  root.replaceChildren(...full, ...(rows.length ? rows.map((r) => r.row) : [make("p", { class: "count", text: empty })]));
   if (focusAt !== null) (rows.length ? rows[Math.min(focusAt, rows.length - 1)].toggle : document.getElementById("keep")).focus();
 }
 
 function setupHistory() {
   const keep = document.getElementById("keep");
   keep.checked = keepsHistory();
-  keep.addEventListener("change", () => { setKeepHistory(keep.checked); drawHistory(); });
+  const keepFailed = document.getElementById("keep-failed");
+  keep.addEventListener("change", () => {
+    keepFailed.hidden = setKeepHistory(keep.checked);
+    keep.checked = keepsHistory(); // the box shows what really happened
+    drawHistory();
+  });
   // Another tab changed the kept list or the tick: this tab shows it too (the lists are read again before every write anyway).
   window.addEventListener("storage", () => { keep.checked = keepsHistory(); drawHistory(); });
   // erasing everything asks first, with a question of its own: the button text is never swapped, so a change of language cannot
