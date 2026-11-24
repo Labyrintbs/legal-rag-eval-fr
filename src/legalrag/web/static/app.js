@@ -47,7 +47,7 @@ const T = {
     unavailable: "The service is temporarily unavailable", upstream: "The model did not answer. The articles found are shown below.",
     noanswer: "No answer: the texts of this service do not allow one.", weak: "No answer: nothing close enough was found in the texts.",
     scope: "This service contains only the French labour code and the GDPR (no collective agreements, no case law).",
-    next: "For a specific case, consult a lawyer, the labour inspectorate or Légifrance.", why: "Reason given by the service:",
+    next: "For a specific case, consult a lawyer, the labour inspectorate or Légifrance.", why: "Reason given by the service (in French):",
     found_weak: "The {n} closest articles (not very relevant here)", answer: "Answer (in French)", where: "Where in the law?",
     stored: "ready-made answer", cited: "Cited passages", found: "The {n} articles closest to your question",
     found_hint: "The answer is written from these articles only, from the closest to the least close.",
@@ -232,7 +232,8 @@ function answerCard(reply, history = false) {
 
 function problemCard(message, reply, history = false) {
   const box = make("div", { class: "status problem" }, make("div", { text: message }));
-  if (reply && reply.reason) box.append(make("div", { class: "count", text: reply.reason }));
+  // the reasons of the service are French sentences: the English page has its own message above and does not repeat them
+  if (reply && reply.reason && lang === "fr") box.append(make("div", { class: "count", text: reply.reason }));
   const found = reply && foundArticles(reply.articles);
   if (found) box.append(found);
   if (reply && reply.request_id && !history) box.append(voteBox(reply.request_id));
@@ -497,11 +498,13 @@ function historyEntry(entry) {
   const answered = entry.reply.outcome === "answered";
   const [show, hide] = answered ? ["history_show", "history_hide"] : ["history_show_result", "history_hide_result"]; // a refusal has no answer
   const toggle = make("button", { type: "button", class: "pill", text: t(show) });
+  if (openEntries.has(entry.id)) { // an entry that was open stays open when the list is drawn again (a change of language)
+    fillBody(entry, body);
+    body.hidden = false;
+    toggle.textContent = t(hide);
+  }
   toggle.addEventListener("click", () => {
-    if (body.hidden) {
-      const dated = make("p", { class: "count", text: t("history_dated", { date: formatDate(entry.at) }) });
-      body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
-    }
+    if (body.hidden) { fillBody(entry, body); openEntries.add(entry.id); } else openEntries.delete(entry.id);
     body.hidden = !body.hidden;
     toggle.textContent = t(body.hidden ? show : hide);
   });
@@ -517,7 +520,16 @@ function historyEntry(entry) {
     make("p", { class: "hist-q", text: entry.question }), french, make("div", { class: "hist-actions" }, toggle, edit, remove), body);
 }
 
+const openEntries = new Set(); // the ids of the entries the visitor has opened
+
+// The inside of an opened entry: what was masked in the question, the date of the answer, then the answer or the refusal.
+function fillBody(entry, body) {
+  const dated = make("p", { class: "count", text: t("history_dated", { date: formatDate(entry.at) }) });
+  body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
+}
+
 function deleteEntry(id) {
+  openEntries.delete(id);
   writeHistory(readHistory().filter((entry) => entry.id !== id));
 }
 

@@ -215,7 +215,7 @@ def test_a_closed_entry_shows_its_status_and_the_french_question_and_a_refusal_i
     assert run(page, "toggles()[0].textContent") == "Masquer le résultat"
     start(page, 'lang = "en"; drawHistory()')
     assert run(page, "byClass(registry.history, 'hist-status').map((n) => n.textContent)") == ["No answer", "No answer", "Answered"]
-    assert run(page, "toggles().map((b) => b.textContent)") == ["Show the result", "Show the result", "Show the answer"]
+    assert run(page, "toggles().map((b) => b.textContent)") == ["Hide the result", "Show the result", "Show the answer"]  # the opened one stays open
     assert run(page, "byClass(registry.history, 'hist-fr')[0].textContent") == "Question translated into French: Quelle période d'essai ?"
 
 
@@ -268,6 +268,31 @@ def test_an_opened_entry_gives_its_date_and_the_masking_notice_and_names_are_sai
     give(page, "plain", {**REPLY, "request_id": "z"})
     start(page, 'addToHistory("Plain", plain); drawHistory(); toggles()[0].click()')
     assert run(page, "byClass(registry.history, 'hist-body')[0].children.map((n) => n.className)") == ["count", "answer"]  # no notice when nothing was masked
+
+
+def test_a_change_of_language_keeps_the_opened_entries_open_and_a_deleted_one_is_forgotten(page):
+    history_page(page, ("Première ?", REPLY), ("Seconde ?", {**REPLY, "request_id": "b"}))
+    start(page, "toggles()[1].click()")  # open the older one
+    assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, False]
+    start(page, 'lang = "en"; drawHistory()')
+    assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, False]
+    assert run(page, "toggles().map((b) => b.textContent)") == ["Show the answer", "Hide the answer"]
+    assert "Given on" in run(page, "byClass(registry.history, 'hist-body')[1].textContent")  # written in the new language
+    start(page, "toggles()[1].click(); drawHistory()")  # closed by the visitor: stays closed
+    assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, True]
+    start(page, "toggles()[0].click(); byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # open then delete
+    assert run(page, "openEntries.size") == 0
+
+
+def test_the_reasons_of_the_service_are_french_so_the_english_page_does_not_repeat_them_and_labels_the_model_reason(page):
+    give(page, "limited", {**REPLY, "outcome": "rate_limited", "claims": [], "reason": "une autre question est déjà en cours pour vous"})
+    assert "déjà en cours" in run(page, "replyNode(limited, 429, 2).textContent")
+    start(page, 'lang = "en"')
+    text = run(page, "replyNode(limited, 429, 2).textContent")
+    assert "déjà en cours" not in text and "Try again in 2 s" in text
+    give(page, "refused", {**REPLY, "outcome": "refused_by_model", "claims": [], "reason": "Aucun texte ne traite de ce sujet."})
+    text = run(page, "replyNode(refused, 200, null).textContent")
+    assert "Reason given by the service (in French): Aucun texte ne traite de ce sujet." in text
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
