@@ -123,6 +123,13 @@ def test_the_script_takes_a_question_for_english_only_when_english_words_win(pag
 
 # ---- the history ----
 
+def history_elements(page):
+    """The elements of the history page that the script looks for."""
+    for name in ("history", "keep", "clear", "confirm", "confirm-yes", "confirm-no"):
+        page.eval(f'registry["{name}"] = new FakeNode("{"input" if name == "keep" else "section"}")')
+    page.eval('registry.confirm.hidden = true')  # the page file starts with the question hidden
+
+
 def test_the_history_keeps_the_answer_without_the_articles_once_per_request_and_stops_at_thirty(page):
     give(page, "reply", REPLY)
     start(page, 'addToHistory("Quelle durée pour un cadre ?", reply); addToHistory("Même question", reply)')
@@ -175,8 +182,7 @@ def test_a_refused_storage_a_full_one_or_a_damaged_history_never_breaks_the_page
 
 
 def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_vote_or_translation(page):
-    for name in ("history", "keep", "clear"):
-        page.eval(f'registry.{name} = new FakeNode("{"input" if name == "keep" else "section"}")')
+    history_elements(page)
     give(page, "reply", {**REPLY, "question_fr": "Quelle durée pour un cadre ?"})
     start(page, 'addToHistory("What is the probation period?", reply); addToHistory("Autre ?", { ...reply, request_id: "b", question_fr: null }); setupHistory()')
     assert run(page, "byClass(registry.history, 'hist').length") == 2
@@ -193,8 +199,7 @@ def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_vo
 
 def history_page(page, *entries):
     """The history page with these (question, reply) entries, oldest first."""
-    for name in ("history", "keep", "clear"):
-        page.eval(f'registry.{name} = new FakeNode("{"input" if name == "keep" else "section"}")')
+    history_elements(page)
     give(page, "entries", [list(entry) for entry in entries])
     start(page, "for (const [q, r] of entries) addToHistory(q, r); setupHistory()")
 
@@ -224,7 +229,45 @@ def test_delete_removes_only_its_entry_and_edit_hands_the_old_question_to_the_fi
     start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[1].click()")  # edit
     assert run(page, "[window.location.href, window.sessionStorage.data.prefill, readHistory().length]") == ["/", "Première ?", 1]  # nothing is sent, nothing removed
     start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")
-    assert run(page, "registry.history.textContent") == "Aucune question pour le moment."
+    assert run(page, "registry.history.textContent").startswith("Aucune question pour le moment.")
+
+
+def test_erasing_the_history_asks_first_and_cancel_keeps_the_list_and_the_keep_box_stays_ticked(page):
+    history_page(page, ("Q1 ?", REPLY), ("Q2 ?", {**REPLY, "request_id": "b"}))
+    start(page, "setKeepHistory(true); registry.keep.checked = true")
+    assert run(page, "registry.confirm.hidden") is True
+    start(page, "registry.clear.click()")
+    assert run(page, "[registry.confirm.hidden, readHistory().length]") == [False, 2]  # asked, nothing erased yet
+    start(page, 'registry["confirm-no"].click()')
+    assert run(page, "[registry.confirm.hidden, readHistory().length]") == [True, 2]
+    start(page, 'registry.clear.click(); registry["confirm-yes"].click()')
+    assert run(page, "[registry.confirm.hidden, readHistory().length, keepsHistory()]") == [True, 0, True]  # still ticked, as the page says
+
+
+def test_a_browser_that_refuses_storage_gets_a_message_and_not_an_empty_list(page):
+    page.eval('registry.history = new FakeNode("section")')
+    start(page, "window.sessionStorage = makeStore({ broken: true }); drawHistory()")
+    assert "ne permet pas de garder l'historique" in run(page, "registry.history.textContent")
+    start(page, 'lang = "en"; drawHistory()')
+    assert "does not allow keeping the history" in run(page, "registry.history.textContent")
+    start(page, "window.sessionStorage = makeStore(); drawHistory()")
+    assert "does not allow" not in run(page, "registry.history.textContent")
+
+
+def test_an_opened_entry_gives_its_date_and_the_masking_notice_and_names_are_said_not_to_be_detected(page):
+    history_page(page, ("Puis-je licencier Marie, marie@x.fr ?", {**REPLY, "masked": ["email"],
+                                                                  "question_masked": "Puis-je licencier Marie, [e-mail] ?"}))
+    start(page, "toggles()[0].click()")
+    body = run(page, "byClass(registry.history, 'hist-body')[0].children.map((n) => n.className)")
+    assert body == ["notice", "count", "answer"]  # notice, date line, answer
+    text = run(page, "byClass(registry.history, 'hist-body')[0].textContent")
+    assert "une adresse e-mail" in text and "Puis-je licencier Marie, [e-mail] ?" in text and "Donné le " in text and "la loi a pu changer" in text
+    assert "Les noms et les adresses postales ne sont pas détectés" in text
+    start(page, 'lang = "en"; drawHistory(); toggles()[0].click()')
+    assert "Names and postal addresses are not detected" in run(page, "byClass(registry.history, 'hist-body')[0].textContent")
+    give(page, "plain", {**REPLY, "request_id": "z"})
+    start(page, 'addToHistory("Plain", plain); drawHistory(); toggles()[0].click()')
+    assert run(page, "byClass(registry.history, 'hist-body')[0].children.map((n) => n.className)") == ["count", "answer"]  # no notice when nothing was masked
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
@@ -242,21 +285,22 @@ def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page)
 def test_the_history_page_says_so_when_it_is_empty_and_follows_the_language(page):
     page.eval('registry.history = new FakeNode("section")')
     start(page, "drawHistory()")
-    assert run(page, "registry.history.textContent") == "Aucune question pour le moment."
+    assert run(page, "registry.history.textContent") == "Aucune question pour le moment. Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre."
     start(page, 'lang = "en"; drawHistory()')
+    assert run(page, "registry.history.textContent") == "No question yet. This tab has no kept list: tick the box above to keep yours."
+    start(page, 'window.localStorage.setItem("keep_history", "1"); drawHistory()')  # a kept history has no such hint
     assert run(page, "registry.history.textContent") == "No question yet."
 
 
 def test_ticking_the_keep_box_moves_the_history_and_unticking_moves_it_back(page):
-    for name in ("history", "keep", "clear"):
-        page.eval(f'registry.{name} = new FakeNode("{"input" if name == "keep" else "section"}")')
+    history_elements(page)
     give(page, "reply", REPLY)
     start(page, 'setupHistory(); addToHistory("Q", reply); registry.keep.checked = true; registry.keep.fire("change")')
     assert run(page, "[keepsHistory(), 'history' in window.localStorage.data]") == [True, True]
     start(page, 'registry.keep.checked = false; registry.keep.fire("change")')
     assert run(page, "[keepsHistory(), 'history' in window.localStorage.data, readHistory().length]") == [False, False, 1]
-    start(page, 'registry.clear.click()')
-    assert run(page, "readHistory()") == [] and run(page, "registry.history.textContent") == "Aucune question pour le moment."
+    start(page, 'registry.clear.click(); registry["confirm-yes"].click()')
+    assert run(page, "readHistory()") == [] and run(page, "registry.history.textContent").startswith("Aucune question pour le moment.")
 
 
 # ---- the drawing of a reply ----

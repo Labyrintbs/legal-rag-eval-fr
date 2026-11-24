@@ -9,6 +9,9 @@ const T = {
     history_empty: "Aucune question pour le moment.", history_show: "Afficher la réponse", history_hide: "Masquer la réponse",
     history_show_result: "Afficher le résultat", history_hide_result: "Masquer le résultat", history_answered: "Répondu", history_noanswer: "Sans réponse",
     history_edit: "Modifier cette question", history_delete: "Supprimer cette entrée",
+    history_empty_tab: "Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre.",
+    history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
+    history_dated: "Donné le {date} : la loi a pu changer depuis.",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
     show_english: "Traduction anglaise de cette réponse · English translation of this answer", translating_answer: "Traduction en cours…",
     english_label: "Machine translation into English (the French text is authoritative) · Traduction automatique en anglais (le texte français fait foi)",
@@ -26,7 +29,7 @@ const T = {
     missing_article: "Un article manque", other: "Autre", comment: "Un commentaire ? (facultatif, 500 caractères au plus)", send: "Envoyer",
     vote_failed: "Le vote n'a pas pu être enregistré.", vote_limited: "Trop de votes d'affilée, réessayez dans un instant.",
     up: "Réponse utile", down: "Réponse pas utile", src_ct: "Code du travail", src_gdpr: "RGPD", src_none: "Hors des textes",
-    masked_intro: "Pour protéger vos données, nous avons masqué dans votre question : {what}. La question utilisée est : « {question} »",
+    masked_intro: "Pour protéger vos données, nous avons masqué dans votre question : {what}. La question utilisée est : « {question} ». Les noms et les adresses postales ne sont pas détectés : évitez de les écrire.",
     pii_email: "une adresse e-mail", pii_phone: "un numéro de téléphone", pii_iban: "un IBAN", pii_card: "un numéro de carte bancaire",
     pii_nir: "un numéro de sécurité sociale", pii_birth: "une date de naissance",
   },
@@ -34,6 +37,9 @@ const T = {
     history_empty: "No question yet.", history_show: "Show the answer", history_hide: "Hide the answer",
     history_show_result: "Show the result", history_hide_result: "Hide the result", history_answered: "Answered", history_noanswer: "No answer",
     history_edit: "Edit this question", history_delete: "Delete this entry",
+    history_empty_tab: "This tab has no kept list: tick the box above to keep yours.",
+    history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
+    history_dated: "Given on {date}: the law may have changed since.",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
     english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service does not answer. Try again in a moment.",
@@ -50,7 +56,7 @@ const T = {
     missing_article: "An article is missing", other: "Other", comment: "A comment? (optional, 500 characters at most)", send: "Send",
     vote_failed: "The vote could not be saved.", vote_limited: "Too many votes in a row, try again in a moment.",
     up: "Useful answer", down: "Answer not useful", src_ct: "Labour code", src_gdpr: "GDPR", src_none: "Outside the texts",
-    masked_intro: "To protect your data, we masked in your question: {what}. The question used is: “{question}”",
+    masked_intro: "To protect your data, we masked in your question: {what}. The question used is: “{question}”. Names and postal addresses are not detected: avoid writing them.",
     pii_email: "an e-mail address", pii_phone: "a telephone number", pii_iban: "an IBAN", pii_card: "a bank card number",
     pii_nir: "a social security number", pii_birth: "a date of birth",
   },
@@ -413,6 +419,16 @@ function browserStore(persistent) {
   try { return persistent ? window.localStorage : window.sessionStorage; } catch (e) { return null; }
 }
 
+// A browser in strict private mode, or with storage blocked, refuses every write: the page says so instead of looking broken.
+function storageWorks() {
+  try {
+    const store = browserStore(keepsHistory());
+    store.setItem("probe", "1");
+    store.removeItem("probe");
+    return true;
+  } catch (e) { return false; }
+}
+
 function keepsHistory() {
   try { return browserStore(true).getItem(KEEP_KEY) === "1"; } catch (e) { return false; }
 }
@@ -482,7 +498,10 @@ function historyEntry(entry) {
   const [show, hide] = answered ? ["history_show", "history_hide"] : ["history_show_result", "history_hide_result"]; // a refusal has no answer
   const toggle = make("button", { type: "button", class: "pill", text: t(show) });
   toggle.addEventListener("click", () => {
-    if (body.hidden) body.replaceChildren(replyNode(entry.reply, 200, null, true));
+    if (body.hidden) {
+      const dated = make("p", { class: "count", text: t("history_dated", { date: formatDate(entry.at) }) });
+      body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
+    }
     body.hidden = !body.hidden;
     toggle.textContent = t(body.hidden ? show : hide);
   });
@@ -524,14 +543,21 @@ function drawHistory() {
   const root = document.getElementById("history");
   if (!root) return;
   const list = readHistory();
-  root.replaceChildren(...(list.length ? list.map(historyEntry) : [make("p", { class: "count", text: t("history_empty") })]));
+  if (!storageWorks()) { root.replaceChildren(make("p", { class: "status problem", text: t("history_blocked") })); return; }
+  const empty = `${t("history_empty")}${keepsHistory() ? "" : ` ${t("history_empty_tab")}`}`;
+  root.replaceChildren(...(list.length ? list.map(historyEntry) : [make("p", { class: "count", text: empty })]));
 }
 
 function setupHistory() {
   const keep = document.getElementById("keep");
   keep.checked = keepsHistory();
   keep.addEventListener("change", () => { setKeepHistory(keep.checked); drawHistory(); });
-  document.getElementById("clear").addEventListener("click", () => { clearHistory(); drawHistory(); });
+  // erasing everything asks first, with a question of its own: the button text is never swapped, so a change of language cannot
+  // leave the page in a half-asked state
+  const confirm = document.getElementById("confirm");
+  document.getElementById("clear").addEventListener("click", () => { confirm.hidden = false; });
+  document.getElementById("confirm-no").addEventListener("click", () => { confirm.hidden = true; });
+  document.getElementById("confirm-yes").addEventListener("click", () => { clearHistory(); confirm.hidden = true; drawHistory(); });
   drawHistory();
 }
 

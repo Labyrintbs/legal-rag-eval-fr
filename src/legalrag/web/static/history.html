@@ -24,13 +24,15 @@
   <main class="prose">
     <h1 data-i18n="h_title">Historique de vos questions</h1>
     <p class="sub" data-i18n="h_sub">Gardé dans votre navigateur, sur cet appareil seulement : le service ne le voit pas.</p>
-    <p data-i18n="h_default">Par défaut, la liste disparaît quand vous fermez l'onglet.</p>
+    <p data-i18n="h_default">Par défaut, la liste est propre à cet onglet : elle disparaît quand vous le fermez, et un nouvel onglet commence vide. Les 30 dernières questions qui ont reçu une réponse ou un refus sont gardées.</p>
 
     <p class="hist-options">
       <label><input type="checkbox" id="keep"> <span data-i18n="h_keep">Garder mon historique sur cet appareil, jusqu'à ce que je l'efface</span></label>
-      <button type="button" id="clear" class="pill" data-i18n="h_clear">Tout effacer</button>
+      <button type="button" id="clear" class="pill" data-i18n="h_clear">Effacer mon historique</button>
     </p>
-    <p class="count" data-i18n="h_note">Les réponses datent du jour où elles ont été données : la loi a pu changer depuis. Ne gardez pas votre historique sur un ordinateur partagé.</p>
+    <p id="confirm" class="count" hidden><span data-i18n="h_confirm">Effacer toute la liste ?</span> <button type="button" id="confirm-yes" class="pill" data-i18n="h_yes">Oui, effacer</button> <button type="button" id="confirm-no" class="pill" data-i18n="h_no">Annuler</button></p>
+    <p class="count" data-i18n="h_shared">Ne cochez pas cette case sur un ordinateur partagé. « Effacer » vide la liste mais laisse la case cochée : les prochaines questions seront gardées.</p>
+    <p class="count" data-i18n="h_note">Les réponses datent du jour où elles ont été données : la loi a pu changer depuis.</p>
 
     <section id="history" aria-live="polite"></section>
   </main>
