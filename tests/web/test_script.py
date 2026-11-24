@@ -375,7 +375,7 @@ def test_every_button_of_an_entry_says_which_question_it_is_for_and_the_show_but
     assert run(page, "toggles()[0].getAttribute('aria-expanded')") == "true"
     assert run(page, "toggles()[0].getAttribute('aria-label')") == "Masquer la réponse : Courte ?"
     start(page, 'lang = "en"; drawHistory()')  # drawn again, still open
-    assert run(page, "[toggles()[0].getAttribute('aria-expanded'), toggles()[0].getAttribute('aria-label')]") == ["true", "Hide the answer : Courte ?"]
+    assert run(page, "[toggles()[0].getAttribute('aria-expanded'), toggles()[0].getAttribute('aria-label')]") == ["true", "Hide the answer: Courte ?"]
 
 
 def test_after_a_delete_the_focus_goes_to_the_entry_now_at_that_place_then_to_the_last_then_to_the_tick_box(page):
@@ -529,6 +529,23 @@ def test_a_missing_text_shows_its_key_and_does_not_break_the_page(page):
     assert "pii_passport" in run(page, "maskedNotice(reply).textContent")
 
 
+def test_wording_details_the_masked_question_label_the_edit_button_and_the_path_heading(page):
+    give(page, "reply", {**REPLY, "masked": ["email"], "question_masked": "Can I? [e-mail]", "question_fr": "Puis-je ? [e-mail]"})
+    assert "Votre question avec la partie masquée : « Can I? [e-mail] »" in run(page, "maskedNotice(reply).textContent")
+    start(page, 'lang = "en"')
+    assert "Your question with the masked part: “Can I? [e-mail]”" in run(page, "maskedNotice(reply).textContent")
+    assert run(page, "byClass(translatedLine(reply), 'linklike')[0].textContent") == "Edit the French"
+    assert run(page, "t('where')") == "Where in the law? (in French)"
+    start(page, 'lang = "fr"')
+    assert run(page, "byClass(translatedLine(reply), 'linklike')[0].textContent") == "Modifier"
+
+
+def test_a_long_word_cannot_push_the_history_sideways():
+    css = (STATIC / "style.css").read_text()
+    rule = next(line for line in css.splitlines() if ".hist .hist-q" in line and "overflow-wrap" in line)
+    assert ".hist .hist-fr" in rule and "blockquote" in rule
+
+
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
     page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
       registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] });""")
@@ -545,9 +562,9 @@ def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page)
 def test_the_history_page_says_so_when_it_is_empty_and_follows_the_language(page):
     page.eval('registry.history = new FakeNode("section")')
     start(page, "drawHistory()")
-    assert run(page, "registry.history.textContent") == "Aucune question pour le moment. Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre."
+    assert run(page, "registry.history.textContent") == "Aucune question pour le moment. La liste de cet onglet disparaît quand vous le fermez : cochez la case ci-dessus pour la garder sur cet appareil."
     start(page, 'lang = "en"; drawHistory()')
-    assert run(page, "registry.history.textContent") == "No question yet. This tab has no kept list: tick the box above to keep yours."
+    assert run(page, "registry.history.textContent") == "No question yet. This tab's list is lost when you close the tab: tick the box above to keep it on this device."
     start(page, 'window.localStorage.setItem("keep_history", "1"); drawHistory()')  # a kept history has no such hint
     assert run(page, "registry.history.textContent") == "No question yet."
 

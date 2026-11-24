@@ -9,7 +9,7 @@ const T = {
     history_empty: "Aucune question pour le moment.", history_show: "Afficher la réponse", history_hide: "Masquer la réponse",
     history_show_result: "Afficher le résultat", history_hide_result: "Masquer le résultat", history_answered: "Répondu", history_noanswer: "Sans réponse",
     history_edit: "Modifier cette question", history_delete: "Supprimer cette entrée",
-    history_empty_tab: "Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre.",
+    history_empty_tab: "La liste de cet onglet disparaît quand vous le fermez : cochez la case ci-dessus pour la garder sur cet appareil.",
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
     history_full: "Le navigateur refuse d'écrire (stockage plein ou bloqué) : les nouvelles questions ne seront pas gardées. Supprimez des entrées pour faire de la place.",
     history_unreadable: "Cette entrée est illisible. Vous pouvez la supprimer.",
@@ -36,7 +36,7 @@ const T = {
     missing_article: "Un article manque", other: "Autre", comment: "Un commentaire ? (facultatif, 500 caractères au plus)", send: "Envoyer",
     vote_failed: "Le vote n'a pas pu être enregistré.", vote_limited: "Trop de votes d'affilée, réessayez dans un instant.",
     up: "Réponse utile", down: "Réponse pas utile", src_ct: "Code du travail", src_gdpr: "RGPD", src_none: "Hors des textes",
-    masked_intro: "Pour protéger vos données, nous avons masqué dans votre question : {what}. La question utilisée est : « {question} ». Les noms et les adresses postales ne sont pas détectés : évitez de les écrire.",
+    masked_intro: "Pour protéger vos données, nous avons masqué dans votre question : {what}. Votre question avec la partie masquée : « {question} ». Les noms et les adresses postales ne sont pas détectés : évitez de les écrire.",
     pii_email: "une adresse e-mail", pii_phone: "un numéro de téléphone", pii_iban: "un IBAN", pii_card: "un numéro de carte bancaire",
     pii_nir: "un numéro de sécurité sociale", pii_birth: "une date de naissance",
   },
@@ -44,7 +44,7 @@ const T = {
     history_empty: "No question yet.", history_show: "Show the answer", history_hide: "Hide the answer",
     history_show_result: "Show the result", history_hide_result: "Hide the result", history_answered: "Answered", history_noanswer: "No answer",
     history_edit: "Edit this question", history_delete: "Delete this entry",
-    history_empty_tab: "This tab has no kept list: tick the box above to keep yours.",
+    history_empty_tab: "This tab's list is lost when you close the tab: tick the box above to keep it on this device.",
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
     history_full: "The browser refuses to write (storage full or blocked): new questions will not be kept. Delete entries to make room.",
     history_unreadable: "This entry cannot be read. You can delete it.",
@@ -54,7 +54,7 @@ const T = {
     loaded: "Question taken from your history: change it if you wish, then send it.",
     translate_gone: "The service no longer holds this answer (7 days): it can no longer be translated.",
     not_saved: "This answer could not be kept in the history: the browser refuses or is full.",
-    searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
+    searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit the French", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
     english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service does not answer. Try again in a moment.",
     invalid: "The question must be 1 to 500 characters long.", limited: "Too many requests from you. Try again in {n} s.",
@@ -62,7 +62,7 @@ const T = {
     noanswer: "No answer: the texts of this service do not allow one.", weak: "No answer: nothing close enough was found in the texts.",
     scope: "This service contains only the French labour code and the GDPR (no collective agreements, no case law).",
     next: "For a specific case, consult a lawyer, the labour inspectorate or Légifrance.", why: "Reason given by the service (in French):",
-    found_weak: "The {n} closest articles (not very relevant here; in French)", answer: "Answer (in French)", where: "Where in the law?",
+    found_weak: "The {n} closest articles (not very relevant here; in French)", answer: "Answer (in French)", where: "Where in the law? (in French)",
     stored: "ready-made answer", cited: "Cited passages (in French)", found: "The {n} articles closest to your question (in French)",
     found_hint: "The answer is written from these articles only, from the closest to the least close.",
     read: "Read the article", on: "on", useful: "Was this answer useful?", thanks: "Thank you, your opinion is saved.",
@@ -70,7 +70,7 @@ const T = {
     missing_article: "An article is missing", other: "Other", comment: "A comment? (optional, 500 characters at most)", send: "Send",
     vote_failed: "The vote could not be saved.", vote_limited: "Too many votes in a row, try again in a moment.",
     up: "Useful answer", down: "Answer not useful", src_ct: "Labour code", src_gdpr: "GDPR", src_none: "Outside the texts",
-    masked_intro: "To protect your data, we masked in your question: {what}. The question used is: “{question}”. Names and postal addresses are not detected: avoid writing them.",
+    masked_intro: "To protect your data, we masked in your question: {what}. Your question with the masked part: “{question}”. Names and postal addresses are not detected: avoid writing them.",
     pii_email: "an e-mail address", pii_phone: "a telephone number", pii_iban: "an IBAN", pii_card: "a bank card number",
     pii_nir: "a social security number", pii_birth: "a date of birth",
   },
@@ -555,9 +555,14 @@ function clearHistory() {
   }
 }
 
+// "Show the answer: How long…": French puts a space before the colon, English does not.
+function entryLabel(text, excerpt) {
+  return `${text}${lang === "fr" ? " :" : ":"} ${excerpt}`;
+}
+
 // A button of an entry: its text, and for a screen reader the start of the question too, since every entry has the same buttons.
 function entryButton(key, excerpt, expanded = null) {
-  const button = make("button", { type: "button", class: "pill", text: t(key), "aria-label": `${t(key)} : ${excerpt}` });
+  const button = make("button", { type: "button", class: "pill", text: t(key), "aria-label": entryLabel(t(key), excerpt) });
   if (expanded !== null) button.setAttribute("aria-expanded", String(expanded));
   return button;
 }
@@ -579,7 +584,7 @@ function historyEntry(entry, position) {
     if (body.hidden) { fillBody(entry, body); openEntries.add(entry.id); } else openEntries.delete(entry.id);
     body.hidden = !body.hidden;
     toggle.textContent = t(body.hidden ? show : hide);
-    toggle.setAttribute("aria-label", `${toggle.textContent} : ${excerpt}`);
+    toggle.setAttribute("aria-label", entryLabel(toggle.textContent, excerpt));
     toggle.setAttribute("aria-expanded", String(!body.hidden));
   });
   const status = make("span", { class: `hist-status ${answered ? "ok" : "none"}`, text: t(answered ? "history_answered" : "history_noanswer") });
