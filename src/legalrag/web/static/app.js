@@ -9,7 +9,8 @@ const T = {
     history_empty: "Aucune question pour le moment.", history_show: "Afficher la réponse", history_hide: "Masquer la réponse",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
     show_english: "Traduction anglaise de cette réponse · English translation of this answer", translating_answer: "Traduction en cours…",
-    english_label: "Traduction automatique en anglais (le texte français fait foi)", translate_failed: "La traduction n'a pas pu être faite.", empty: "Écrivez une question.", network: "Le service ne répond pas. Réessayez dans un instant.",
+    english_label: "Machine translation into English (the French text is authoritative) · Traduction automatique en anglais (le texte français fait foi)",
+    translate_failed: "La traduction n'a pas pu être faite. · The translation could not be made.", empty: "Écrivez une question.", network: "Le service ne répond pas. Réessayez dans un instant.",
     invalid: "La question doit avoir entre 1 et 500 caractères.", limited: "Trop de demandes de votre part. Réessayez dans {n} s.",
     unavailable: "Le service est momentanément indisponible", upstream: "Le modèle n'a pas répondu. Les articles trouvés sont montrés ci-dessous.",
     noanswer: "Pas de réponse : les textes de ce service ne permettent pas de répondre.", weak: "Pas de réponse : rien de suffisamment proche n'a été trouvé dans les textes.",
@@ -25,7 +26,7 @@ const T = {
     up: "Réponse utile", down: "Réponse pas utile", src_ct: "Code du travail", src_gdpr: "RGPD", src_none: "Hors des textes",
     masked_intro: "Pour protéger vos données, nous avons masqué dans votre question : {what}. La question utilisée est : « {question} »",
     pii_email: "une adresse e-mail", pii_phone: "un numéro de téléphone", pii_iban: "un IBAN", pii_card: "un numéro de carte bancaire",
-    pii_nir: "un numéro de sécurité sociale",
+    pii_nir: "un numéro de sécurité sociale", pii_birth: "une date de naissance",
   },
   en: {
     history_empty: "No question yet.", history_show: "Show the answer", history_hide: "Hide the answer",
@@ -47,7 +48,7 @@ const T = {
     up: "Useful answer", down: "Answer not useful", src_ct: "Labour code", src_gdpr: "GDPR", src_none: "Outside the texts",
     masked_intro: "To protect your data, we masked in your question: {what}. The question used is: “{question}”",
     pii_email: "an e-mail address", pii_phone: "a telephone number", pii_iban: "an IBAN", pii_card: "a bank card number",
-    pii_nir: "a social security number",
+    pii_nir: "a social security number", pii_birth: "a date of birth",
   },
 };
 
@@ -117,7 +118,8 @@ function sourceSite(url) {
 
 function link(url) {
   const site = sourceSite(url);
-  return make("a", { href: url, rel: "noopener", text: t("read") + (site ? ` ${t("on")} ${site}` : "") });
+  // Only an https link is written: a stored reply (the history can be edited in the browser) cannot add a link that runs code.
+  return make("a", { href: /^https:\/\//.test(url) ? url : "#", rel: "noopener", text: t("read") + (site ? ` ${t("on")} ${site}` : "") });
 }
 
 // The tag with the name of a source is written the first time that source appears in a list; the coloured bar on every item.

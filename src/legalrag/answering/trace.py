@@ -169,10 +169,12 @@ def erasable(conn: psycopg.Connection, now: datetime | None = None, text_days: f
 
 
 def scrub(conn: psycopg.Connection, now: datetime | None = None, text_days: float = TEXT_DAYS, every: int = SAMPLE_EVERY) -> int:
-    """Erase the text of ordinary requests older than `text_days`: the question, the answer, the hash of the question and the
-    hash of the address. The outcome, the scores and the cited articles stay, so the statistics do not change."""
+    """Erase the text of ordinary requests older than `text_days`: the question, the answer, the hash of the question, the
+    hash of the address and the key of the answer memory (a hash of the question too: a guessed question could be checked
+    against it). The outcome, the scores and the cited articles stay, so the statistics do not change."""
     done = conn.execute(
-        "UPDATE query_traces SET question = '', answer = NULL, question_sha256 = NULL, client_hash = NULL, erased_at = %(now)s "
+        "UPDATE query_traces SET question = '', answer = NULL, question_sha256 = NULL, client_hash = NULL, cache_key = NULL, "
+        "erased_at = %(now)s "
         f"WHERE {ORDINARY}", {**scrub_params(now, text_days, every), "now": now or datetime.now(UTC)}).rowcount
     conn.commit()
     return done

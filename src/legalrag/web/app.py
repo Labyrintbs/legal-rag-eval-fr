@@ -64,14 +64,27 @@ MAX_BODY = 16 * 1024  # bytes: 500 characters of any alphabet are at most 2 kB
 # The pages load only their own files; nothing is written into them from outside (the script builds the DOM with textContent).
 SECURITY_HEADERS = {
     "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
-    "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 }
 
 
+def cache_control(request: Request) -> str:
+    """How long a browser or a proxy may keep a reply: nothing from the API, a few minutes for the examples, and the pages
+    and files only after asking again (their ETag makes that cheap), so that a deploy shows at once."""
+    if request.method != "GET":
+        return "no-store"
+    if request.url.path == "/health":
+        return "no-store"
+    if request.url.path == "/examples":
+        return "public, max-age=300"
+    return "no-cache"
+
+
 def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = None,
-               warm_questions: list[str] | None = None, examples: list[dict] | None = None) -> FastAPI:
+               warm_questions: list[str] | None = None, examples: list[dict] | None = None, docs: bool = False) -> FastAPI:
     """`warm_questions`: example questions to ask in the background at startup (decision 4); none: no warm-up.
-    `examples`: what `GET /examples` sends to the page (see `examples.load`)."""
+    `examples`: what `GET /examples` sends to the page (see `examples.load`). `docs`: the interactive API docs (development)."""
     settings = settings or Settings()
     warm_status = warm.Status(state="running" if warm_questions else "off")
 
@@ -81,8 +94,9 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
             threading.Thread(target=warm.run, args=(engine, connect, settings, warm_questions, warm_status), daemon=True).start()
         yield
 
-    app = FastAPI(title="legal-rag-eval-fr", docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json",
-                  lifespan=lifespan)
+    # The interactive docs load their script from a third-party CDN and describe every route: development only (`docs=True`).
+    app = FastAPI(title="legal-rag-eval-fr", docs_url="/api/docs" if docs else None, redoc_url=None,
+                  openapi_url="/api/openapi.json" if docs else None, lifespan=lifespan)
     feedback_window = Recent(settings.feedback_per_minute)
     search_window = Recent(settings.search_per_minute)
     translate_window = Recent(settings.translate_per_minute)
@@ -106,6 +120,8 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
         """A request body is at most a few kilobytes (a question is 500 characters): refuse a larger or an unmeasured one before it is read."""
         if request.method in ("POST", "PUT", "PATCH"):
             length = request.headers.get("content-length")
+            if "transfer-encoding" in request.headers:  # chunked framing makes the server ignore the declared length
+                return JSONResponse({"detail": "chunked bodies are not accepted"}, status_code=411)
             if length is None:
                 return JSONResponse({"detail": "content-length required"}, status_code=411)
             if not length.isdigit() or int(length) > MAX_BODY:
@@ -115,8 +131,9 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
     @app.middleware("http")
     async def security_headers(request: Request, call_next):  # added last, so it wraps the others: every reply has the headers
         response = await call_next(request)
-        if not request.url.path.startswith("/api/"):  # the API docs page loads its script from a CDN
+        if not (docs and request.url.path.startswith("/api/")):  # the docs page (development only) loads its script from a CDN
             response.headers.update(SECURITY_HEADERS)
+            response.headers.setdefault("Cache-Control", cache_control(request))
         return response
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")

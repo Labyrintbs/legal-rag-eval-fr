@@ -115,6 +115,16 @@ def test_a_vote_is_exactly_1_or_minus_1(make, value):
 
 # ---- sizes, methods, paths, headers ----
 
+def test_a_body_that_declares_chunked_framing_is_refused_whatever_length_it_declares(make):
+    """The server reads a chunked body to its end and ignores Content-Length: a small declared length hid a body of 8 MB."""
+    c = make()
+    for headers in ({"transfer-encoding": "chunked"}, {"transfer-encoding": "chunked", "content-length": "1"},
+                    {"Transfer-Encoding": "gzip, chunked"}, {"transfer-encoding": "identity"}):
+        reply = post(c, "/ask", '{"question": "Quelle durée ?"}', headers)
+        assert reply.status_code == 411, headers
+    assert post(c, "/feedback", "{}", {"transfer-encoding": "chunked"}).status_code == 411
+
+
 def test_a_large_or_unmeasured_body_is_refused_before_it_is_read(make):
     c = make()
     assert post(c, "/ask", '{"question": "' + "a" * 20000 + '"}').status_code == 413
@@ -149,6 +159,8 @@ def test_every_reply_even_an_error_has_the_security_headers(make):
     replies = (c.get("/nowhere"), post(c, "/ask", "{}"), post(c, "/ask", "x" * 20000), c.get("/static/missing"), c.get("/ask"),
                c.get("/health"), c.get("/"), c.get("/history"))
     for reply in replies:
+        assert reply.headers["x-frame-options"] == "DENY" and "camera=()" in reply.headers["permissions-policy"]
+        assert reply.headers["referrer-policy"] == "no-referrer" and "cache-control" in reply.headers
         assert reply.headers["x-content-type-options"] == "nosniff"
         assert "default-src 'self'" in reply.headers["content-security-policy"] and "frame-ancestors 'none'" in reply.headers["content-security-policy"]
 
@@ -297,6 +309,14 @@ def test_a_translation_that_comes_back_on_several_lines_becomes_one_question(mak
     llm = ScriptedLLM("Quelle durée\npour un cadre ?\n\n  ", GOOD)
     body = make(llm).post("/ask", json={"question": "How long for an executive?", "translate": True}).json()
     assert body["question_fr"] == "Quelle durée pour un cadre ?" and traced(conn, body["request_id"])[3] == "Quelle durée pour un cadre ?"
+
+
+def test_an_identifier_that_the_translation_writes_in_digits_is_masked_before_the_search_and_the_trace(make, conn):
+    llm = ScriptedLLM("Quelle durée ? Mon e-mail : jean@example.com, tél 06 12 34 56 78", GOOD)
+    body = make(llm).post("/ask", json={"question": "How long? My e-mail is jean at example dot com", "translate": True}).json()
+    assert body["question_fr"] == "Quelle durée ? Mon e-mail : [e-mail], tél [téléphone]"
+    stored = traced(conn, body["request_id"])[3]
+    assert stored == body["question_fr"] and "jean@example.com" not in stored
 
 
 def test_a_translation_in_quotation_marks_is_used_without_them(make):

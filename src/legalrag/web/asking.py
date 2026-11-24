@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
-from legalrag.answering import answer, cache, rag, trace
+from legalrag.answering import answer, cache, pii, rag, trace
 from legalrag.answering.logs import log_event
 from legalrag.web import schemas
 
@@ -169,7 +169,7 @@ def translate_question(engine: rag.AnswerEngine, connect, settings: Settings, qu
                                          client_hash=client, model=engine.model, error=type(error).__name__,
                                          code_version=settings.code_version, data_version=settings.data_version))
         return None, 0, (failed, 502)
-    return french, cost or 0.0, None
+    return pii.mask(french).text, cost or 0.0, None  # masked again: the model may write digits that the visitor spelled out
 
 
 def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, question: str, client: str | None,

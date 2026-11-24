@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 
 from legalrag import cli
 from legalrag.answering import cache as answer_cache
+from legalrag.answering import trace as answer_trace
 from legalrag.cli import index as index_cli
 from legalrag.index import db, embed, store
 
@@ -19,6 +20,7 @@ def test_the_service_starts_without_the_web_server_access_log(monkeypatch):
     monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: started.update(kwargs))
     assert runner.invoke(cli.app, ["serve"]).exit_code == 0
     assert started["access_log"] is False and started["workers"] == 1
+    assert started["h11_max_incomplete_event_size"] == 16 * 1024 and started["timeout_keep_alive"] == 5
 
 
 def git(path, *args):
@@ -97,6 +99,17 @@ def cache_calls(monkeypatch):
     monkeypatch.setattr(answer_cache, "clear", lambda _: calls.append("clear") or 5)
     monkeypatch.setattr(answer_cache, "purge", lambda _: calls.append("purge") or 2)
     return calls
+
+
+def test_maintain_erases_deletes_and_purges_in_one_command_without_asking(monkeypatch):
+    calls = []
+    monkeypatch.setattr(db, "connect", lambda: contextlib.nullcontext(object()))
+    monkeypatch.setattr(answer_trace, "scrub", lambda _: calls.append("scrub") or 4)
+    monkeypatch.setattr(answer_trace, "purge", lambda _: calls.append("purge") or 3)
+    monkeypatch.setattr(answer_cache, "purge", lambda _: calls.append("cache") or 2)
+    result = runner.invoke(cli.app, ["maintain"])
+    assert result.exit_code == 0 and calls == ["scrub", "purge", "cache"]  # the text is erased before the rows are deleted
+    assert "4 requests erased, 3 traces deleted, 2 expired cache entries deleted" in result.output
 
 
 def test_cache_clear_shows_the_counts_and_waits_for_confirmation(cache_calls):

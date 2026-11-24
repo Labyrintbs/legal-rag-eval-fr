@@ -8,6 +8,7 @@ import pytest
 
 pytest.importorskip("fastapi")
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from legalrag.evaluation import gold
@@ -34,8 +35,28 @@ def test_the_pages_and_their_files_are_served_with_security_headers():
     assert c.get("/static/missing.js").status_code == 404
 
 
-def test_the_api_documentation_keeps_its_own_page_without_the_strict_policy():
-    assert "content-security-policy" not in client().get("/api/docs").headers
+def test_the_api_documentation_is_off_unless_asked_for_and_then_keeps_its_own_page_without_the_strict_policy():
+    c = client()
+    assert c.get("/api/docs").status_code == 404 and c.get("/api/openapi.json").status_code == 404  # public: no map of the API
+    assert "content-security-policy" in c.get("/api/docs").headers  # an error page has the headers like any other
+    development = TestClient(web.create_app(None, None, docs=True))
+    assert development.get("/api/docs").status_code == 200 and "content-security-policy" not in development.get("/api/docs").headers
+    assert "content-security-policy" in development.get("/").headers  # the pages keep theirs
+
+
+def test_pages_are_revalidated_the_health_is_never_kept_and_the_examples_for_five_minutes():
+    c = client(examples=[])
+    assert c.get("/").headers["cache-control"] == "no-cache" and c.get("/static/app.js").headers["cache-control"] == "no-cache"
+    assert c.get("/examples").headers["cache-control"] == "public, max-age=300"
+    health = Request({"type": "http", "method": "GET", "path": "/health", "query_string": b"", "headers": [], "server": ("test", 80),
+                      "scheme": "http"})  # the route needs a database: the rule is checked on its own
+    assert web.cache_control(health) == "no-store"
+    assert c.post("/ask", json={}).headers["cache-control"] == "no-store"
+
+
+def test_the_links_of_a_reply_are_written_only_when_they_are_https():
+    source = (STATIC / "app.js").read_text()
+    assert source.count("href:") == 1 and r"/^https:\/\//.test(url)" in source  # the one place that writes a link checks the scheme
 
 
 def test_the_examples_route_sends_the_given_examples_or_an_empty_list():
@@ -61,7 +82,7 @@ def test_every_message_the_script_uses_exists_in_both_languages():
     known_fr, known_en = message_keys(french.split("fr: {")[1]), message_keys(english)
     used = set(re.findall(r'\bt\(\s*"(\w+)"', source))
     used |= {key for pair in re.findall(r'\bt\([^)"`]*\?\s*"(\w+)"\s*:\s*"(\w+)"', source) for key in pair}
-    used |= {f"pii_{kind}" for kind in ("email", "phone", "iban", "card", "nir")}  # t(`pii_${kind}`) and t(`src_${kind}`)
+    used |= {f"pii_{kind}" for kind in ("email", "phone", "iban", "card", "nir", "birth")}  # t(`pii_${kind}`) and t(`src_${kind}`)
     used |= {f"src_{kind}" for kind in ("ct", "gdpr", "none")}
     used |= {"wrong_answer", "wrong_citation", "missing_article", "other"}  # the kinds of the vote menu, written with t(k)
     assert len(used) > 30

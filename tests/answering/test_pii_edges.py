@@ -20,7 +20,7 @@ IBAN = "FR14 2004 1010 0505 0001 3M02 606"
     ("06 12 34 56 78", "phone"), ("(0033) 6 12 34 56 78".replace("(", "").replace(")", ""), "phone"),
     (IBAN.lower(), "iban"), (IBAN.replace(" ", ""), "iban"), (IBAN.replace(" ", "\u200b "), "iban"),
     ("4111\u200b 1111 1111 1111", "card"), ("４１１１ １１１１ １１１１ １１１１", "card"), ("4111-1111-1111-1111", "card"),
-    (f"{NIR[0]} {NIR[1:3]}.{NIR[3:5]}.{NIR[5:7]} {NIR[7:10]} {NIR[10:13]} {NIR[13:]}", "nir"),
+    (f"{NIR[0]}.{NIR[1:3]}.{NIR[3:5]}.{NIR[5:7]}.{NIR[7:10]}.{NIR[10:13]}.{NIR[13:]}", "nir"),
 ])
 def test_an_identifier_hidden_by_invisible_characters_or_other_forms_is_still_found(hidden, kind):
     masked = pii.mask(f"Mon contact : {hidden}, merci.")

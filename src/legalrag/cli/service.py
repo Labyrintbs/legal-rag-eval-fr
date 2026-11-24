@@ -85,6 +85,17 @@ def traces_purge_cmd(yes: Annotated[bool, typer.Option("--yes", help="Do not ask
     typer.echo("done" if to_erase or to_delete else "nothing to do")
 
 
+@app.command("maintain")
+def maintain_cmd() -> None:
+    """The upkeep to schedule every hour, without questions: erase the text of ordinary requests older than 7 days, delete the
+    traces past their 30 days, and delete the expired entries of the answer cache. The privacy page promises all three."""
+    with db.connect() as conn:
+        erased = trace.scrub(conn)
+        deleted = trace.purge(conn)
+        removed = cache.purge(conn)
+    typer.echo(f"{erased} requests erased, {deleted} traces deleted, {removed} expired cache entries deleted")
+
+
 @traces_app.command("export")
 def traces_export_cmd(
     out: Annotated[Path, typer.Argument(help="JSON lines file to write (must not exist)")],
@@ -181,8 +192,10 @@ def serve_cmd(
     import uvicorn  # the serve extra
 
     # access_log off: uvicorn's own access log prints the visitor's raw address, which the privacy notice says is not kept
+    # Small limits for a small service: a header block of at most 16 kB, an idle connection closed after 5 s. A body read
+    # timeout and the rejection of ambiguous requests (Content-Length with Transfer-Encoding) belong to the proxy in front.
     uvicorn.run("legalrag.web.build:production_app", factory=True, host=host, port=port, workers=1, proxy_headers=False,
-                access_log=False)
+                access_log=False, h11_max_incomplete_event_size=16 * 1024, timeout_keep_alive=5)
 
 
 @app.command("llm-balance")

@@ -124,19 +124,20 @@ def test_scrub_erases_the_text_of_old_ordinary_requests_and_keeps_failures_votes
     ids = {}
     for name, (outcome, sampled, vote, comment, days) in rows.items():
         ids[name] = request_id(sampled, set(ids.values()))
-        trace.record(conn, make(outcome, request_id=ids[name], question=f"question {name}", answer="réponse", client_hash="c1"))
+        trace.record(conn, make(outcome, request_id=ids[name], question=f"question {name}", answer="réponse", client_hash="c1",
+                                cache_key="key"))
         if vote:
             trace.set_feedback(conn, ids[name], vote, comment)
         old(conn, ids[name], days)
     assert trace.erasable(conn) == 3
     assert trace.scrub(conn) == 3
-    state = {name: conn.execute("SELECT question, answer, question_sha256, client_hash, erased_at IS NOT NULL FROM query_traces "
+    state = {name: conn.execute("SELECT question, answer, question_sha256, client_hash, cache_key, erased_at IS NOT NULL FROM query_traces "
                                 "WHERE request_id = %s", (i,)).fetchone() for name, i in ids.items()}
     for name in ("ordinary", "cached", "limited"):
-        assert state[name] == ("", None, None, None, True), name
+        assert state[name] == ("", None, None, None, None, True), name  # no text and no hash of it, not even the key of the answer memory
     for name in ("failure", "thumb_up", "thumb_down", "comment", "sample", "young"):
-        question, answer, digest, client, erased = state[name]
-        assert question == f"question {name}" and answer == "réponse" and digest and client == "c1" and not erased, name
+        question, answer, digest, client, key, erased = state[name]
+        assert question == f"question {name}" and answer == "réponse" and digest and client == "c1" and key == "key" and not erased, name
     assert trace.scrub(conn) == 0 and trace.erasable(conn) == 0  # nothing more to erase, and the rows are counted once
     assert trace.summary(conn, timedelta(days=30))["requests"] == len(rows)  # the statistics do not lose a request
 
