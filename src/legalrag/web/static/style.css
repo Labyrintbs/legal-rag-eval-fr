@@ -158,4 +158,8 @@ td.num { font: 600 16px var(--sans); white-space: nowrap; color: var(--accent); 
   .cards { grid-template-columns: 1fr; }
   .answer { padding: 18px 16px; }
   .top { flex-wrap: wrap; gap: 6px; }
+  /* buttons a finger can hit (about 44 px high), and a readable status tag */
+  button.pill { padding: 11px 16px; }
+  .hist .hist-actions { gap: 10px; }
+  .hist-status { font-size: 12px; }
 }

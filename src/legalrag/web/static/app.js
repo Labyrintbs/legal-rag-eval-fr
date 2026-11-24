@@ -609,6 +609,8 @@ function setupHistory() {
   const keep = document.getElementById("keep");
   keep.checked = keepsHistory();
   keep.addEventListener("change", () => { setKeepHistory(keep.checked); drawHistory(); });
+  // Another tab changed the kept list or the tick: this tab shows it too (the lists are read again before every write anyway).
+  window.addEventListener("storage", () => { keep.checked = keepsHistory(); drawHistory(); });
   // erasing everything asks first, with a question of its own: the button text is never swapped, so a change of language cannot
   // leave the page in a half-asked state
   // The focus goes to "Cancel" (the safe choice) when the question opens, and back to the Erase button when it closes.

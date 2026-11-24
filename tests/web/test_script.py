@@ -54,7 +54,9 @@ function makeStore(options = {}) {
     removeItem: (key) => { if (options.broken) throw new Error("denied"); delete data[key]; },
   };
 }
-const window = { sessionStorage: makeStore(), localStorage: makeStore(), matchMedia: () => ({ matches: false }), location: { href: "" } };
+const window = { sessionStorage: makeStore(), localStorage: makeStore(), matchMedia: () => ({ matches: false }), location: { href: "" },
+  handlers: {}, addEventListener(type, fn) { (this.handlers[type] = this.handlers[type] || []).push(fn); },
+  fire(type) { for (const fn of this.handlers[type] || []) fn({}); } };
 const localStorage = window.localStorage;
 function walk(node, out = []) { out.push(node); for (const child of node.children || []) walk(child, out); return out; }
 function byClass(node, name) { return walk(node).filter((n) => (n.className || "").split(" ").includes(name)); }
@@ -426,6 +428,23 @@ def test_asking_again_from_the_french_line_keeps_the_english_question_and_replac
     fake_fetch(page, 200, {**REPLY, "request_id": "third"})
     start(page, 'ask("Autre question ?")')  # a new question starts a new entry
     assert run(page, "readHistory().length") == 2
+
+
+def test_another_tab_that_changes_the_kept_list_is_shown_here_and_a_write_never_uses_an_old_copy_of_the_list(page):
+    history_page(page)
+    give(page, "reply", REPLY)
+    start(page, 'setKeepHistory(true); registry.keep.checked = true; addToHistory("From this tab", reply)')
+    # another tab adds an entry straight into the shared storage of the device
+    start(page, """const list = JSON.parse(window.localStorage.data.history);
+      list.unshift({ id: "other", at: new Date().toISOString(), question: "From another tab", reply: { ...list[0].reply, request_id: "other" } });
+      window.localStorage.data.history = JSON.stringify(list);""")
+    assert run(page, "byClass(registry.history, 'hist').length") == 0  # the first drawing is old: this tab has not been told yet
+    start(page, 'window.fire("storage")')  # the browser tells this tab
+    assert run(page, "byClass(registry.history, 'hist').length") == 2
+    start(page, 'addToHistory("Newest from this tab", { ...reply, request_id: "third" })')  # the write re-reads: nothing of the other tab is lost
+    assert run(page, "readHistory().map((e) => e.question)") == ["Newest from this tab", "From another tab", "From this tab"]
+    start(page, 'registry.keep.checked = false; window.localStorage.data.keep_history = "1"; window.fire("storage")')
+    assert run(page, "registry.keep.checked") is True  # the tick follows the other tab
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
