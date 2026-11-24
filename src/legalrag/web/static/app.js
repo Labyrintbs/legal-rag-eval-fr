@@ -215,8 +215,8 @@ function answerCard(reply, history = false) {
     p.append(" ");
   }
   const label = make("h2", { class: "label", text: t("answer") });
-  if (reply.cached) label.append(make("span", { class: "badge", text: t("stored") }));
-  if (history) return make("div", { class: "answer" }, label, claims, sources);
+  if (reply.cached && !history) label.append(make("span", { class: "badge", text: t("stored") })); // days later it would mean nothing
+  if (history) return make("div", { class: "answer" }, label, claims, savedEnglish(reply), sources);
   return make("div", { class: "answer" }, label, claims, englishBlock(reply), sources, foundArticles(reply.articles) || "", voteBox(reply.request_id));
 }
 
@@ -306,6 +306,7 @@ function englishBlock(reply) {
       const data = await response.json().catch(() => ({}));
       if (response.status === 200) {
         box.replaceChildren(make("span", { class: "tr-label", text: t("english_label") }), withMarkers(data.english));
+        saveEnglish(reply.request_id, data.english);
         return;
       }
       if (response.status === 429) message = t("limited", { n: Number(response.headers.get("Retry-After")) || 60 });
@@ -318,8 +319,15 @@ function englishBlock(reply) {
   return box;
 }
 
-// What a reply looks like. `history`: drawn from the history, where the vote and the English translation are not offered
-// (the answer may no longer be stored by the service).
+// The English translation kept in the history: shown when the visitor asked for it, never requested again (the service
+// keeps an answer 7 days only).
+function savedEnglish(reply) {
+  if (!reply.english) return "";
+  return make("div", { class: "en-answer" }, make("span", { class: "tr-label", text: t("english_label") }), withMarkers(reply.english));
+}
+
+// What a reply looks like. `history`: drawn from the history, where the vote and the button for the English translation
+// are not offered.
 function replyNode(reply, status, retryAfter, history = false) {
   if (status === 0) return make("div", { class: "status problem", text: t("network") });
   if (status === 422) return make("div", { class: "status problem", text: t("invalid") });
@@ -420,9 +428,31 @@ function writeHistory(list) {
 function addToHistory(question, reply) {
   if (!HISTORY_OUTCOMES.includes(reply.outcome)) return;
   const kept = { request_id: reply.request_id, outcome: reply.outcome, reason: reply.reason, claims: reply.claims || [], articles: [],
-    cached: reply.cached, question_fr: reply.question_fr, masked: reply.masked, question_masked: reply.question_masked };
+    question_fr: reply.question_fr, masked: reply.masked, question_masked: reply.question_masked };
   const entry = { id: reply.request_id, at: new Date().toISOString(), question, reply: kept };
   writeHistory([entry, ...readHistory().filter((other) => other.id !== entry.id)]);
+}
+
+// The English translation of an answer, once the visitor has asked for it, goes into the entry of that answer.
+function saveEnglish(requestId, english) {
+  const list = readHistory();
+  const entry = list.find((other) => other.id === requestId);
+  if (!entry) return;
+  entry.reply.english = english;
+  writeHistory(list);
+}
+
+const MONTHS = {
+  fr: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+};
+
+// "24 Nov 2026, 15:18": the month is a word, so the order of day and month cannot be misread.
+function formatDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getDate()} ${MONTHS[lang][d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function setKeepHistory(on) {
@@ -442,7 +472,7 @@ function clearHistory() {
 }
 
 function historyEntry(entry) {
-  const when = new Date(entry.at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR");
+  const when = formatDate(entry.at);
   const body = make("div", { class: "hist-body", hidden: "" });
   const toggle = make("button", { type: "button", class: "pill", text: t("history_show") });
   toggle.addEventListener("click", () => {

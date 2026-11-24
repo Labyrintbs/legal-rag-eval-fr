@@ -345,6 +345,46 @@ def test_a_translation_request_that_cannot_reach_the_service_is_a_message_and_no
     assert "n'a pas pu être faite" in run(page, "box.textContent") and run(page, "byTag(box, 'button')[0].disabled") is False
 
 
+def test_a_translation_asked_for_is_kept_in_its_history_entry_and_shown_there_without_a_new_request(page):
+    page.eval('registry.history = new FakeNode("section")')
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    start(page, 'addToHistory("How long?", reply); addToHistory("Other", { ...reply, request_id: "b" })')
+    fake_fetch(page, 200, {"english": "Four months. [1]"})
+    start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
+    english = run(page, "readHistory().map((e) => e.reply.english)")
+    assert english == [None, "Four months. [1]"]  # only the entry of this answer (newest first: "Other" is first)
+    start(page, "drawHistory(); byTag(registry.history, 'button')[1].click()")  # open the entry that has the translation
+    assert run(page, "byClass(registry.history, 'en-answer').length") == 1
+    assert "Four months." in run(page, "byClass(registry.history, 'en-answer')[0].textContent")
+    assert run(page, "byClass(registry.history, 'en-answer')[0].textContent").startswith("Machine translation")
+    assert run(page, "requests.length") == 1  # the history made no request
+    assert run(page, "byTag(registry.history, 'button').filter((b) => b.className === 'pill' && b.textContent.includes('English')).length") == 0
+
+
+def test_a_translation_of_an_answer_that_is_not_in_the_history_is_shown_and_nothing_breaks(page):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, 200, {"english": "Four months. [1]"})
+    start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")  # a 429 or a refused entry was never kept
+    assert "Four months." in run(page, "box.textContent") and run(page, "readHistory()") == []
+
+
+def test_the_ready_made_badge_is_shown_on_the_live_answer_and_not_kept_in_the_history(page):
+    give(page, "reply", {**REPLY, "cached": True})
+    assert run(page, "byClass(replyNode(reply, 200, null), 'badge').length") == 1
+    start(page, 'addToHistory("Q", reply)')
+    assert "cached" not in run(page, "readHistory()[0].reply")
+    give(page, "old", {**REPLY, "cached": True})  # an entry kept by an earlier version of the page
+    assert run(page, "byClass(replyNode(old, 200, null, true), 'badge').length") == 0
+
+
+def test_a_date_is_written_with_the_month_as_a_word_without_seconds_in_both_languages(page):
+    start(page, "globalThis.iso = new Date(2026, 10, 24, 9, 5, 33).toISOString()")  # local time, so the test does not depend on the zone
+    assert run(page, "formatDate(iso)") == "24 nov. 2026, 09:05"
+    start(page, 'lang = "en"')
+    assert run(page, "formatDate(iso)") == "24 Nov 2026, 09:05"
+    assert run(page, "formatDate('not a date')") == ""
+
+
 def test_the_citation_numbers_of_a_translation_become_small_tags_and_other_brackets_stay_text(page):
     start(page, 'globalThis.p = withMarkers("A. [1] B [2][3] C [x] [10] (see [4)")')
     assert run(page, "byTag(p, 'sup').map((n) => n.textContent)") == ["1", "2", "3", "10"]
