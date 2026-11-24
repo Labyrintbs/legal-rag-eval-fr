@@ -708,6 +708,96 @@ def test_the_keyboard_focus_goes_to_the_translation_when_it_arrives(page):
     assert run(page, "document.activeElement === box") is True
 
 
+@pytest.mark.parametrize("status, body", [(500, {"detail": "x"}), (429, {"detail": "x"}), (404, {"detail": "no such answer"}), (200, {"english": " "})])
+def test_a_translation_that_fails_after_the_page_was_drawn_again_leaves_a_usable_button_and_a_message_on_the_box_on_screen(page, status, body):
+    first_page(page)
+    fake_fetch(page, 200, {**REPLY, "question_fr": "Quelle durée ?"})
+    start(page, 'ask("How long?", true)')
+    slow_fetch(page, status, body)
+    pill = "byTag(registry.result, 'button').filter((b) => b.className === 'pill')[0]"
+    start(page, f"{pill}.click()")
+    start(page, 'lang = "en"; show()')  # new nodes while the request runs
+    assert run(page, f"{pill}.disabled") is True
+    start(page, "release()")
+    assert run(page, f"{pill}.disabled") is False  # usable again
+    assert run(page, "byClass(registry.result, 'en-answer')[0].textContent").strip() != "English translation of this answer"  # and a message is shown
+    assert run(page, "byClass(registry.result, 'en-answer')[0].children.filter((c) => c.className === 'count').length") == 1
+
+
+def test_a_model_failure_after_a_good_translation_keeps_the_articles_and_is_not_called_a_translation_failure(page):
+    result_area(page)
+    fake_fetch(page, 502, {**REPLY, "outcome": "llm_error", "claims": [], "question_fr": "Quelle durée ?"})
+    start(page, 'ask("How long?", true)')
+    text = run(page, "registry.result.textContent")
+    assert "Le modèle n'a pas répondu" in text and "traduction de votre question" not in text and "L1221-19" in text
+
+
+@pytest.mark.parametrize("status, body", [(0, None), (422, {"detail": []}), (500, None), (200, {}), (429, {"detail": "x"}), (502, {**REPLY, "outcome": "llm_error", "claims": []})])
+def test_the_french_line_stays_after_a_failed_ask_again_from_it_whatever_the_failure(page, status, body):
+    result_area(page)
+    fake_fetch(page, 200, {**REPLY, "question_fr": "Quelle durée ?"})
+    start(page, 'ask("How long?", true)')
+    if status == 0:
+        page.eval('fetch = async () => { throw new Error("offline"); }')
+    else:
+        fake_fetch(page, status, body)
+    start(page, 'ask("Quelle durée pour un cadre ?", false, true)')
+    assert run(page, "byClass(registry.result, 'tr-line').length") == 1, (status, body)
+    assert run(page, "byTag(byClass(registry.result, 'tr-line')[0], 'q')[0].textContent") == "Quelle durée pour un cadre ?"
+
+
+def test_a_second_thumb_while_the_first_vote_is_on_its_way_changes_nothing_on_the_screen(page):
+    slow_fetch(page, 200, {})
+    start(page, "globalThis.box = voteBox('r'.repeat(32)); const thumbs = byClass(box, 'thumb'); thumbs[0].click(); thumbs[1].click()")
+    assert run(page, "byClass(box, 'thumb').map((b) => b.getAttribute('aria-pressed'))") == ["true", "false"]
+    assert run(page, "requests.length") == 1
+
+
+def test_an_empty_submit_while_a_question_runs_leaves_the_busy_line(page):
+    first_page(page)
+    page.eval("registry.ask = new FakeNode('form'); registry.ask.requestSubmit = () => {}; registry.question.value = ''; "
+              "fetch = async () => ({ json: async () => [] })")
+    start(page, "setup()")  # the form listens
+    slow_fetch(page, 200, REPLY)
+    start(page, 'ask("Q ?")')
+    assert run(page, "registry.result.textContent") == "Recherche en cours…"
+    start(page, "registry.ask.fire('submit')")  # the form: an empty box, while the request runs
+    assert run(page, "registry.result.textContent") == "Recherche en cours…"
+
+
+def test_a_double_failure_of_ticking_keep_says_the_copy_stays_on_the_device(page):
+    history_page(page, ("A ?", REPLY))
+    start(page, "window.localStorage = makeStore({ failSet: ['keep_history'], failRemove: ['history'] }); registry.keep.checked = true; registry.keep.fire('change')")
+    assert run(page, "['history' in window.localStorage.data, registry['unkeep-failed'].hidden, registry['keep-failed'].hidden]") == [True, False, True]
+
+
+def test_an_answer_whose_claims_have_no_citations_is_neither_drawn_nor_kept(page):
+    result_area(page)
+    for claims in ([{"text": "x"}], [{"text": "x", "citations": "z"}], [{"text": "x", "citations": [{"label": "L1"}]}], ["x"], [None]):
+        fake_fetch(page, 200, {**REPLY, "claims": claims})
+        start(page, 'ask("Q ?")')
+        assert "problème" in run(page, "registry.result.textContent"), claims
+        assert run(page, "readHistory()") == [], claims
+
+
+def test_a_failure_while_showing_the_result_area_does_not_leave_the_page_waiting_for_ever(page):
+    first_page(page)
+    page.eval("registry.result.scrollIntoView = () => { throw new Error('no scrolling here'); }")
+    fake_fetch(page, 200, REPLY)
+    start(page, 'ask("Q1 ?")')
+    assert run(page, "[asking, registry.go.disabled]") == [None, False]  # released, and the buttons are back
+    page.eval("registry.result.scrollIntoView = () => {}")
+    start(page, 'ask("Q2 ?")')
+    assert run(page, "requests.length") == 1 and run(page, "byClass(registry.result, 'answer').length") == 1  # the next question works
+
+
+def test_the_focus_does_not_leave_a_box_the_visitor_is_typing_in_when_a_translation_arrives(page):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, 200, {"english": "Four months. [1]"})
+    start(page, "globalThis.box = englishBlock(reply); registry.question = new FakeNode('textarea'); registry.question.focus(); byTag(box, 'button')[0].click()")
+    assert run(page, "document.activeElement === registry.question") is True
+
+
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
     page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
       registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] });""")
@@ -993,7 +1083,11 @@ def test_the_list_says_to_make_room_only_when_there_is_something_to_delete(page)
 
 def test_the_english_messages_say_seconds_and_the_ai_model(page):
     start(page, 'lang = "en"')
-    assert run(page, "t('limited', { n: 7 })") == "Too many requests from you. Try again in 7 seconds."
+    assert run(page, "t('limited', { n: waitText(7) })") == "Too many requests from you. Try again in 7 seconds."
+    assert run(page, "t('limited', { n: waitText(1) })") == "Too many requests from you. Try again in 1 second."
+    start(page, 'lang = "fr"')
+    assert run(page, "t('limited', { n: waitText(1) })") == "Trop de demandes de votre part. Réessayez dans 1 s."
+    start(page, 'lang = "en"')
     assert run(page, "t('network')") == "The service is not responding. Try again in a moment."
     assert run(page, "t('upstream')").startswith("The AI model did not answer.")
 
