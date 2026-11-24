@@ -35,6 +35,7 @@ serve = [
 dev = [
     "ir-measures>=0.4.3",
     "pytest",
+    "quickjs>=1.19.4",
     "ruff",
 ]
 
