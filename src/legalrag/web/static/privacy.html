@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="t_privacy">Confidentialité – droit du travail et RGPD</title>
+<meta name="description" data-i18n-content="meta_privacy" content="Ce que le service enregistre de vos questions, pourquoi, pour combien de temps, et vos droits.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/">legal-rag-eval-fr</a>
+    <nav>
+      <span class="lang" role="group" data-i18n-aria="aria_lang" aria-label="Langue de la page"><button type="button" data-lang="fr" aria-pressed="true">FR</button> <button type="button" data-lang="en" aria-pressed="false">EN</button></span>
+      <a href="/" data-i18n="nav_ask">Poser une question</a>
+      <a href="/history" data-i18n="nav_history">Historique</a>
+      <a href="/method" data-i18n="nav_method">Méthode</a>
+      <a href="/data" data-i18n="nav_data">Données</a>
+      <a href="https://github.com/Labyrintbs/legal-rag-eval-fr">GitHub</a>
+    </nav>
+  </div>
+
+  <main class="prose">
+    <h1 data-i18n="pv_title">Confidentialité</h1>
+    <p class="sub" data-i18n="pv_sub">Ce que le service enregistre de vos questions, pourquoi, et pour combien de temps.</p>
+    <p data-i18n="pv_intro">Ce service est un projet personnel de démonstration, sans but commercial.</p>
+    <p class="count" data-i18n="pv_date">Dernière mise à jour : novembre 2026.</p>
+
+    <h2 data-i18n="pv_who_h">Qui est responsable</h2>
+    <p><span data-i18n="pv_who"><b>Hongming Fang</b>, qui a réalisé ce service. Pour le contacter :</span> <a href="#" class="mail" data-user="labyrintbs" data-host="gmail.com" data-i18n="mail">Écrire par e-mail</a>.</p>
+
+    <h2 data-i18n="pv_what_h">Ce qui est enregistré</h2>
+    <ul>
+      <li data-i18n="pv_w1">Votre question et, si vous en laissez un, votre vote et votre commentaire.</li>
+      <li data-i18n="pv_w2">La date, ainsi que le résultat de la recherche et de la réponse.</li>
+      <li data-i18n="pv_w3">Une empreinte de votre adresse réseau (adresse IP), calculée avec une clé secrète qui change chaque jour. Elle sert à limiter le nombre de questions par personne et ne permet pas de vous suivre d'un jour à l'autre. Le service n'enregistre pas votre adresse elle-même.</li>
+      <li data-i18n="pv_w4">Aucun cookie et aucun compte. Votre navigateur garde votre choix de langue et la liste de vos questions et réponses (page Historique) : elle disparaît quand vous fermez l'onglet, sauf si vous demandez à la garder sur cet appareil. Le service ne la voit pas.</li>
+    </ul>
+
+    <h2 data-i18n="pv_why_h">Pourquoi</h2>
+    <p data-i18n="pv_why">Pour faire fonctionner le service, limiter les abus et la dépense, et l'améliorer. Base légale : l'intérêt légitime de l'auteur à fournir et à protéger ce service de démonstration (article 6, paragraphe 1, point f, du RGPD).</p>
+
+    <h2 data-i18n="pv_not_h">Ce que le service ne fait pas</h2>
+    <p data-i18n="pv_not">Pas de mesure d'audience, pas de publicité, pas de profilage, et aucune décision automatisée qui vous concerne : le service donne des informations, il ne décide rien à votre sujet.</p>
+
+    <h2 data-i18n="pv_long_h">Pendant combien de temps</h2>
+    <div class="scroll"><table>
+      <thead><tr><th data-i18n="pv_t_h1">Donnée</th><th data-i18n="pv_t_h2">Durée</th></tr></thead>
+      <tbody>
+        <tr><td data-i18n="pv_t1a">Requête ordinaire : la question, la réponse et l'empreinte de l'adresse réseau (elle change chaque jour), après masquage des identifiants</td><td data-i18n="pv_t1b">7 jours</td></tr>
+        <tr><td data-i18n="pv_t2a">Requête restée sans réponse ou en erreur, requête notée (👍 ou 👎) ou commentée, et une requête sur 20 tirée au hasard pour juger la qualité : les mêmes données, avec le vote et le commentaire</td><td data-i18n="pv_t2b">30 jours</td></tr>
+        <tr><td data-i18n="pv_t3a">Réponse gardée en mémoire pour aller plus vite (sans la question)</td><td data-i18n="pv_t3b">7 jours au plus</td></tr>
+        <tr><td data-i18n="pv_t4a">Fichier de questions exportées pour relecture (usage de l'auteur)</td><td data-i18n="pv_t4b">Supprimé après la relecture</td></tr>
+        <tr><td data-i18n="pv_t5a">Votre historique, dans votre navigateur (le service ne le reçoit pas)</td><td data-i18n="pv_t5b">Jusqu'à la fermeture de l'onglet, ou jusqu'à ce que vous l'effaciez si vous le gardez sur l'appareil</td></tr>
+      </tbody>
+    </table></div>
+    <p data-i18n="pv_after">Quand le texte est effacé, il ne reste que des chiffres sans texte : le résultat, les articles trouvés, la durée et le coût.</p>
+
+    <h2 data-i18n="pv_recv_h">Qui reçoit votre question</h2>
+    <p data-i18n="pv_recv">Pour écrire la réponse, votre question est envoyée à un fournisseur de modèle d'IA (DeepSeek). Ses serveurs peuvent se trouver hors de l'Union européenne, et nous ne contrôlons pas ce qu'il fait ensuite des données : n'écrivez donc aucune information personnelle. Le service est aussi hébergé chez un prestataire technique, qui voit les connexions.</p>
+    <p data-i18n="pv_filter">Avant tout envoi, un filtre automatique masque certains identifiants dans votre question (adresse e-mail, téléphone, IBAN, carte bancaire, numéro de sécurité sociale). Il ne repère pas les noms ni les adresses postales.</p>
+    <!-- At deployment: name the hosting provider here, and the model provider if it changes (EU-hosted). -->
+
+    <h2 data-i18n="pv_improve_h">Amélioration du service</h2>
+    <p data-i18n="pv_improve">Des questions peuvent servir à améliorer les tests du service, après qu'une personne en a retiré toute donnée personnelle.</p>
+
+    <h2 data-i18n="pv_rights_h">Vos droits</h2>
+    <p><span data-i18n="pv_rights">Vous pouvez demander l'accès à vos données, leur rectification ou leur suppression, ou vous opposer à leur traitement, en écrivant à l'adresse ci-dessus. Nous répondons dans un délai d'un mois. Comme le service ne connaît pas votre identité, indiquez le texte exact de votre question et la date approximative. Vous pouvez aussi déposer une plainte auprès de la CNIL :</span> <a href="https://www.cnil.fr/fr/plaintes">cnil.fr/fr/plaintes</a>.</p>
+
+    <h2 data-i18n="pv_dont_h">N'écrivez pas de données personnelles</h2>
+    <p data-i18n="pv_dont">Ni les vôtres ni celles d'autres personnes (noms, adresses, numéros, e-mails…). Une question de droit se pose très bien sans elles.</p>
+  </main>
+
+  <footer>
+    <p data-i18n="disclaimer">Informations juridiques, pas un conseil juridique. Le corpus a une date et peut ne pas contenir le droit en vigueur.</p>
+    <p class="about"><span data-i18n="by">Réalisé par <b>Hongming Fang</b></span> <a href="https://www.linkedin.com/in/hongming-fang">LinkedIn</a> <a href="https://github.com/Labyrintbs">GitHub</a><!-- personal page: add its link here when it exists --></p>
+    <p><span data-i18n="contact">Une erreur, une idée ?</span> <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/issues" data-i18n="issues">Écrire sur GitHub</a> · <a href="#" class="mail" data-user="labyrintbs" data-host="gmail.com" data-i18n="mail">Écrire par e-mail</a></p>
+  </footer>
+</div>
+<script src="/static/texts_en.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

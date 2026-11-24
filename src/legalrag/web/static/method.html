@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="t_method">Méthode et mesures – droit du travail et RGPD</title>
+<meta name="description" data-i18n-content="meta_method" content="Comment le service fonctionne et comment on sait qu'il fonctionne.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/">legal-rag-eval-fr</a>
+    <nav>
+      <span class="lang" role="group" data-i18n-aria="aria_lang" aria-label="Langue de la page"><button type="button" data-lang="fr" aria-pressed="true">FR</button> <button type="button" data-lang="en" aria-pressed="false">EN</button></span>
+      <a href="/" data-i18n="nav_ask">Poser une question</a>
+      <a href="/history" data-i18n="nav_history">Historique</a>
+      <a href="/method" aria-current="page" data-i18n="nav_method">Méthode</a>
+      <a href="/data" data-i18n="nav_data">Données</a>
+      <a href="https://github.com/Labyrintbs/legal-rag-eval-fr">GitHub</a>
+    </nav>
+  </div>
+
+  <main class="prose">
+    <h1 data-i18n="m_title">Comment ça marche, et ce que nous avons mesuré</h1>
+    <p class="sub" data-i18n="m_sub">En clair : ce que fait le service et comment on sait s'il fonctionne.</p>
+
+    <h2 data-i18n="m_what_h">Ce que fait le service</h2>
+    <p data-i18n="m_q_intro">Prenons une question :</p>
+    <p class="example">« Quelle est la durée maximale de la période d'essai d'un CDI ? »</p>
+    <ol class="steps">
+      <li data-i18n="m_s1"><b>Chercher.</b> Le service compare la question à tous les textes de loi, par le sens et non par les mots exacts, et garde les 5 articles les plus proches (ici, L1221-19 en tête).</li>
+      <li data-i18n="m_s2"><b>Écrire.</b> Un modèle d'IA lit ces 5 articles et rédige la réponse phrase par phrase, en indiquant pour chaque phrase le passage qui la fonde.</li>
+      <li data-i18n="m_s3"><b>Vérifier.</b> Notre programme contrôle que chaque passage cité existe vraiment dans l'article. Une phrase sans passage valide est retirée. Si aucun article n'est assez proche, ou si les articles ne permettent pas de répondre, le service dit qu'il ne peut pas répondre au lieu d'inventer.</li>
+    </ol>
+
+    <h2 data-i18n="m_how_h">Comment on sait si ça marche</h2>
+    <p data-i18n="m_eval_intro">Nous avons préparé 128 questions dont on connaît les articles à citer. Une moitié a servi à régler le système. L'autre moitié a été mise de côté et mesurée une seule fois, à la fin : ce sont ces résultats.</p>
+    <div class="scroll"><table>
+      <thead><tr><th data-i18n="m_th_m">Mesure</th><th data-i18n="m_th_q">La question</th><th data-i18n="m_th_r">Résultat</th><th data-i18n="m_th_c">En clair</th></tr></thead>
+      <tbody>
+        <tr><td><b data-i18n="m_n1">Recherche</b></td><td data-i18n="m_t1q">Le bon article est-il trouvé ?</td><td class="num">83 %</td><td data-i18n="m_t1c">Au moins un des 5 articles affichés est un article pertinent.</td></tr>
+        <tr><td><b data-i18n="m_n2">Couverture</b></td><td data-i18n="m_t2q">Le service répond-il quand la loi répond ?</td><td class="num" data-i18n="m_v2">50 sur 57</td><td data-i18n="m_t2c">Quand la loi apporte une réponse, le service répond ; sinon il refuse plutôt que de répondre à côté.</td></tr>
+        <tr><td><b data-i18n="m_n3">Citations</b></td><td data-i18n="m_t3q">La réponse cite-t-elle le bon article ?</td><td class="num" data-i18n="m_v3">47 sur 50</td><td data-i18n="m_t3c">Presque toutes les réponses citent un des articles attendus.</td></tr>
+        <tr><td><b data-i18n="m_n4">Fidélité</b></td><td data-i18n="m_t4q">Chaque phrase est-elle soutenue par le passage cité ?</td><td class="num">86 %</td><td data-i18n="m_t4c">Part des phrases soutenues par le passage cité (au minimum : notre vérification est stricte). Presque toutes les autres le sont en partie.</td></tr>
+        <tr><td><b data-i18n="m_n5">Pertinence</b></td><td data-i18n="m_t5q">La réponse traite-t-elle la question posée ?</td><td class="num" data-i18n="m_v5">53 sur 55</td><td data-i18n="m_t5c">La réponse traite bien la question posée.</td></tr>
+        <tr><td><b data-i18n="m_n6">Prudence</b></td><td data-i18n="m_t6q">Sait-il dire qu'il ne sait pas ?</td><td class="num" data-i18n="m_v6">4 sur 4</td><td data-i18n="m_t6c">Questions hors sujet ou à fausse prémisse : le service refuse ou corrige.</td></tr>
+      </tbody>
+    </table></div>
+    <p data-i18n="m_note">Ces résultats portent sur 128 questions : ils donnent un ordre de grandeur, pas une précision exacte. Le détail et les limites sont dans <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/blob/main/EXPERIMENT.md">le journal complet (GitHub)</a>.</p>
+
+    <h2 data-i18n="m_more_h">Aller plus loin</h2>
+    <ul>
+      <li><a href="/data" data-i18n="m_k1">Les données utilisées</a></li>
+      <li><a href="https://github.com/Labyrintbs/legal-rag-eval-fr/blob/main/EXPERIMENT.md" data-i18n="m_k2">Le journal complet des mesures (GitHub)</a></li>
+      <li><a href="https://github.com/Labyrintbs/legal-rag-eval-fr" data-i18n="m_k3">Le code (GitHub)</a></li>
+    </ul>
+  </main>
+
+  <footer>
+    <p data-i18n="disclaimer">Informations juridiques, pas un conseil juridique. Le corpus a une date et peut ne pas contenir le droit en vigueur.</p>
+    <p class="about"><span data-i18n="by">Réalisé par <b>Hongming Fang</b></span> <a href="https://www.linkedin.com/in/hongming-fang">LinkedIn</a> <a href="https://github.com/Labyrintbs">GitHub</a><!-- personal page: add its link here when it exists --></p>
+    <p><span data-i18n="contact">Une erreur, une idée ?</span> <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/issues" data-i18n="issues">Écrire sur GitHub</a> · <a href="#" class="mail" data-user="labyrintbs" data-host="gmail.com" data-i18n="mail">Écrire par e-mail</a> · <a href="/privacy" data-i18n="privacy_link">Confidentialité</a></p>
+  </footer>
+</div>
+<script src="/static/texts_en.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

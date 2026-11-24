@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="t_data">Les données – droit du travail et RGPD</title>
+<meta name="description" data-i18n-content="meta_data" content="D'où viennent les textes interrogés par le service, leurs licences, et ce qu'ils ne contiennent pas.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/">legal-rag-eval-fr</a>
+    <nav>
+      <span class="lang" role="group" data-i18n-aria="aria_lang" aria-label="Langue de la page"><button type="button" data-lang="fr" aria-pressed="true">FR</button> <button type="button" data-lang="en" aria-pressed="false">EN</button></span>
+      <a href="/" data-i18n="nav_ask">Poser une question</a>
+      <a href="/history" data-i18n="nav_history">Historique</a>
+      <a href="/method" data-i18n="nav_method">Méthode</a>
+      <a href="/data" aria-current="page" data-i18n="nav_data">Données</a>
+      <a href="https://github.com/Labyrintbs/legal-rag-eval-fr">GitHub</a>
+    </nav>
+  </div>
+
+  <main class="prose">
+    <h1 data-i18n="d_title">Les données</h1>
+    <p class="sub" data-i18n="d_sub">D'où viennent les textes que le service interroge, et ce qu'ils ne contiennent pas.</p>
+
+    <div class="scroll"><table>
+      <thead><tr><th data-i18n="d_th_source">Source</th><th data-i18n="d_th_content">Contenu</th><th data-i18n="d_th_licence">Licence</th><th data-i18n="d_th_state">État</th></tr></thead>
+      <tbody>
+        <tr><td><em class="tag ct" data-i18n="src_ct">Code du travail</em><br><small>Légifrance / DILA (base LEGI)</small></td><td data-i18n="d_c1">11 433 articles en vigueur</td><td><a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence Ouverte 2.0</a></td><td data-i18n="d_s1">13 juillet 2025</td></tr>
+        <tr><td><em class="tag gdpr" data-i18n="src_gdpr">RGPD</em><br><small>Règlement (UE) 2016/679, EUR-Lex</small></td><td data-i18n="d_c2">99 articles et 173 considérants (les paragraphes qui précèdent les articles)</td><td><a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></td><td data-i18n="d_s2">Journal officiel du 4 mai 2016</td></tr>
+      </tbody>
+    </table></div>
+    <p data-i18n="d_total">Au total, <b>11 705 textes</b> sont interrogés par le service.</p>
+
+    <h2 data-i18n="d_where_h">Où trouver les textes d'origine</h2>
+    <ul>
+      <li data-i18n="d_w1"><b>Code du travail</b> : <a href="https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006072050/">le code sur Légifrance</a>, <a href="https://echanges.dila.gouv.fr/OPENDATA/LEGI/">la base ouverte de l'État (LEGI, DILA)</a> d'où viennent les données, et <a href="https://huggingface.co/datasets/VinceGx33/legi-french-law-2025">la copie de cette base que nous avons utilisée</a> (Hugging Face).</li>
+      <li data-i18n="d_w2"><b>RGPD</b> : <a href="https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32016R0679">le règlement (UE) 2016/679 sur EUR-Lex</a>.</li>
+      <li data-i18n="d_w3">Les licences : Licence Ouverte 2.0 (Etalab) et Creative Commons BY 4.0.</li>
+    </ul>
+
+    <h2 data-i18n="d_prep_h">Comment les textes sont préparés</h2>
+    <p data-i18n="d_prep">Chaque article forme un passage, sauf s'il est très long : il est alors coupé en plusieurs. Chaque passage commence par une ligne de titre (le code, le numéro de l'article, les titres de la section). Le sens de chaque passage est ensuite enregistré, ce qui permet de chercher par le sens et non par les mots exacts.</p>
+
+    <h2 data-i18n="d_not_h">Ce qui n'y est pas</h2>
+    <ul>
+      <li data-i18n="d_n1">La jurisprudence (les décisions de justice) et les conventions collectives.</li>
+      <li data-i18n="d_n2">Les modifications de la loi après le 13 juillet 2025 : un article modifié depuis apparaît dans son ancienne forme (un cas trouvé : L6123-5).</li>
+      <li data-i18n="d_n3">Les rectificatifs du RGPD publiés après le Journal officiel du 4 mai 2016 n'ont pas été vérifiés.</li>
+    </ul>
+    <p><span data-i18n="d_official">Seuls les textes officiels font foi.</span> <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/blob/main/NOTICE.md" data-i18n="d_notice">Mentions et licences complètes (GitHub)</a></p>
+  </main>
+
+  <footer>
+    <p data-i18n="disclaimer">Informations juridiques, pas un conseil juridique. Le corpus a une date et peut ne pas contenir le droit en vigueur.</p>
+    <p class="about"><span data-i18n="by">Réalisé par <b>Hongming Fang</b></span> <a href="https://www.linkedin.com/in/hongming-fang">LinkedIn</a> <a href="https://github.com/Labyrintbs">GitHub</a><!-- personal page: add its link here when it exists --></p>
+    <p><span data-i18n="contact">Une erreur, une idée ?</span> <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/issues" data-i18n="issues">Écrire sur GitHub</a> · <a href="#" class="mail" data-user="labyrintbs" data-host="gmail.com" data-i18n="mail">Écrire par e-mail</a> · <a href="/privacy" data-i18n="privacy_link">Confidentialité</a></p>
+  </footer>
+</div>
+<script src="/static/texts_en.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

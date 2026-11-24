@@ -1,0 +1,47 @@
+# The example questions of the demo page (step 0f, part 4). The page shows them as cards with the source tag
+# (ct: Code du travail, gdpr: RGPD, none: outside the texts) and, on the English page, the English description
+# `question_en` (the question itself stays French). The cache warm-up asks them at startup, so that a click gets a
+# stored reply. Five are dev questions of the evaluation set (their replies were read); five were tried with the real
+# model on 2026-11-24 (scripts/answers/stress_questions.py --only cards): four answered, one refused (the law gives no
+# duration for keeping a CV). A test lists which questions are not dev questions.
+questions:
+  - question: "Quelle est la durée maximale de la période d'essai d'un CDI ?"
+    question_en: "What is the maximum length of the probation period in an open-ended contract?"
+    source: ct
+    label: {fr: "Période d'essai", en: "Probation period"}
+  - question: "Un salarié démissionne : quel préavis doit-il respecter ?"
+    question_en: "An employee resigns: what notice period must they respect?"
+    source: ct
+    label: {fr: "Démission", en: "Resignation"}
+  - question: "Quelle est la durée du préavis en cas de licenciement ?"
+    question_en: "What is the notice period in case of dismissal?"
+    source: ct
+    label: {fr: "Licenciement", en: "Dismissal"}
+  - question: "Comment fonctionne la rupture conventionnelle ?"
+    question_en: "How does a mutually agreed termination work?"
+    source: ct
+    label: {fr: "Rupture conventionnelle", en: "Agreed termination"}
+  - question: "Lors du recrutement, quelles informations peuvent être demandées au candidat ?"
+    question_en: "During recruitment, what information may be asked of the candidate?"
+    source: ct
+    label: {fr: "Recrutement", en: "Recruitment"}
+  - question: "Mon patron doit-il faire quelque chose pour protéger ma santé mentale au boulot ?"
+    question_en: "Does my boss have to do anything to protect my mental health at work?"
+    source: ct
+    label: {fr: "Santé au travail, en mots simples", en: "Health at work, in plain words"}
+  - question: "Quel est le droit à l'effacement des données ?"
+    question_en: "What is the right to have one's data erased?"
+    source: gdpr
+    label: {fr: "Droit à l'effacement", en: "Right to erasure"}
+  - question: "Que dit l'article L1221-13 du Code du travail ?"
+    question_en: "What does article L1221-13 of the labour code say?"
+    source: ct
+    label: {fr: "Un article précis", en: "A precise article"}
+  - question: "Pourquoi le RGPD interdit-il tout transfert de données personnelles hors de l'Union européenne ?"
+    question_en: "Why does the GDPR forbid all transfers of personal data outside the European Union? (It does not: the answer corrects this.)"
+    source: gdpr
+    label: {fr: "Une prémisse fausse, corrigée", en: "A false premise, corrected"}
+  - question: "Combien de temps peut-on conserver le CV d'un candidat qui n'a pas été retenu ?"
+    question_en: "How long may the CV of an unsuccessful candidate be kept? (The texts give no duration: the service says so.)"
+    source: none
+    label: {fr: "Quand les textes ne répondent pas", en: "When the texts give no answer"}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="t_history">Historique – droit du travail et RGPD</title>
+<meta name="description" data-i18n-content="meta_history" content="La liste de vos questions et des réponses reçues, gardée dans votre navigateur.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/">legal-rag-eval-fr</a>
+    <nav>
+      <span class="lang" role="group" data-i18n-aria="aria_lang" aria-label="Langue de la page"><button type="button" data-lang="fr" aria-pressed="true">FR</button> <button type="button" data-lang="en" aria-pressed="false">EN</button></span>
+      <a href="/" data-i18n="nav_ask">Poser une question</a>
+      <a href="/history" aria-current="page" data-i18n="nav_history">Historique</a>
+      <a href="/method" data-i18n="nav_method">Méthode</a>
+      <a href="/data" data-i18n="nav_data">Données</a>
+      <a href="https://github.com/Labyrintbs/legal-rag-eval-fr">GitHub</a>
+    </nav>
+  </div>
+
+  <main class="prose">
+    <h1 data-i18n="h_title">Historique de vos questions</h1>
+    <p class="sub" data-i18n="h_sub">Gardé dans votre navigateur, sur cet appareil seulement : le service ne le voit pas.</p>
+    <p data-i18n="h_default">Par défaut, la liste disparaît quand vous fermez l'onglet.</p>
+
+    <p class="hist-options">
+      <label><input type="checkbox" id="keep"> <span data-i18n="h_keep">Garder mon historique sur cet appareil, jusqu'à ce que je l'efface</span></label>
+      <button type="button" id="clear" class="pill" data-i18n="h_clear">Tout effacer</button>
+    </p>
+    <p class="count" data-i18n="h_note">Les réponses datent du jour où elles ont été données : la loi a pu changer depuis. Ne gardez pas votre historique sur un ordinateur partagé.</p>
+
+    <section id="history" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    <p data-i18n="disclaimer">Informations juridiques, pas un conseil juridique. Le corpus a une date et peut ne pas contenir le droit en vigueur.</p>
+    <p class="about"><span data-i18n="by">Réalisé par <b>Hongming Fang</b></span> <a href="https://www.linkedin.com/in/hongming-fang">LinkedIn</a> <a href="https://github.com/Labyrintbs">GitHub</a><!-- personal page: add its link here when it exists --></p>
+    <p><span data-i18n="contact">Une erreur, une idée ?</span> <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/issues" data-i18n="issues">Écrire sur GitHub</a> · <a href="#" class="mail" data-user="labyrintbs" data-host="gmail.com" data-i18n="mail">Écrire par e-mail</a> · <a href="/privacy" data-i18n="privacy_link">Confidentialité</a></p>
+  </footer>
+</div>
+<script src="/static/texts_en.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

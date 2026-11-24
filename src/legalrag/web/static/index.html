@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="t_home">Droit du travail et RGPD – questions et réponses citées</title>
+<meta name="description" data-i18n-content="meta_home" content="Posez une question sur le Code du travail ou le RGPD : chaque réponse cite les articles exacts, et le service dit quand la loi est muette.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <span>legal-rag-eval-fr</span>
+    <nav>
+      <span class="lang" role="group" data-i18n-aria="aria_lang" aria-label="Langue de la page"><button type="button" data-lang="fr" aria-pressed="true">FR</button> <button type="button" data-lang="en" aria-pressed="false">EN</button></span>
+      <a href="/" aria-current="page" data-i18n="nav_ask">Poser une question</a>
+      <a href="/history" data-i18n="nav_history">Historique</a>
+      <a href="/method" data-i18n="nav_method">Méthode</a>
+      <a href="/data" data-i18n="nav_data">Données</a>
+      <a href="https://github.com/Labyrintbs/legal-rag-eval-fr">GitHub</a>
+    </nav>
+  </div>
+
+  <main>
+    <h1 data-i18n="title">Posez une question sur le Code du travail ou le RGPD</h1>
+    <p class="sub" data-i18n="sub">Chaque réponse cite les articles exacts. Si la loi est muette, le service le dit.</p>
+
+    <p class="scope" data-i18n="scope_line">Code du travail et RGPD, textes au 13 juillet 2025. Ne couvre pas les conventions collectives ni la jurisprudence.</p>
+
+    <p class="notice" id="lang-note" hidden data-i18n="lang_note">Les questions et les réponses sont en français.</p>
+
+    <form class="ask" id="ask" autocomplete="off">
+      <textarea id="question" maxlength="500" rows="3" data-i18n-aria="aria_question" aria-label="Votre question" data-i18n-placeholder="placeholder" placeholder="Par exemple : Quelle est la durée de la période d'essai d'un cadre ?"></textarea>
+      <div class="row"><span class="count" id="count">0 / 500</span><button type="submit" class="go" id="go" data-i18n="ask">Poser la question</button></div>
+    </form>
+    <p class="privacy" data-i18n="privacy">N'écrivez pas de données personnelles : vos questions et commentaires sont conservés 30 jours et lus par l'auteur du projet. <a href="/privacy">Confidentialité</a></p>
+    <div class="notice translate" id="english" hidden>
+      <div data-i18n="tr_notice"><b>Votre question semble être en anglais.</b> Le service travaille en français : voulez-vous qu'elle soit traduite en français avant la recherche ?<small>Your question looks English. The service works in French: translate it first? If you just press “Poser la question”, it is sent as it is (poorer results).</small></div>
+      <button type="button" id="translate" data-i18n="tr_button">Traduire en français et répondre · Translate and answer</button>
+    </div>
+
+    <section id="result" aria-live="polite"></section>
+
+    <section class="examples" aria-labelledby="ex-title">
+      <span id="ex-title" data-i18n="examples">Ou essayez un exemple (la réponse est déjà prête). Exemples choisis pour montrer le fonctionnement ; les mesures sont dans « Méthode ».</span>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <section class="explain">
+      <p class="how" data-i18n="how"><b>Comment ça marche.</b> Votre question est cherchée dans les textes par le sens (pas par mots-clés) ; les 5 articles les plus proches sont donnés à un modèle d'IA, qui doit citer pour chaque phrase le passage exact qui la fonde (notre code vérifie que ce passage existe, sinon la phrase est retirée).</p>
+      <ul class="facts">
+        <li data-i18n="fact1"><b>11 705</b> textes de loi : Code du travail (11 433 articles) et RGPD (99 articles et 173 considérants, ses paragraphes introductifs)</li>
+        <li data-i18n="fact2"><b>Chaque phrase</b> renvoie à son article, avec la citation exacte</li>
+        <li data-i18n="fact3"><b>Pas de réponse</b> quand la loi fournie ne permet pas de répondre</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p data-i18n="disclaimer">Informations juridiques, pas un conseil juridique. Le corpus a une date et peut ne pas contenir le droit en vigueur.</p>
+    <p><a href="/method" data-i18n="measured">Comment c'est mesuré : au moins un article pertinent parmi les 5 affichés dans 83 % des cas</a></p>
+    <p><span data-i18n="f_data">Données : Code du travail (Légifrance / DILA, état au 13 juillet 2025) et RGPD (EUR-Lex). Seuls les textes officiels font foi.</span> <a href="/data" data-i18n="f_data_link">Détails et licences</a></p>
+    <p class="about"><span data-i18n="by">Réalisé par <b>Hongming Fang</b></span> <a href="https://www.linkedin.com/in/hongming-fang">LinkedIn</a> <a href="https://github.com/Labyrintbs">GitHub</a><!-- personal page: add its link here when it exists --></p>
+    <p><span data-i18n="contact">Une erreur, une idée ?</span> <a href="https://github.com/Labyrintbs/legal-rag-eval-fr/issues" data-i18n="issues">Écrire sur GitHub</a> · <a href="#" class="mail" data-user="labyrintbs" data-host="gmail.com" data-i18n="mail">Écrire par e-mail</a> · <a href="/privacy" data-i18n="privacy_link">Confidentialité</a></p>
+  </footer>
+</div>
+<script src="/static/texts_en.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
