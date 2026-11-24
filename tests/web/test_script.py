@@ -537,6 +537,51 @@ def test_an_error_status_is_told_in_words(page, status, expected):
     assert expected in run(page, f"replyNode(reply, {status}, 12).textContent")
 
 
+@pytest.mark.parametrize("status", [429, 502, 503, 500, 504, 404, 413, 411])
+@pytest.mark.parametrize("body", [{"detail": "the service is busy, try again in a moment"}, None, "Internal Server Error", [], {}])
+def test_whatever_body_an_error_has_the_result_is_a_message_and_never_a_blank_or_a_refusal_of_the_model(page, status, body):
+    give(page, "body", body)
+    for language in ("fr", "en"):
+        start(page, f'lang = "{language}"')
+        text = run(page, f"replyNode(body, {status}, 5).textContent")
+        assert text, (status, body, language)
+        assert "texts of this service" not in text and "textes de ce service" not in text  # not "No answer: the law is silent"
+        if status in (500, 504, 404, 413, 411):
+            assert text == {"fr": "Le service a rencontré un problème. Réessayez dans un instant.", "en": "The service had a problem. Try again in a moment."}[language]
+
+
+def test_a_request_whose_answer_is_not_a_reply_shows_a_message_and_keeps_nothing(page):
+    result_area(page)
+    for status, body in ((500, None), (504, "text"), (200, None), (200, "text"), (200, 5), (500, {"detail": "x"})):
+        fake_fetch(page, status, body)
+        start(page, 'ask("Q ?", false, true)')  # also from the French field: a text reply cannot take a property
+        assert "problème" in run(page, "registry.result.textContent"), (status, body)
+        assert run(page, "readHistory()") == []
+        assert run(page, "registry.go.disabled") is False
+
+
+@pytest.mark.parametrize("text, english", [
+    ("Probation period?", True), ("Notice period?", True), ("Dismissal", True), ("overtime pay", True), ("Maternity leave", True),
+    ("Quelle durée ?", False), ("Licenciement", True), ("congé", False), ("Préavis", False), ("", False), ("   ", False), ("?", False),
+    ("Est-ce légal ?", False), ("le préavis", False), ("RGPD article 17", True), ("L1221-13", True)])
+def test_a_short_question_is_offered_the_translation_on_the_english_page_unless_it_looks_french(page, text, english):
+    start(page, 'lang = "en"')
+    assert run(page, f"offersTranslation({json.dumps(text)})") is english
+
+
+def test_on_the_french_page_only_clearly_english_questions_are_offered_the_translation_and_a_language_switch_recomputes_it(page):
+    assert run(page, 'offersTranslation("Probation period?")') is False  # French page: the old rule
+    assert run(page, 'offersTranslation("What is the notice period?")') is True
+    page.eval("""for (const name of ["ask", "question", "translate", "count", "english", "result"]) registry[name] = new FakeNode("div");
+      registry.ask.requestSubmit = () => {}; fetch = async () => ({ json: async () => [] });
+      registry.question.value = "Probation period?"; registry.english.hidden = true;
+      globalThis.switcher = new FakeNode("button"); switcher.dataset.lang = "en";
+      document.querySelectorAll = (selector) => (selector === "[data-lang]" ? [switcher] : []);""")
+    start(page, "setup()")
+    start(page, "switcher.click()")  # the visitor picks EN
+    assert run(page, "[lang, registry.english.hidden]") == ["en", False]
+
+
 def test_the_page_follows_the_language_for_the_messages_it_builds(page):
     give(page, "reply", REPLY)
     start(page, 'lang = "en"')

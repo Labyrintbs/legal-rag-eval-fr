@@ -13,6 +13,7 @@ const T = {
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
     history_dated: "Réponse du {date} : la loi a pu changer depuis.", history_dated_result: "Résultat du {date} : la loi a pu changer depuis.",
     busy: "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse.",
+    failed: "Le service a rencontré un problème. Réessayez dans un instant.",
     loaded: "Question reprise de votre historique : modifiez-la si besoin, puis envoyez-la.",
     translate_gone: "Le service ne garde plus cette réponse (7 jours) : la traduction n'est plus possible.",
     not_saved: "Cette réponse n'a pas pu être gardée dans l'historique : le navigateur refuse ou n'a plus de place.",
@@ -45,6 +46,7 @@ const T = {
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
     history_dated: "Answer of {date}: the law may have changed since.", history_dated_result: "Result of {date}: the law may have changed since.",
     busy: "Another question is already in progress from your connection: wait for its answer.",
+    failed: "The service had a problem. Try again in a moment.",
     loaded: "Question taken from your history: change it if you wish, then send it.",
     translate_gone: "The service no longer holds this answer (7 days): it can no longer be translated.",
     not_saved: "This answer could not be kept in the history: the browser refuses or is full.",
@@ -115,6 +117,14 @@ function applyLanguage() {
   for (const button of document.querySelectorAll("[data-lang]")) button.setAttribute("aria-pressed", String(button.dataset.lang === lang));
   const note = document.getElementById("lang-note"); // the English page says that the questions and answers are French
   if (note) note.hidden = lang !== "en";
+}
+
+// English words win over French ones; a short question ("Probation period?") has too few words for that, so on the English
+// page it is offered the translation as long as nothing in it looks French (no French word, no accented letter).
+function offersTranslation(text) {
+  if (looksEnglish(text)) return true;
+  const words = text.toLowerCase().match(/[a-zàâçéèêëîïôûùüÿœ']+/g) || [];
+  return lang === "en" && words.length > 0 && !/[àâçéèêëîïôûùüÿœ]/.test(text.toLowerCase()) && !words.some((w) => FRENCH_WORDS.has(w));
 }
 
 function looksEnglish(text) {
@@ -242,7 +252,7 @@ function problemCard(message, reply, history = false) {
   const box = make("div", { class: "status problem" }, make("div", { text: message }));
   // the reasons of the service are French sentences: the English page has its own message above and does not repeat them
   if (reply && reply.reason && lang === "fr") box.append(make("div", { class: "count", text: reply.reason }));
-  const found = reply && foundArticles(reply.articles);
+  const found = reply && foundArticles(reply.articles || []); // an error body such as {"detail": "..."} has no list of articles
   if (found) box.append(found);
   if (reply && reply.request_id && !history && !reply.busy) box.append(voteBox(reply.request_id)); // a busy reply was never answered
   return box;
@@ -361,10 +371,10 @@ function replyNode(reply, status, retryAfter, history = false) {
   if (status === 429) return problemCard(t("limited", { n: retryAfter || (reply && reply.retry_after) || 60 }), reply, history);
   if (status === 503) return problemCard(`${t("unavailable")}.`, reply, history);
   if (status === 502) return problemCard(t("upstream"), reply, history);
-  if (reply && reply.outcome === "answered") return answerCard(reply, history);
-  if (reply && reply.outcome === "refused_weak_retrieval") return refusalCard(t("weak"), { ...reply, reason: null }, history);
-  if (reply) return refusalCard(t("noanswer"), reply, history);
-  return null;
+  if (status !== 200 || !reply) return problemCard(t("failed"), null, history); // 500, 504, 404...: never read as a refusal of the model
+  if (reply.outcome === "answered") return answerCard(reply, history);
+  if (reply.outcome === "refused_weak_retrieval") return refusalCard(t("weak"), { ...reply, reason: null }, history);
+  return refusalCard(t("noanswer"), reply, history);
 }
 
 function drawReply() {
@@ -393,6 +403,7 @@ async function ask(question, translate = false, fromField = false) {
     const response = await fetch("/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, translate }) });
     let reply = null;
     try { reply = await response.json(); } catch (e) { /* not JSON: the status tells */ }
+    if (reply !== null && typeof reply !== "object") reply = null; // a text or a number is no reply
     if (fromField && reply && response.status !== 422) reply.question_fr = question;
     last = { reply: response.status === 422 ? null : reply, status: response.status, retryAfter: Number(response.headers.get("Retry-After")) || null,
       original: typed };
@@ -425,7 +436,7 @@ function drawExamples() {
 function updateCount() {
   const box = document.getElementById("question");
   document.getElementById("count").textContent = `${box.value.length} / 500`;
-  document.getElementById("english").hidden = !looksEnglish(box.value);
+  document.getElementById("english").hidden = !offersTranslation(box.value);
 }
 
 // ---- The history of the visitor: in the browser only, never sent to the service. By default it lives in the memory of the
@@ -645,6 +656,7 @@ function setup() {
       drawExamples();
       drawHistory();
       show();
+      if (document.getElementById("question")) updateCount(); // the offer of the translation depends on the page language
     });
   }
   if (document.getElementById("history")) setupHistory();
