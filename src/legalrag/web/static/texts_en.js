@@ -9,6 +9,8 @@ const EN = {
   h_default: "By default, the list belongs to this tab: it disappears when you close it, and a new tab starts empty. The last 30 questions that received an answer or a refusal are kept.",
   h_keep: "Keep my history on this device, until I erase it", h_clear: "Erase my history",
   h_keep_failed: "Your browser could not keep the list on this device: it stays in this tab.",
+  h_unkeep_failed: "Your browser could not remove the list from this device: it stays there.",
+  h_erase_failed: "Your browser refused to erase the list.",
   h_confirm: "Erase the whole list?", h_yes: "Yes, erase", h_no: "Cancel",
   h_shared: "Do not tick this box on a shared computer: the history keeps your questions as you wrote them, e-mail address included. “Erase my history” empties the list but leaves the box ticked, so the next questions are kept; unticking the box leaves the list in this tab until you close it.",
   h_note: "The answers date from the day they were given: the law may have changed since.",

@@ -475,9 +475,12 @@ function keepsHistory() {
   try { return browserStore(true).getItem(KEEP_KEY) === "1"; } catch (e) { return false; }
 }
 
-function readHistory() {
+// The kept list, or null when the browser cannot be read at all: a writer must not take that for an empty list and write over it.
+function loadHistory() {
+  let raw;
+  try { raw = browserStore(keepsHistory()).getItem(HISTORY_KEY); } catch (e) { return null; }
   try {
-    const list = JSON.parse(browserStore(keepsHistory()).getItem(HISTORY_KEY) || "[]");
+    const list = JSON.parse(raw || "[]");
     if (!Array.isArray(list)) return [];
     const seen = new Set(); // two entries with one id (a list edited by hand) would open and be deleted together
     return list.filter((entry) => {
@@ -486,7 +489,11 @@ function readHistory() {
       if (fit) seen.add(entry.id);
       return fit;
     });
-  } catch (e) { return []; }
+  } catch (e) { return []; } // damaged text: nothing to keep
+}
+
+function readHistory() {
+  return loadHistory() ?? [];
 }
 
 // False when the browser refused or had no room: the caller may say so.
@@ -504,15 +511,17 @@ function addToHistory(question, reply, replaces = null) {
   const kept = { request_id: reply.request_id, outcome: reply.outcome, reason: reply.reason, claims: reply.claims || [], articles: [],
     question_fr: reply.question_fr, masked: reply.masked, question_masked: reply.question_masked };
   const entry = { id: reply.request_id, at: new Date().toISOString(), question, reply: kept };
-  return writeHistory([entry, ...readHistory().filter((other) => other.id !== entry.id && other.id !== replaces)]);
+  const list = loadHistory();
+  if (list === null) return false;
+  return writeHistory([entry, ...list.filter((other) => other.id !== entry.id && other.id !== replaces)]);
 }
 
 // The English translation of an answer, once the visitor has asked for it, goes into the entry of that answer.
 // Adds fields to the reply kept for a request (the translation, or the fact that the answer is gone). False when the entry is not
 // in the history or the browser refused to write.
 function updateEntry(requestId, changes) {
-  const list = readHistory();
-  const entry = list.find((other) => other.id === requestId);
+  const list = loadHistory();
+  const entry = list && list.find((other) => other.id === requestId);
   if (!entry) return false;
   Object.assign(entry.reply, changes);
   return writeHistory(list);
@@ -536,23 +545,27 @@ function formatDate(iso) {
   return `${d.getDate()} ${MONTHS[lang][d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function removeQuietly(persistent, key) {
+  try { browserStore(persistent).removeItem(key); return true; } catch (e) { return false; }
+}
+
 // Moves the list to the device (on) or back to the tab (off). The list is written to its new place first and removed from the old
-// one only when that worked, so a refusing or full storage never loses it. False when nothing could be done.
+// one only when that worked, so a refusing or full storage never loses it. Returns "ok"; "failed" (nothing changed, and the copy just
+// written is taken away again); or "copy-left" (unticked, but the browser refused to remove the copy on the device).
 function setKeepHistory(on) {
-  const current = readHistory(); // read from the place it is in now
-  if (!writeHistoryTo(on, current)) return false;
+  const current = loadHistory(); // read from the place it is in now
+  if (current === null || !writeHistoryTo(on, current)) return "failed";
   try {
     if (on) browserStore(true).setItem(KEEP_KEY, "1");
     else browserStore(true).removeItem(KEEP_KEY);
-    browserStore(!on).removeItem(HISTORY_KEY);
-  } catch (e) { return false; }
-  return true;
+  } catch (e) { removeQuietly(on, HISTORY_KEY); return "failed"; }
+  return removeQuietly(!on, HISTORY_KEY) || on ? "ok" : "copy-left"; // a copy left in the tab by ticking is the tab's own memory
 }
 
+// False when the browser refused to remove one of the two copies.
 function clearHistory() {
-  for (const persistent of [false, true]) {
-    try { browserStore(persistent).removeItem(HISTORY_KEY); } catch (e) { /* refused */ }
-  }
+  const results = [false, true].map((persistent) => removeQuietly(persistent, HISTORY_KEY));
+  return results.every(Boolean);
 }
 
 // "Show the answer: How long…": French puts a space before the colon, English does not.
@@ -623,7 +636,8 @@ function fillBody(entry, body) {
 
 function deleteEntry(id) {
   openEntries.delete(id);
-  writeHistory(readHistory().filter((entry) => entry.id !== id));
+  const list = loadHistory();
+  if (list !== null) writeHistory(list.filter((entry) => entry.id !== id));
 }
 
 // "Edit this question": the question box of the first page gets the old text, ready to change and to send. Nothing is sent
@@ -661,6 +675,8 @@ function drawHistory(focusAt = null) {
   if (state === "blocked") { root.replaceChildren(make("p", { class: "status problem", text: t("history_blocked") })); return; }
   const empty = `${t("history_empty")}${keepsHistory() ? "" : ` ${t("history_empty_tab")}`}`;
   const rows = list.map(historyEntry);
+  const confirm = document.getElementById("confirm");
+  if (confirm && !rows.length) confirm.hidden = true; // nothing left to erase
   const full = state === "full" ? [make("p", { class: "status problem", text: t("history_full") })] : [];
   root.replaceChildren(...full, ...(rows.length ? rows.map((r) => r.row) : [make("p", { class: "count", text: empty })]));
   if (focusAt !== null) (rows.length ? rows[Math.min(focusAt, rows.length - 1)].toggle : document.getElementById("keep")).focus();
@@ -670,13 +686,22 @@ function setupHistory() {
   const keep = document.getElementById("keep");
   keep.checked = keepsHistory();
   const keepFailed = document.getElementById("keep-failed");
+  const unkeepFailed = document.getElementById("unkeep-failed");
   keep.addEventListener("change", () => {
-    keepFailed.hidden = setKeepHistory(keep.checked);
+    const wanted = keep.checked;
+    const result = setKeepHistory(wanted);
+    keepFailed.hidden = !(wanted && result === "failed");
+    unkeepFailed.hidden = wanted || result === "ok";
     keep.checked = keepsHistory(); // the box shows what really happened
     drawHistory();
   });
   // Another tab changed the kept list or the tick: this tab shows it too (the lists are read again before every write anyway).
-  window.addEventListener("storage", () => { keep.checked = keepsHistory(); drawHistory(); });
+  // Only these two keys: the page's own storage test writes another key, and answering that would make two tabs redraw each other forever.
+  window.addEventListener("storage", (event) => {
+    if (event.key && event.key !== HISTORY_KEY && event.key !== KEEP_KEY) return;
+    keep.checked = keepsHistory();
+    drawHistory();
+  });
   // erasing everything asks first, with a question of its own: the button text is never swapped, so a change of language cannot
   // leave the page in a half-asked state
   // The focus goes to "Cancel" (the safe choice) when the question opens, and back to the Erase button when it closes.
@@ -688,7 +713,13 @@ function setupHistory() {
     document.getElementById("confirm-no").focus();
   });
   document.getElementById("confirm-no").addEventListener("click", () => { confirm.hidden = true; clear.focus(); });
-  document.getElementById("confirm-yes").addEventListener("click", () => { clearHistory(); confirm.hidden = true; drawHistory(); clear.focus(); });
+  const eraseFailed = document.getElementById("erase-failed");
+  document.getElementById("confirm-yes").addEventListener("click", () => {
+    eraseFailed.hidden = clearHistory();
+    confirm.hidden = true;
+    drawHistory();
+    clear.focus();
+  });
   drawHistory();
 }
 

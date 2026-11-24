@@ -49,14 +49,17 @@ function makeStore(options = {}) {
   const data = {};
   return {
     data,
-    getItem: (key) => { if (options.broken) throw new Error("denied"); return key in data ? data[key] : null; },
-    setItem: (key, value) => { if (options.broken || options.full) throw new Error("denied"); data[key] = String(value); },  // full: reads still work
-    removeItem: (key) => { if (options.broken) throw new Error("denied"); delete data[key]; },
+    getItem: (key) => { if (options.broken || (options.failGet || []).includes(key)) throw new Error("denied"); return key in data ? data[key] : null; },
+    setItem: (key, value) => {  // full: reads still work; failSet and failRemove name the keys that refuse
+      if (options.broken || options.full || (options.failSet || []).includes(key)) throw new Error("denied");
+      data[key] = String(value);
+    },
+    removeItem: (key) => { if (options.broken || (options.failRemove || []).includes(key)) throw new Error("denied"); delete data[key]; },
   };
 }
 const window = { sessionStorage: makeStore(), localStorage: makeStore(), matchMedia: () => ({ matches: false }), location: { href: "" },
   handlers: {}, addEventListener(type, fn) { (this.handlers[type] = this.handlers[type] || []).push(fn); },
-  fire(type) { for (const fn of this.handlers[type] || []) fn({}); } };
+  fire(type, event = {}) { for (const fn of this.handlers[type] || []) fn(event); } };
 const localStorage = window.localStorage;
 function walk(node, out = []) { out.push(node); for (const child of node.children || []) walk(child, out); return out; }
 function byClass(node, name) { return walk(node).filter((n) => (n.className || "").split(" ").includes(name)); }
@@ -127,9 +130,9 @@ def test_the_script_takes_a_question_for_english_only_when_english_words_win(pag
 
 def history_elements(page):
     """The elements of the history page that the script looks for."""
-    for name in ("history", "keep", "clear", "confirm", "confirm-yes", "confirm-no", "keep-failed"):
+    for name in ("history", "keep", "clear", "confirm", "confirm-yes", "confirm-no", "keep-failed", "unkeep-failed", "erase-failed"):
         page.eval(f'registry["{name}"] = new FakeNode("{"input" if name == "keep" else "section"}")')
-    page.eval('registry.confirm.hidden = true; registry["keep-failed"].hidden = true')  # the page file starts with these hidden
+    page.eval('for (const name of ["confirm", "keep-failed", "unkeep-failed", "erase-failed"]) registry[name].hidden = true')  # hidden in the page file
 
 
 def test_the_history_keeps_the_answer_without_the_articles_once_per_request_and_stops_at_thirty(page):
@@ -463,8 +466,61 @@ def test_unticking_keep_never_loses_the_list_when_the_tab_storage_refuses(page):
     history_page(page, ("A ?", REPLY))
     start(page, "setKeepHistory(true); registry.keep.checked = true; window.sessionStorage = makeStore({ full: true }); registry.keep.checked = false; "
                 "registry.keep.fire('change')")
-    assert run(page, "[readHistory().length, keepsHistory(), registry.keep.checked, registry['keep-failed'].hidden]") == [1, True, True, False]
+    assert run(page, "[readHistory().length, keepsHistory(), registry.keep.checked, registry['keep-failed'].hidden, registry['unkeep-failed'].hidden]") == [
+        1, True, True, True, False]  # the message says the list could not be taken off the device, not the opposite
     assert run(page, "'history' in window.localStorage.data") is True
+
+
+def test_two_tabs_do_not_redraw_each_other_forever_because_the_page_only_follows_its_own_keys(page):
+    history_page(page)
+    start(page, "globalThis.draws = 0; const original = drawHistory; drawHistory = (...args) => { draws++; return original(...args); }")
+    for key, redraws in (("probe", 0), ("lang", 0), ("prefill", 0), ("history", 1), ("keep_history", 1), (None, 1)):  # None: clear() in another tab
+        start(page, "draws = 0")
+        start(page, f"window.fire('storage', {{ key: {json.dumps(key)} }})")
+        assert run(page, "draws") == redraws, key
+    # the page's own storage test writes the key "probe"; the other tab hears it and must not answer
+    start(page, "setKeepHistory(true); draws = 0; storageState()")
+    assert run(page, "draws") == 0
+
+
+def test_unticking_keep_leaves_no_secret_copy_when_the_browser_refuses_part_of_it(page):
+    history_page(page, ("A ?", REPLY))
+    # ticking: the list reaches the device but the flag is refused: the copy on the device is taken away again
+    start(page, "window.localStorage = makeStore({ failSet: ['keep_history'] }); registry.keep.checked = true; registry.keep.fire('change')")
+    assert run(page, "['history' in window.localStorage.data, 'history' in window.sessionStorage.data, keepsHistory(), registry.keep.checked]") == [
+        False, True, False, False]
+    assert run(page, "[registry['keep-failed'].hidden, registry['unkeep-failed'].hidden]") == [False, True]
+    # unticking: the flag goes but the copy on the device cannot be removed: the message says so
+    start(page, "window.localStorage = makeStore({ failRemove: ['history'] }); window.sessionStorage = makeStore(); setKeepHistory(true) ;"
+                "window.localStorage.data.keep_history = '1'; registry.keep.checked = false; registry.keep.fire('change')")
+    assert run(page, "[keepsHistory(), 'history' in window.localStorage.data, registry['unkeep-failed'].hidden]") == [False, True, False]
+    # unticking: the flag itself is refused: nothing changes and the box stays ticked
+    start(page, "window.localStorage = makeStore({ failRemove: ['keep_history'] }); window.sessionStorage = makeStore(); window.localStorage.data.keep_history = '1';"
+                "registry.keep.checked = false; registry.keep.fire('change')")
+    assert run(page, "[keepsHistory(), registry.keep.checked, registry['unkeep-failed'].hidden, 'history' in window.sessionStorage.data]") == [True, True, False, False]
+
+
+def test_a_failed_read_is_never_taken_for_an_empty_list_so_a_write_cannot_wipe_the_kept_list(page):
+    give(page, "reply", REPLY)
+    start(page, 'addToHistory("A", reply); addToHistory("B", { ...reply, request_id: "b" })')
+    start(page, "globalThis.kept = window.sessionStorage.data.history; window.sessionStorage = makeStore({ failGet: ['history'] }); "
+                "window.sessionStorage.data.history = kept")
+    assert run(page, 'addToHistory("C", { ...reply, request_id: "c" })') is False
+    start(page, "deleteEntry('b'); updateEntry('b', { english: 'x' })")
+    assert run(page, "window.sessionStorage.data.history === kept") is True  # nothing was written over it
+    assert run(page, "setKeepHistory(true)") == "failed" and run(page, "window.sessionStorage.data.history === kept") is True
+
+
+def test_erase_says_so_when_the_browser_refuses_and_the_question_closes_when_the_list_is_empty(page):
+    history_page(page, ("A ?", REPLY))
+    start(page, "const store = makeStore({ failRemove: ['history'] }); store.data.history = window.sessionStorage.data.history; window.sessionStorage = store; drawHistory()")
+    start(page, "registry.clear.click(); registry['confirm-yes'].click()")
+    assert run(page, "[registry['erase-failed'].hidden, readHistory().length]") == [False, 1]
+    start(page, "window.sessionStorage = makeStore(); registry.clear.click(); registry['confirm-yes'].click()")
+    assert run(page, "registry['erase-failed'].hidden") is True
+    history_page(page, ("A ?", REPLY))  # the question is open, then the last entry is deleted
+    start(page, "registry.clear.click(); lastDeleteAt = 0; byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")
+    assert run(page, "registry.confirm.hidden") is True
 
 
 def test_a_full_storage_still_shows_the_list_with_a_message_and_a_blocked_one_says_it_cannot_keep(page):
