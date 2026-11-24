@@ -9,7 +9,7 @@ const EN = {
   h_default: "By default, the list belongs to this tab: it disappears when you close it, and a new tab starts empty. The last 30 questions that received an answer or a refusal are kept.",
   h_keep: "Keep my history on this device, until I erase it", h_clear: "Erase my history",
   h_confirm: "Erase the whole list?", h_yes: "Yes, erase", h_no: "Cancel",
-  h_shared: "Do not tick this box on a shared computer. “Erase” empties the list but leaves the box ticked: the next questions will be kept.",
+  h_shared: "Do not tick this box on a shared computer: the history keeps your questions as you wrote them, e-mail address included. “Erase my history” empties the list but leaves the box ticked, so the next questions are kept; unticking the box leaves the list in this tab until you close it.",
   h_note: "The answers date from the day they were given: the law may have changed since.",
   t_home: "French labour law and GDPR – questions and cited answers", t_method: "Method and measurements – labour law and GDPR",
   t_data: "The data – labour law and GDPR",

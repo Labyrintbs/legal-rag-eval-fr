@@ -11,7 +11,7 @@ const T = {
     history_edit: "Modifier cette question", history_delete: "Supprimer cette entrée",
     history_empty_tab: "Cet onglet n'a pas de liste gardée : cochez la case ci-dessus pour garder la vôtre.",
     history_blocked: "Votre navigateur ne permet pas de garder l'historique : la liste restera vide.",
-    history_dated: "Donné le {date} : la loi a pu changer depuis.",
+    history_dated: "Réponse du {date} : la loi a pu changer depuis.", history_dated_result: "Résultat du {date} : la loi a pu changer depuis.",
     busy: "Une autre question est déjà en cours depuis votre connexion : attendez sa réponse.",
     not_saved: "Cette réponse n'a pas pu être gardée dans l'historique : le navigateur refuse ou n'a plus de place.",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
@@ -41,7 +41,7 @@ const T = {
     history_edit: "Edit this question", history_delete: "Delete this entry",
     history_empty_tab: "This tab has no kept list: tick the box above to keep yours.",
     history_blocked: "Your browser does not allow keeping the history: the list will stay empty.",
-    history_dated: "Given on {date}: the law may have changed since.",
+    history_dated: "Answer of {date}: the law may have changed since.", history_dated_result: "Result of {date}: the law may have changed since.",
     busy: "Another question is already in progress from your connection: wait for its answer.",
     not_saved: "This answer could not be kept in the history: the browser refuses or is full.",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
@@ -52,8 +52,8 @@ const T = {
     noanswer: "No answer: the texts of this service do not allow one.", weak: "No answer: nothing close enough was found in the texts.",
     scope: "This service contains only the French labour code and the GDPR (no collective agreements, no case law).",
     next: "For a specific case, consult a lawyer, the labour inspectorate or Légifrance.", why: "Reason given by the service (in French):",
-    found_weak: "The {n} closest articles (not very relevant here)", answer: "Answer (in French)", where: "Where in the law?",
-    stored: "ready-made answer", cited: "Cited passages", found: "The {n} articles closest to your question",
+    found_weak: "The {n} closest articles (not very relevant here; in French)", answer: "Answer (in French)", where: "Where in the law?",
+    stored: "ready-made answer", cited: "Cited passages (in French)", found: "The {n} articles closest to your question (in French)",
     found_hint: "The answer is written from these articles only, from the closest to the least close.",
     read: "Read the article", on: "on", useful: "Was this answer useful?", thanks: "Thank you, your opinion is saved.",
     kind: "What is wrong? (optional)", wrong_answer: "The answer is wrong", wrong_citation: "A citation does not match",
@@ -533,7 +533,8 @@ const openEntries = new Set(); // the ids of the entries the visitor has opened
 
 // The inside of an opened entry: what was masked in the question, the date of the answer, then the answer or the refusal.
 function fillBody(entry, body) {
-  const dated = make("p", { class: "count", text: t("history_dated", { date: formatDate(entry.at) }) });
+  const key = entry.reply.outcome === "answered" ? "history_dated" : "history_dated_result";
+  const dated = make("p", { class: "count", text: t(key, { date: formatDate(entry.at) }) });
   body.replaceChildren(...[maskedNotice(entry.reply), dated, replyNode(entry.reply, 200, null, true)].filter(Boolean));
 }
 

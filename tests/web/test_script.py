@@ -261,7 +261,7 @@ def test_an_opened_entry_gives_its_date_and_the_masking_notice_and_names_are_sai
     body = run(page, "byClass(registry.history, 'hist-body')[0].children.map((n) => n.className)")
     assert body == ["notice", "count", "answer"]  # notice, date line, answer
     text = run(page, "byClass(registry.history, 'hist-body')[0].textContent")
-    assert "une adresse e-mail" in text and "Puis-je licencier Marie, [e-mail] ?" in text and "Donné le " in text and "la loi a pu changer" in text
+    assert "une adresse e-mail" in text and "Puis-je licencier Marie, [e-mail] ?" in text and "Réponse du " in text and "la loi a pu changer" in text
     assert "Les noms et les adresses postales ne sont pas détectés" in text
     start(page, 'lang = "en"; drawHistory(); toggles()[0].click()')
     assert "Names and postal addresses are not detected" in run(page, "byClass(registry.history, 'hist-body')[0].textContent")
@@ -277,7 +277,7 @@ def test_a_change_of_language_keeps_the_opened_entries_open_and_a_deleted_one_is
     start(page, 'lang = "en"; drawHistory()')
     assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, False]
     assert run(page, "toggles().map((b) => b.textContent)") == ["Show the answer", "Hide the answer"]
-    assert "Given on" in run(page, "byClass(registry.history, 'hist-body')[1].textContent")  # written in the new language
+    assert "Answer of" in run(page, "byClass(registry.history, 'hist-body')[1].textContent")  # written in the new language
     start(page, "toggles()[1].click(); drawHistory()")  # closed by the visitor: stays closed
     assert run(page, "byClass(registry.history, 'hist-body').map((n) => n.hidden)") == [True, True]
     start(page, "toggles()[0].click(); byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # open then delete
@@ -344,6 +344,21 @@ def test_a_translation_already_asked_for_is_shown_again_after_a_change_of_langua
     assert run(page, "byClass(registry.result, 'en-answer')[0].textContent").endswith("Four months. 1")
     assert run(page, "byClass(registry.result, 'en-answer')[0].children.filter((c) => c.tag === 'button').length") == 0
     assert run(page, "requests.length") == 1
+
+
+def test_the_date_line_of_an_opened_entry_says_answer_or_result_in_both_languages(page):
+    history_page(page, ("A ?", REPLY), ("B ?", {**REPLY, "request_id": "b", "outcome": "refused_by_model", "claims": []}))
+    start(page, "toggles()[0].click(); toggles()[1].click()")  # newest first: the refusal, then the answer
+    dated = "byClass(registry.history, 'hist-body').map((b) => b.children.filter((c) => c.className === 'count')[0].textContent.split(' ').slice(0, 2).join(' '))"
+    assert run(page, dated) == ["Résultat du", "Réponse du"]
+    start(page, 'lang = "en"; drawHistory()')
+    assert run(page, dated) == ["Result of", "Answer of"]
+
+
+def test_the_english_headings_say_that_the_passages_and_articles_are_in_french(page):
+    start(page, 'lang = "en"')
+    assert run(page, "[t('cited'), t('found', { n: 5 }), t('found_weak', { n: 5 })]") == [
+        "Cited passages (in French)", "The 5 articles closest to your question (in French)", "The 5 closest articles (not very relevant here; in French)"]
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):
