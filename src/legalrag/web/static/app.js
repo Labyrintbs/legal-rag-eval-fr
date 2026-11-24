@@ -7,6 +7,7 @@
 const T = {
   fr: {
     history_empty: "Aucune question pour le moment.", history_show: "Afficher la réponse", history_hide: "Masquer la réponse",
+    history_show_result: "Afficher le résultat", history_hide_result: "Masquer le résultat", history_answered: "Répondu", history_noanswer: "Sans réponse",
     searching: "Recherche en cours…", translating: "Traduction de la question, puis recherche…", translated: "Question traduite en français :", edit_question: "Modifier", ask_again: "Poser à nouveau",
     show_english: "Traduction anglaise de cette réponse · English translation of this answer", translating_answer: "Traduction en cours…",
     english_label: "Machine translation into English (the French text is authoritative) · Traduction automatique en anglais (le texte français fait foi)",
@@ -30,6 +31,7 @@ const T = {
   },
   en: {
     history_empty: "No question yet.", history_show: "Show the answer", history_hide: "Hide the answer",
+    history_show_result: "Show the result", history_hide_result: "Hide the result", history_answered: "Answered", history_noanswer: "No answer",
     searching: "Searching…", translating: "Translating the question, then searching…", translated: "Question translated into French:", edit_question: "Edit", ask_again: "Ask again",
     show_english: "English translation of this answer", translating_answer: "Translating…",
     english_label: "Machine translation into English (the French text is authoritative)", translate_failed: "The translation could not be made.", empty: "Write a question.", network: "The service does not answer. Try again in a moment.",
@@ -474,16 +476,20 @@ function clearHistory() {
 function historyEntry(entry) {
   const when = formatDate(entry.at);
   const body = make("div", { class: "hist-body", hidden: "" });
-  const toggle = make("button", { type: "button", class: "pill", text: t("history_show") });
+  const answered = entry.reply.outcome === "answered";
+  const [show, hide] = answered ? ["history_show", "history_hide"] : ["history_show_result", "history_hide_result"]; // a refusal has no answer
+  const toggle = make("button", { type: "button", class: "pill", text: t(show) });
   toggle.addEventListener("click", () => {
-    if (body.hidden) {
-      body.replaceChildren(replyNode(entry.reply, 200, null, true));
-      if (entry.reply.question_fr) body.prepend(make("div", { class: "tr-line" }, make("span", { class: "tr-label", text: t("translated") }), make("q", { text: entry.reply.question_fr })));
-    }
+    if (body.hidden) body.replaceChildren(replyNode(entry.reply, 200, null, true));
     body.hidden = !body.hidden;
-    toggle.textContent = t(body.hidden ? "history_show" : "history_hide");
+    toggle.textContent = t(body.hidden ? show : hide);
   });
-  return make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), make("p", { class: "hist-q", text: entry.question }), toggle, body);
+  const status = make("span", { class: `hist-status ${answered ? "ok" : "none"}`, text: t(answered ? "history_answered" : "history_noanswer") });
+  // the French question that was searched stays visible on the closed line: a visitor who cannot read French can still tell entries apart
+  const french = entry.reply.question_fr ? make("p", { class: "count hist-fr" }, make("span", { class: "tr-label", text: t("translated") }), " ",
+    make("q", { text: entry.reply.question_fr })) : "";
+  return make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), " ", status,
+    make("p", { class: "hist-q", text: entry.question }), french, toggle, body);
 }
 
 function drawHistory() {

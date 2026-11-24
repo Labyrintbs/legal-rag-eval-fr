@@ -121,6 +121,10 @@ footer a { color: var(--muted); }
 .hist-options label { cursor: pointer; }
 .hist { margin: 14px 0; padding: 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
 .hist .hist-q { margin: 2px 0 8px; font-size: 17px; }
+.hist .hist-fr { margin: -4px 0 8px; }
+.hist-status { font: 600 11px var(--sans); text-transform: uppercase; letter-spacing: .06em; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.hist-status.ok { color: var(--gdpr); }
+.hist-status.none { color: var(--warn); }
 .hist .hist-body { margin-top: 12px; }
 .hist .hist-body[hidden] { display: none; }
 

@@ -190,6 +190,29 @@ def test_the_history_page_lists_the_entries_and_shows_a_stored_answer_without_vo
     assert run(page, "byClass(registry.history, 'hist-body')[1].hidden") is True
 
 
+def history_page(page, *entries):
+    """The history page with these (question, reply) entries, oldest first."""
+    for name in ("history", "keep", "clear"):
+        page.eval(f'registry.{name} = new FakeNode("{"input" if name == "keep" else "section"}")')
+    give(page, "entries", [list(entry) for entry in entries])
+    start(page, "for (const [q, r] of entries) addToHistory(q, r); setupHistory()")
+
+
+def test_a_closed_entry_shows_its_status_and_the_french_question_and_a_refusal_is_not_called_an_answer(page):
+    history_page(page, ("Probation?", {**REPLY, "question_fr": "Quelle période d'essai ?"}),
+                 ("Hors sujet ?", {**REPLY, "request_id": "b", "outcome": "refused_by_model", "claims": []}),
+                 ("Rien ?", {**REPLY, "request_id": "c", "outcome": "refused_weak_retrieval", "claims": []}))
+    assert run(page, "byClass(registry.history, 'hist-status').map((n) => n.textContent)") == ["Sans réponse", "Sans réponse", "Répondu"]
+    assert run(page, "byClass(registry.history, 'hist-fr').map((n) => n.textContent)") == ["Question traduite en français : Quelle période d'essai ?"]
+    assert run(page, "byTag(registry.history, 'button').map((b) => b.textContent)") == ["Afficher le résultat", "Afficher le résultat", "Afficher la réponse"]
+    start(page, "byTag(registry.history, 'button')[0].click()")
+    assert run(page, "byTag(registry.history, 'button')[0].textContent") == "Masquer le résultat"
+    start(page, 'lang = "en"; drawHistory()')
+    assert run(page, "byClass(registry.history, 'hist-status').map((n) => n.textContent)") == ["No answer", "No answer", "Answered"]
+    assert run(page, "byTag(registry.history, 'button').map((b) => b.textContent)") == ["Show the result", "Show the result", "Show the answer"]
+    assert run(page, "byClass(registry.history, 'hist-fr')[0].textContent") == "Question translated into French: Quelle période d'essai ?"
+
+
 def test_the_history_page_says_so_when_it_is_empty_and_follows_the_language(page):
     page.eval('registry.history = new FakeNode("section")')
     start(page, "drawHistory()")
