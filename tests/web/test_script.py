@@ -747,8 +747,47 @@ def test_an_answer_the_service_no_longer_holds_cannot_be_translated_and_the_butt
     start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
     assert "ne garde plus cette réponse (7 jours)" in run(page, "box.textContent")
     assert run(page, "byTag(box, 'button')[0].disabled") is True and run(page, "requests.length") == 1
-    start(page, 'lang = "en"; globalThis.box2 = englishBlock(reply); byTag(box2, "button")[0].click()')
+    assert run(page, "englishBlock(reply).textContent") == "Le service ne garde plus cette réponse (7 jours) : la traduction n'est plus possible."  # remembered
+    assert run(page, "byTag(englishBlock(reply), 'button').length") == 0  # no button after a redraw
+    give(page, "fresh", {**REPLY, "question_fr": "Quelle durée ?"})
+    start(page, 'lang = "en"; globalThis.box2 = englishBlock(fresh); byTag(box2, "button")[0].click()')
     assert "no longer holds this answer (7 days)" in run(page, "box2.textContent")
+
+
+def test_the_notes_of_failed_tries_do_not_pile_up_and_a_later_success_replaces_them(page):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, 500, {"detail": "x"})
+    start(page, "globalThis.box = englishBlock(reply)")
+    for _ in range(3):  # three tries that fail, one after the other
+        start(page, "byTag(box, 'button')[0].click()")
+        assert run(page, "box.textContent.split('n\\'a pas pu être faite').length - 1") == 1
+    fake_fetch(page, 200, {"english": "Four months. [1]"})
+    start(page, "byTag(box, 'button')[0].click()")
+    assert "pas pu" not in run(page, "box.textContent") and "Four months." in run(page, "box.textContent")
+
+
+def test_a_translation_that_arrives_while_the_list_was_drawn_again_still_shows_in_the_entry(page):
+    history_page(page, ("How long?", {**REPLY, "question_fr": "Quelle durée ?"}))
+    page.eval("""fetch = () => new Promise((resolve) => { globalThis.release = () => resolve({ status: 200, headers: { get: () => null },
+      json: async () => ({ english: "Four months. [1]" }) }); });""")
+    start(page, "toggles()[0].click(); byClass(registry.history, 'en-answer')[0].children.filter((c) => c.tag === 'button')[0].click()")
+    start(page, 'lang = "en"; drawHistory()')  # a language change while the request runs: new nodes, the old box is gone
+    assert run(page, "byClass(registry.history, 'en-answer')[0].textContent").startswith("English translation of this answer")  # the button again
+    start(page, "release()")
+    assert run(page, "readHistory()[0].reply.english") == "Four months. [1]"
+    assert "Four months." in run(page, "byClass(registry.history, 'en-answer')[0].textContent")
+    assert run(page, "byClass(registry.history, 'en-answer')[0].children.filter((c) => c.tag === 'button').length") == 0
+
+
+def test_an_answer_found_gone_is_remembered_in_its_entry(page):
+    history_page(page, ("How long?", {**REPLY, "question_fr": "Quelle durée ?"}))
+    fake_fetch(page, 410, {"detail": "this answer is no longer stored"})
+    start(page, "toggles()[0].click(); byClass(registry.history, 'en-answer')[0].children.filter((c) => c.tag === 'button')[0].click()")
+    assert run(page, "readHistory()[0].reply.english_gone") is True
+    start(page, "drawHistory()")
+    assert "Le service ne garde plus cette réponse" in run(page, "byClass(registry.history, 'en-answer')[0].textContent")
+    assert run(page, "byClass(registry.history, 'en-answer')[0].children.filter((c) => c.tag === 'button').length") == 0
+    assert run(page, "requests.length") == 1
 
 
 def test_a_translation_request_that_cannot_reach_the_service_is_a_message_and_not_an_error(page):

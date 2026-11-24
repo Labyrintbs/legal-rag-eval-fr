@@ -329,35 +329,43 @@ function englishBlock(reply) {
   if (reply.outcome !== "answered" || !(reply.question_fr || lang === "en")) return "";
   if (reply.english) return savedEnglish(reply); // already asked for: shown again after a change of language, never requested twice
   const box = make("div", { class: "en-answer" });
+  if (reply.english_gone) { // the service no longer holds the answer: asking again would change nothing
+    box.append(make("span", { class: "count", text: t("translate_gone") }));
+    return box;
+  }
   const button = make("button", { type: "button", class: "pill", text: t("show_english") });
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    const wait = make("span", { class: "count", text: ` ${t("translating_answer")}` });
-    box.append(wait);
-    let message = t("translate_failed");
-    try {
-      const response = await fetch("/translate-answer", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_id: reply.request_id }) });
-      const data = await response.json().catch(() => ({}));
-      if (response.status === 200) {
-        box.replaceChildren(make("span", { class: "tr-label", text: t("english_label") }), withMarkers(data.english));
-        reply.english = data.english;
-        saveEnglish(reply.request_id, data.english);
-        return;
-      }
-      if (response.status === 429) message = t("limited", { n: Number(response.headers.get("Retry-After")) || 60 });
-      if (response.status === 410 || response.status === 404) { // the service keeps an answer 7 days: asking again would change nothing
-        wait.remove();
-        box.append(make("span", { class: "count", text: ` ${t("translate_gone")}` }));
-        return;
-      }
-    } catch (e) { /* the message below tells */ }
-    wait.remove();
-    button.disabled = false;
-    box.append(make("span", { class: "count", text: ` ${message}` }));
-  });
+  button.addEventListener("click", () => askEnglish(reply, box, button));
   box.append(button);
   return box;
+}
+
+// One request for the translation of an answer. The note of an earlier try is removed first, so that notes do not pile up.
+async function askEnglish(reply, box, button) {
+  button.disabled = true;
+  if (button.note) button.note.remove();
+  button.note = make("span", { class: "count", text: ` ${t("translating_answer")}` });
+  box.append(button.note);
+  let message = t("translate_failed");
+  try {
+    const response = await fetch("/translate-answer", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: reply.request_id }) });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 200 && typeof data.english === "string") {
+      box.replaceChildren(make("span", { class: "tr-label", text: t("english_label") }), withMarkers(data.english));
+      reply.english = data.english;
+      refreshHistory(updateEntry(reply.request_id, { english: data.english }));
+      return;
+    }
+    if (response.status === 429) message = t("limited", { n: Number(response.headers.get("Retry-After")) || 60 });
+    if (response.status === 410 || response.status === 404) { // the service keeps an answer 7 days; the button stays off, also after a redraw
+      button.note.textContent = ` ${t("translate_gone")}`;
+      reply.english_gone = true;
+      refreshHistory(updateEntry(reply.request_id, { english_gone: true }));
+      return;
+    }
+  } catch (e) { /* the message below tells */ }
+  button.disabled = false;
+  button.note.textContent = ` ${message}`;
 }
 
 // The English translation kept in the history: shown when the visitor asked for it, never requested again (the service
@@ -500,12 +508,19 @@ function addToHistory(question, reply, replaces = null) {
 }
 
 // The English translation of an answer, once the visitor has asked for it, goes into the entry of that answer.
-function saveEnglish(requestId, english) {
+// Adds fields to the reply kept for a request (the translation, or the fact that the answer is gone). False when the entry is not
+// in the history or the browser refused to write.
+function updateEntry(requestId, changes) {
   const list = readHistory();
   const entry = list.find((other) => other.id === requestId);
-  if (!entry) return;
-  entry.reply.english = english;
-  writeHistory(list);
+  if (!entry) return false;
+  Object.assign(entry.reply, changes);
+  return writeHistory(list);
+}
+
+// The history page draws its entries again from what is kept, so that an entry redrawn while the request was running shows it.
+function refreshHistory(saved) {
+  if (saved && document.getElementById("history")) drawHistory();
 }
 
 const MONTHS = {
