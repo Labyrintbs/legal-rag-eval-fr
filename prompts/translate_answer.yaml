@@ -1,0 +1,32 @@
+# Translation of an answer into English, offered on request to a visitor who asked in English (step 0f, part 4).
+# Never edit a prompt in place: a change is a new id, so earlier translations stay traceable.
+prompts:
+  translate_answer.v1:
+    system: |
+      Tu traduis en anglais les phrases d'une réponse sur le droit du travail français ou le RGPD.
+      Règles :
+      - Traduis fidèlement, phrase par phrase, sans rien ajouter, retirer ni résumer.
+      - Garde les numéros de citation entre crochets ([1], [2]...) exactement à la même place.
+      - Quand un terme juridique français n'a pas d'équivalent exact, donne l'équivalent anglais puis le terme français entre
+        parenthèses, par exemple "executive (cadre)", "open-ended contract (CDI)", "notice period (préavis)".
+      - Garde tels quels les numéros d'article et les sigles (RGPD devient GDPR).
+      - Écris une ligne de sortie pour chaque ligne d'entrée, dans le même ordre, sans commentaire.
+    user: |
+      {text}
+    max_tokens: 700
+  translate_answer.v2:  # v1 repeated the French term at every use and rendered "accord" as "arrangement"
+    system: |
+      Tu traduis en anglais les phrases d'une réponse sur le droit du travail français ou le RGPD.
+      Règles :
+      - Traduis fidèlement, phrase par phrase, sans rien ajouter, retirer ni résumer.
+      - Garde les numéros de citation entre crochets ([1], [2]...) exactement à la même place.
+      - Quand un terme juridique français n'a pas d'équivalent exact, donne l'équivalent anglais puis le terme français entre
+        parenthèses, par exemple "executive (cadre)", "open-ended contract (CDI)", "notice period (préavis)". Donne le terme
+        français entre parenthèses seulement la première fois qu'il apparaît dans l'ensemble du texte ; ensuite, écris
+        seulement l'équivalent anglais.
+      - "accord" (accord collectif, accord de branche) se traduit "agreement" : "collective agreement", "sector agreement".
+      - Garde tels quels les numéros d'article et les sigles (RGPD devient GDPR).
+      - Écris une ligne de sortie pour chaque ligne d'entrée, dans le même ordre, sans commentaire.
+    user: |
+      {text}
+    max_tokens: 700

@@ -1,14 +1,26 @@
 """The shapes of the HTTP API (step 0f, decision 2): what a visitor sends and the one reply shape of every outcome."""
 
+import unicodedata
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 
 from legalrag.answering import answer, search
 
 MAX_QUESTION = 500  # characters; the longest of the 128 French gold questions has 220
 MAX_COMMENT = 500
+ID_PATTERN = r"^[A-Za-z0-9_-]+$"  # a request id is 32 hexadecimal characters; nothing else is looked up
 DISCLAIMER = "Informations juridiques, pas un conseil juridique. Le corpus a une date et peut ne pas contenir le droit en vigueur."
+
+
+def clean_text(value: str) -> str:
+    """Text as the service keeps it. A lone surrogate (JSON allows "\\ud800") cannot be written as UTF-8: refused. A control
+    character other than newline and tab is dropped, and a NUL in particular would break the database."""
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError("the text is not valid Unicode") from None
+    return "".join(c for c in value if c in "\n\t" or unicodedata.category(c) != "Cc")
 
 
 # A "field" is one named entry of a message; its name is the key of the JSON the page sends.
@@ -17,12 +29,13 @@ class AskRequest(BaseModel):
 
     question: str = Field(min_length=1, max_length=MAX_QUESTION)  # required: no default value
     lang: Literal["fr"] = "fr"  # optional (it has a default); the demo does not expose English
+    translate: StrictBool = False  # the visitor asked for the question to be translated into French first (a model call)
 
     @field_validator("question")  # runs on the field "question", after the length rules
     @classmethod
     def not_blank(cls, value: str) -> str:
-        # "  Quelle durée ?  " is kept as "Quelle durée ?"; "   " is refused with a 422
-        value = value.strip()
+        # "  Quelle durée ?  " is kept as "Quelle durée ?"; "   " (or only control characters) is refused with a 422
+        value = clean_text(value).strip()
         if not value:
             raise ValueError("the question is empty")
         return value
@@ -31,16 +44,29 @@ class AskRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     """A vote on an answer, e.g. {"request_id": "ab12", "value": -1, "kind": "wrong_citation", "comment": "L1221-20 suffisait"}."""
 
-    request_id: str = Field(min_length=1, max_length=64)  # the id that /ask or /search sent back
-    value: Literal[-1, 1]  # 1 thumbs up, -1 thumbs down; anything else is a 422
+    request_id: str = Field(min_length=1, max_length=64, pattern=ID_PATTERN)  # the id that /ask or /search sent back
+    value: StrictInt  # 1 thumbs up, -1 thumbs down; anything else (a string, true, 0, 2) is a 422
     kind: Literal["wrong_answer", "wrong_citation", "missing_article", "other"] | None = None  # optional
     comment: str | None = Field(default=None, max_length=MAX_COMMENT)  # optional
+
+    @field_validator("value")
+    @classmethod
+    def up_or_down(cls, value: int) -> int:
+        if value not in (-1, 1):
+            raise ValueError("a vote is 1 or -1")
+        return value
 
     @field_validator("comment")
     @classmethod
     def blank_is_none(cls, value: str | None) -> str | None:
         # "  merci  " is kept as "merci"; "   " becomes None, so no empty text is stored
-        return (value or "").strip() or None
+        return clean_text(value or "").strip() or None
+
+
+class TranslateAnswerRequest(BaseModel):
+    """The visitor asks for the English translation of an answer the service gave: only the id of that request."""
+
+    request_id: str = Field(min_length=1, max_length=64, pattern=ID_PATTERN)
 
 
 class Reply(BaseModel):
@@ -88,6 +114,9 @@ class AskReply(Reply):
     articles: list[ArticleOut] = []
     retry_after: int | None = None  # seconds to wait, only for a limit
     cached: bool = False  # true when the reply was stored by an earlier identical question (it cost nothing)
+    question_fr: str | None = None  # the French question that was answered, when the visitor asked for a translation
+    masked: list[str] = []  # the kinds of personal identifier masked in the question ("email", "phone"...); the page tells the visitor
+    question_masked: str | None = None  # the question as it was used, with the labels, when something was masked
     disclaimer: str = DISCLAIMER
 
 
@@ -103,18 +132,52 @@ class SearchReply(Reply):
     request_id: str
     articles: list[ArticleOut]
     weak: bool  # nothing close enough was found (below the threshold of the answer path)
+    masked: list[str] = []  # as in AskReply
     disclaimer: str = DISCLAIMER
 
 
+class TranslateAnswerReply(Reply):
+    request_id: str
+    english: str  # the sentences of the answer in English, each followed by the numbers of its citations, as in the answer
+    stored: bool = False  # true when the translation was made earlier: this request cost nothing
+
+
+def numbered_claims(claims: list[dict]) -> list[str]:
+    """The sentences of an answer, each followed by the numbers of its citations ("Quatre mois. [1][2]"). The numbers are
+    given the way the page gives them: one per distinct cited passage, in the order of the sentences."""
+    numbers: dict[tuple, int] = {}
+    lines = []
+    for claim in claims:
+        marks = []
+        for citation in claim["citations"]:
+            key = (citation["label"], tuple(citation["units"]))
+            numbers.setdefault(key, len(numbers) + 1)
+            marks.append(f"[{numbers[key]}]")
+        lines.append(f"{claim['text']} {''.join(marks)}".strip())
+    return lines
+
+
+def tidy_path(path: str) -> str:
+    """The place of an article in the code, one title per level. The data keeps an older and a current title for some
+    levels ("Chapitre Ier : A > Chapitre Ier : B"); the official site shows the second, so the first is dropped."""
+    levels: list[str] = []
+    for level in path.split(" > "):
+        if levels and levels[-1].split(" : ")[0] == level.split(" : ")[0]:
+            levels[-1] = level
+        else:
+            levels.append(level)
+    return " > ".join(levels)
+
+
 def articles_of(hits: list[search.Hit]) -> list[ArticleOut]:
-    return [ArticleOut(label=h.label, similarity=round(h.similarity, 4), section_path=h.section_path, url=h.url, text=h.text)
-            for h in hits]
+    return [ArticleOut(label=h.label, similarity=round(h.similarity, 4), section_path=tidy_path(h.section_path), url=h.url,
+                       text=h.text) for h in hits]
 
 
 def reply_of(result: answer.Result, request_id: str) -> AskReply:
     """The engine's result as the reply of /ask; claims only for an answer, the articles in every case."""
     claims = [ClaimOut(text=text, citations=[CitationOut(label=c.label, units=c.units, passage=c.passage,
-                                                         section_path=c.section_path, url=c.url) for c in citations])
+                                                         section_path=tidy_path(c.section_path), url=c.url) for c in citations])
               for text, citations in (result.resolved.claims if result.resolved and result.outcome == "answered" else [])]
     return AskReply(request_id=request_id, outcome=result.outcome, reason=result.reason, claims=claims,
                     articles=articles_of(result.hits), retry_after=result.retry_after)

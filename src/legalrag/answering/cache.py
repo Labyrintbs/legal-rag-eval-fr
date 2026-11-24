@@ -50,8 +50,21 @@ def put(conn: psycopg.Connection, key: str, outcome: str, reply: dict, now: date
     conn.execute(
         "INSERT INTO answer_cache (key, reply, outcome, created_at, expires_at, pinned) VALUES (%s, %s, %s, %s, %s, %s) "
         "ON CONFLICT (key) DO UPDATE SET reply = EXCLUDED.reply, outcome = EXCLUDED.outcome, "
-        "created_at = EXCLUDED.created_at, expires_at = EXCLUDED.expires_at, pinned = EXCLUDED.pinned, hits = 0",
+        "created_at = EXCLUDED.created_at, expires_at = EXCLUDED.expires_at, pinned = EXCLUDED.pinned, hits = 0, "
+        "answer_en = NULL",  # a new reply has no translation yet
         (key, Jsonb(reply), outcome, now, PINNED_EXPIRY if pinned else now + TTL, pinned))
+    conn.commit()
+
+
+def reply_and_translation(conn: psycopg.Connection, key: str, now: datetime | None = None) -> tuple[dict, str | None] | None:
+    """The stored reply and its English translation (none yet: None); None when there is no valid entry. Does not count as a hit."""
+    row = conn.execute("SELECT reply, answer_en FROM answer_cache WHERE key = %s AND expires_at > %s",
+                       (key, now or datetime.now(UTC))).fetchone()
+    return (row[0], row[1]) if row else None
+
+
+def set_translation(conn: psycopg.Connection, key: str, english: str) -> None:
+    conn.execute("UPDATE answer_cache SET answer_en = %s WHERE key = %s", (english, key))
     conn.commit()
 
 

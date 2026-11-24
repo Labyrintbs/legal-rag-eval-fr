@@ -14,7 +14,7 @@ from legalrag.web import schemas
 
 log = logging.getLogger("legalrag.web")
 UPSTREAM_FAILURES = ("llm_error", "parse_error")  # the model side failed: 502, the articles are still returned
-NOT_STORED = ("request_id", "cached", "retry_after")  # the parts of a reply that belong to one request
+NOT_STORED = ("request_id", "cached", "retry_after", "question_fr", "masked", "question_masked")  # the parts of a reply that belong to one request
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,7 @@ class Settings:
     # Only safe when the service can be reached through that proxy alone, since any visitor could write the header.
     client_ip_header: str | None = None
     feedback_per_minute: int = 10  # per client
+    translate_per_minute: int = 5  # per client: new English translations of an answer (a model call); the user's choice, 2026-11-24, to review with the other limits
     search_per_minute: int = 30  # per client; /search costs no model call but uses the CPU (about 4 searches a second in all)
     code_version: str | None = None  # a deploy with another code version starts with an empty cache (decision 4)
     data_version: str | None = None
@@ -100,11 +101,113 @@ def store(connect, key: str, outcome: str, reply: schemas.AskReply, pinned: bool
         log_event(log, "cache_failed", reply.request_id, logging.ERROR, error=type(error).__name__)
 
 
+class Refused(Exception):
+    """A request that cannot be served: the HTTP status, a short reason, and the seconds to wait when it is a limit."""
+
+    def __init__(self, status: int, detail: str, retry_after: int | None = None) -> None:
+        super().__init__(detail)
+        self.status, self.detail, self.retry_after = status, detail, retry_after
+
+
+def english_of_answer(engine: rag.AnswerEngine, connect, settings: Settings, request_id: str, client: str | None,
+                      limiter) -> schemas.TranslateAnswerReply:
+    """The English translation of an answer that the service gave, found by the id of the request. It translates only a
+    stored answer (never text sent by the visitor). A translation made before is returned at no cost; a new one is a model
+    call: it needs the switch on and the day's budget, counts in the visitor's translation limit, and is stored with the answer."""
+    with connect() as conn:
+        row = conn.execute("SELECT cache_key, outcome FROM query_traces WHERE request_id = %s AND mode = 'answer'", (request_id,)).fetchone()
+        if not row or row[1] not in ("answered", "cache_hit") or not row[0]:
+            raise Refused(404, "no such answer")
+        key = row[0]
+        found = cache.reply_and_translation(conn, key)
+    if found is None:
+        raise Refused(410, "this answer is no longer stored")
+    stored_reply, english = found
+    if english:
+        return schemas.TranslateAnswerReply(request_id=request_id, english=english, stored=True)
+    if not stored_reply.get("claims"):
+        raise Refused(404, "nothing to translate")  # an answer with no sentence (an entry of another version of the reply)
+    verdict = engine.gate.check(client, per_client=False) if engine.gate else None  # the switch and the budget, not the answer allowance
+    if verdict is not None and not verdict.allowed:
+        raise Refused(verdict.status, verdict.reason, verdict.retry_after)
+    if not limiter.allow(client or "-"):  # after the switch, so that a refused request does not use up a place
+        raise Refused(429, "too many translations, try again in a moment", limiter.retry_after(client or "-"))
+    try:
+        lines, cost = engine.translate_answer(schemas.numbered_claims(stored_reply["claims"]))
+    except Exception as error:  # any failure of the call or a result that moved a citation: nothing is shown
+        log_event(log, "translate_answer_failed", request_id, logging.ERROR, error=type(error).__name__)
+        raise Refused(502, "the translation could not be made") from error
+    english = " ".join(lines)
+    try:
+        with connect() as conn:
+            cache.set_translation(conn, key, english)
+    except Exception as error:  # noqa: BLE001 - storing is an optimisation: the visitor still gets the translation
+        log_event(log, "cache_failed", request_id, logging.ERROR, error=type(error).__name__)
+    write_trace(connect, trace.Trace(request_id=trace.new_request_id(), lang="en", question="", mode="translate", outcome="answered",
+                                     client_hash=client, model=engine.model, cost_usd=cost, code_version=settings.code_version,
+                                     data_version=settings.data_version))
+    return schemas.TranslateAnswerReply(request_id=request_id, english=english)
+
+
+def translate_question(engine: rag.AnswerEngine, connect, settings: Settings, question: str,
+                       client: str | None) -> tuple[str | None, float, tuple[schemas.AskReply, int] | None]:
+    """The visitor asked to translate the question into French first. The translation is a model call: it is refused
+    the way an answer is when the client or the service is over a limit, and no model money is spent then. Returns
+    (the French question, its cost, None), or (None, 0, the failed reply and its status)."""
+    verdict = engine.gate.check(client) if engine.gate else None
+    request_id = trace.new_request_id()
+    if verdict is not None and not verdict.allowed:
+        refused = schemas.AskReply(request_id=request_id, outcome=verdict.outcome, reason=verdict.reason, retry_after=verdict.retry_after)
+        write_trace(connect, limited_trace(engine, settings, refused, question, client, None))
+        return None, 0, (refused, verdict.status)
+    try:
+        french, cost = engine.translate(question)
+    except Exception as error:  # noqa: BLE001 - any failure of the call or a bad result is a failed translation
+        log_event(log, "translate_failed", request_id, logging.ERROR, error=type(error).__name__)
+        failed = schemas.AskReply(request_id=request_id, outcome="llm_error", reason="La traduction de la question a échoué.")
+        write_trace(connect, trace.Trace(request_id=request_id, lang="fr", question=question, mode="answer", outcome="llm_error",
+                                         client_hash=client, model=engine.model, error=type(error).__name__,
+                                         code_version=settings.code_version, data_version=settings.data_version))
+        return None, 0, (failed, 502)
+    return french, cost or 0.0, None
+
+
 def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, question: str, client: str | None,
-                    warm: bool = False) -> tuple[schemas.AskReply, int]:
-    """The reply and the HTTP status for one question. A stored reply is served when there is one and the client is
-    within the minute limit; otherwise the engine answers, and a stable reply is stored. `warm` (the warm-up) never
-    reads the cache and leaves out the per-client limits."""
+                    warm: bool = False, translate: bool = False) -> tuple[schemas.AskReply, int]:
+    """The reply and the HTTP status for one question, one request at a time for a visitor: a second request sent while
+    the first is in progress is refused at once with a 429 (see `Limits.begin`), so that a burst cannot pass the counts."""
+    gate = engine.gate
+    if gate is None or warm:
+        return answer_one(engine, connect, settings, question, client, warm, translate)
+    if not gate.begin(client):
+        busy = schemas.AskReply(request_id=trace.new_request_id(), outcome="rate_limited", retry_after=2,
+                                reason="une autre question est déjà en cours pour vous : attendez sa réponse")
+        return busy, 429
+    try:
+        return answer_one(engine, connect, settings, question, client, warm, translate)
+    finally:
+        gate.end(client)
+
+
+def answer_one(engine: rag.AnswerEngine, connect, settings: Settings, question: str, client: str | None,
+               warm: bool = False, translate: bool = False) -> tuple[schemas.AskReply, int]:
+    """A stored reply is served when there is one and the client is within the minute limit; otherwise the engine answers,
+    and a stable reply is stored. `warm` (the warm-up) never reads the cache and leaves out the per-client limits.
+    `translate`: the question is first translated into French (the visitor asked for it); the reply then carries the
+    French question, and the answer is cached under it."""
+    extra_cost = 0.0
+    if translate:
+        question, extra_cost, failed = translate_question(engine, connect, settings, question, client)
+        if failed:
+            return failed
+        reply, status = answer_french_question(engine, connect, settings, question, client, extra_cost=extra_cost)
+        reply.question_fr = question
+        return reply, status
+    return answer_french_question(engine, connect, settings, question, client, warm, extra_cost)
+
+
+def answer_french_question(engine: rag.AnswerEngine, connect, settings: Settings, question: str, client: str | None,
+                           warm: bool = False, extra_cost: float = 0.0) -> tuple[schemas.AskReply, int]:
     request_id = trace.new_request_id()
     started = time.monotonic()
     key = cache_key(engine, settings, question)
@@ -114,8 +217,10 @@ def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, quest
         verdict = engine.gate.check_cached(client) if engine.gate else None
         if verdict is None or verdict.allowed:
             elapsed = round((time.monotonic() - started) * 1000)
-            write_trace(connect, hit_trace(engine, settings, reply, question, client, key, elapsed))
-            log_event(log, "ask", request_id, outcome="cache_hit", total_ms=elapsed, cost_usd=0)
+            row = hit_trace(engine, settings, reply, question, client, key, elapsed)
+            row.cost_usd = extra_cost  # no answer cost: only the translation, when there was one
+            write_trace(connect, row)
+            log_event(log, "ask", request_id, outcome="cache_hit", total_ms=elapsed, cost_usd=extra_cost)
             return reply, 200
         # over the cached-replies limit: refuse with the stored articles; a fresh model call would only cost money
         refused = schemas.AskReply(request_id=request_id, outcome=verdict.outcome, reason=verdict.reason,
@@ -124,7 +229,10 @@ def answer_question(engine: rag.AnswerEngine, connect, settings: Settings, quest
         log_event(log, "ask", request_id, outcome=verdict.outcome, total_ms=round((time.monotonic() - started) * 1000), cost_usd=0)
         return refused, verdict.status
     result = engine.respond(question, client, warm=warm).metadata["result"]
-    write_trace(connect, result_trace(engine, settings, result, request_id, question, "answer", client, key))
+    row = result_trace(engine, settings, result, request_id, question, "answer", client, key)
+    if extra_cost:  # the translation of the question is part of what this request cost
+        row.cost_usd = (row.cost_usd or 0) + extra_cost
+    write_trace(connect, row)
     log_event(log, "ask", request_id, outcome=result.outcome, total_ms=result.total_ms, cost_usd=result.cost_usd)
     reply = schemas.reply_of(result, request_id)
     if result.outcome in cache.CACHEABLE:

@@ -23,6 +23,17 @@ def key(question="Quelle durée ?", **changes):
     return cache.key_of(question, **(PARTS | changes))
 
 
+def test_an_english_translation_goes_with_its_reply_and_is_dropped_when_the_reply_is_made_again(conn):
+    cache.put(conn, key(), "answered", REPLY, NOW)
+    assert cache.reply_and_translation(conn, key(), NOW) == (REPLY, None)
+    cache.set_translation(conn, key(), "Four months. [1]")
+    assert cache.reply_and_translation(conn, key(), NOW) == (REPLY, "Four months. [1]")
+    assert cache.reply_and_translation(conn, key("autre"), NOW) is None
+    assert cache.reply_and_translation(conn, key(), NOW + timedelta(days=8)) is None  # expired
+    cache.put(conn, key(), "answered", REPLY, NOW)  # a new reply: the old translation no longer fits it
+    assert cache.reply_and_translation(conn, key(), NOW) == (REPLY, None)
+
+
 def test_the_question_is_compared_without_case_and_extra_spaces():
     assert cache.normalise("  Quelle   DURÉE\n?  ") == "quelle durée ?"
     assert key("Quelle durée ?") == key("  QUELLE durée   ? ")

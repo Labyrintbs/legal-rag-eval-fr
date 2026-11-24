@@ -5,6 +5,7 @@ LlamaIndex DeepSeek connector. The checks stay in plain code (`answer`, `search`
 trace needs.
 """
 
+import re
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -23,6 +24,9 @@ from legalrag import llm as costs
 from legalrag.answering import answer, articlenum, limits, search
 from legalrag.answering.units import Unit, split_units
 from legalrag.index.embed import MODEL, embed_queries
+
+MAX_TRANSLATED = 500  # the longest question the service accepts
+MARKS = re.compile(r"\[\d+\]")  # the citation numbers of an answer
 
 
 class LegalRetriever(BaseRetriever):
@@ -86,9 +90,44 @@ class AnswerEngine(CustomQueryEngine):
     threshold: float = search.WEAK_THRESHOLD
     ledger_label: str | None = None  # development runs also append their calls to the development ledger
     gate: Any = None  # a limits.Limits (rate limits and kill switch); none in development runs
+    translate_prompt: dict | None = None  # the prompt that turns a visitor's question into French (`translate`)
+    translate_answer_prompt: dict | None = None  # the prompt that turns the sentences of an answer into English
 
     def custom_query(self, query_str: str) -> Response:
         return self.respond(query_str)
+
+    def translate_answer(self, lines: list[str]) -> tuple[list[str], float | None]:
+        """The sentences of an answer in English, and the cost. Raises when the lines or the citation numbers of the result
+        are not the ones that went in: a translation that moved or lost a citation is never shown."""
+        if not self.translate_answer_prompt:
+            raise RuntimeError("no answer translation prompt")
+        prompt = self.translate_answer_prompt
+        messages = [ChatMessage(role="system", content=prompt["system"].strip()),
+                    ChatMessage(role="user", content=prompt["user"].format(text="\n".join(lines)))]
+        reply = self.llm.chat(messages)
+        english = [line.strip() for line in (reply.message.content or "").splitlines() if line.strip()]
+        if len(english) != len(lines) or any(MARKS.findall(a) != MARKS.findall(b) for a, b in zip(lines, english, strict=True)):
+            raise ValueError("the translation does not keep the lines and the citation numbers")
+        tokens = answer.usage_of(getattr(reply.raw, "usage", None))
+        cost = self.cost(tokens)
+        self.append_ledger(tokens, cost)
+        return english, cost
+
+    def translate(self, question: str) -> tuple[str, float | None]:
+        """The question in French and the cost of the call. Raises when the call fails or the result is not a question
+        of the allowed length: the caller turns that into a failed request."""
+        if not self.translate_prompt:
+            raise RuntimeError("no translation prompt")
+        messages = [ChatMessage(role="system", content=self.translate_prompt["system"].strip()),
+                    ChatMessage(role="user", content=self.translate_prompt["user"].format(question=question))]
+        reply = self.llm.chat(messages)
+        french = " ".join((reply.message.content or "").split()).strip("\"'« »")
+        if not french or len(french) > MAX_TRANSLATED:
+            raise ValueError("the translation is empty or too long")
+        tokens = answer.usage_of(getattr(reply.raw, "usage", None))
+        cost = self.cost(tokens)
+        self.append_ledger(tokens, cost)
+        return french, cost
 
     def respond(self, question: str, client: str | None = None, warm: bool = False) -> Response:
         """Search, then the weak check, then the limits, then the model; the articles come back in every case.

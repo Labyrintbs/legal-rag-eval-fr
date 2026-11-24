@@ -10,11 +10,15 @@ import threading
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import psycopg
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from legalrag.answering import answer, cache, limits, rag, search, trace
+from legalrag.answering import answer, cache, limits, pii, rag, search, trace
 from legalrag.answering.logs import log_event
 from legalrag.web import asking, schemas, warm
 from legalrag.web.asking import Settings
@@ -55,9 +59,19 @@ class Recent:
             return max(1, math.ceil(events[0] + self.seconds - now)) if events else 1
 
 
+STATIC = Path(__file__).with_name("static")
+MAX_BODY = 16 * 1024  # bytes: 500 characters of any alphabet are at most 2 kB
+# The pages load only their own files; nothing is written into them from outside (the script builds the DOM with textContent).
+SECURITY_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
+}
+
+
 def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = None,
-               warm_questions: list[str] | None = None) -> FastAPI:
-    """`warm_questions`: example questions to ask in the background at startup (decision 4); none: no warm-up."""
+               warm_questions: list[str] | None = None, examples: list[dict] | None = None) -> FastAPI:
+    """`warm_questions`: example questions to ask in the background at startup (decision 4); none: no warm-up.
+    `examples`: what `GET /examples` sends to the page (see `examples.load`)."""
     settings = settings or Settings()
     warm_status = warm.Status(state="running" if warm_questions else "off")
 
@@ -71,6 +85,65 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
                   lifespan=lifespan)
     feedback_window = Recent(settings.feedback_per_minute)
     search_window = Recent(settings.search_per_minute)
+    translate_window = Recent(settings.translate_per_minute)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
+        """A 422 says which field is wrong and why, but never repeats the value: the visitor's text is not echoed back
+        (and a value that cannot be written as UTF-8 would have broken the reply itself)."""
+        problems = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in error.errors()]
+        return JSONResponse({"detail": problems}, status_code=422)
+
+    @app.exception_handler(psycopg.Error)
+    async def database_failed(request: Request, error: psycopg.Error) -> JSONResponse:
+        """The limits live in the database: when it cannot be reached the service cannot count, so it does not call the model
+        (fail closed). The visitor gets a plain 503, never the text of the error."""
+        log_event(log, "database_failed", None, logging.ERROR, error=type(error).__name__)
+        return JSONResponse({"detail": "the service is temporarily unavailable"}, status_code=503, headers={"Retry-After": "30"})
+
+    @app.middleware("http")
+    async def limit_body(request: Request, call_next):
+        """A request body is at most a few kilobytes (a question is 500 characters): refuse a larger or an unmeasured one before it is read."""
+        if request.method in ("POST", "PUT", "PATCH"):
+            length = request.headers.get("content-length")
+            if length is None:
+                return JSONResponse({"detail": "content-length required"}, status_code=411)
+            if not length.isdigit() or int(length) > MAX_BODY:
+                return JSONResponse({"detail": "request too large"}, status_code=413)
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):  # added last, so it wraps the others: every reply has the headers
+        response = await call_next(request)
+        if not request.url.path.startswith("/api/"):  # the API docs page loads its script from a CDN
+            response.headers.update(SECURITY_HEADERS)
+        return response
+
+    app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def home() -> FileResponse:
+        return FileResponse(STATIC / "index.html")
+
+    @app.get("/method", include_in_schema=False)
+    def method() -> FileResponse:
+        return FileResponse(STATIC / "method.html")
+
+    @app.get("/data", include_in_schema=False)
+    def data() -> FileResponse:
+        return FileResponse(STATIC / "data.html")
+
+    @app.get("/privacy", include_in_schema=False)
+    def privacy() -> FileResponse:
+        return FileResponse(STATIC / "privacy.html")
+
+    @app.get("/history", include_in_schema=False)
+    def history() -> FileResponse:
+        return FileResponse(STATIC / "history.html")
+
+    @app.get("/examples", include_in_schema=False)
+    def example_questions() -> list[dict]:
+        return examples or []
 
     # The routes below set a status or a header on `response` (a draft FastAPI hands in) and return the data: FastAPI
     # then checks it against `response_model` before sending. See docs/decisions/0008 (build notes).
@@ -91,25 +164,38 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
         if not search_window.allow(client or "-"):  # no model money, but every search embeds the question on the CPU
             raise HTTPException(429, "too many searches, try again in a moment",
                                 headers={"Retry-After": str(search_window.retry_after(client or "-"))})
+        masked = pii.mask(body.question)  # from here on, only the masked question exists
         started = time.monotonic()
-        nodes = engine.retriever.retrieve(body.question)
+        nodes = engine.retriever.retrieve(masked.text)
         hits = rag.hits_of(nodes)
         weak = search.is_weak(hits, engine.threshold) and not rag.names_article(nodes)
         elapsed = round((time.monotonic() - started) * 1000)
         result = answer.Result("refused_weak_retrieval" if weak else "answered", "", hits, retrieval_ms=elapsed, total_ms=elapsed)
-        asking.write_trace(connect, asking.result_trace(engine, settings, result, request_id, body.question, "search", client, None))
+        asking.write_trace(connect, asking.result_trace(engine, settings, result, request_id, masked.text, "search", client, None))
         log_event(log, "search", request_id, outcome=result.outcome, total_ms=elapsed)
-        return schemas.SearchReply(request_id=request_id, articles=schemas.articles_of(hits), weak=weak)
+        return schemas.SearchReply(request_id=request_id, articles=schemas.articles_of(hits), weak=weak, masked=masked.kinds)
 
     @app.post("/ask", response_model=schemas.AskReply, responses={429: {"model": schemas.AskReply}, 502: {"model": schemas.AskReply},
                                                                   503: {"model": schemas.AskReply}})
     def ask(body: schemas.AskRequest, request: Request, response: Response) -> schemas.AskReply:
         client = trace.client_hash(client_address(request, settings.client_ip_header))
-        reply, status = asking.answer_question(engine, connect, settings, body.question, client)
+        masked = pii.mask(body.question)  # before the cache, the traces, the translation and the model
+        reply, status = asking.answer_question(engine, connect, settings, masked.text, client, translate=body.translate)
+        if masked.kinds:
+            reply.masked, reply.question_masked = masked.kinds, masked.text
         response.status_code = status
         if reply.retry_after:
             response.headers["Retry-After"] = str(reply.retry_after)
         return reply
+
+    @app.post("/translate-answer", response_model=schemas.TranslateAnswerReply)
+    def translate_answer(body: schemas.TranslateAnswerRequest, request: Request) -> schemas.TranslateAnswerReply:
+        client = trace.client_hash(client_address(request, settings.client_ip_header))
+        try:
+            return asking.english_of_answer(engine, connect, settings, body.request_id, client, translate_window)
+        except asking.Refused as refused:
+            headers = {"Retry-After": str(refused.retry_after)} if refused.retry_after else None
+            raise HTTPException(refused.status, refused.detail, headers=headers) from refused
 
     @app.post("/feedback")
     def feedback(body: schemas.FeedbackRequest, request: Request) -> dict:
@@ -117,8 +203,9 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
         if not feedback_window.allow(client or "-"):
             raise HTTPException(429, "too many feedback messages, try again in a moment",
                                 headers={"Retry-After": str(feedback_window.retry_after(client or "-"))})
+        comment = pii.mask(body.comment).text if body.comment else None  # a comment is free text: masked like a question
         with connect() as conn:
-            if not trace.set_feedback(conn, body.request_id, body.value, body.comment, body.kind):
+            if not trace.set_feedback(conn, body.request_id, body.value, comment, body.kind):
                 raise HTTPException(404, "no such request")
             if body.value == -1:
                 cache.drop_for_vote(conn, body.request_id, client)

@@ -14,12 +14,14 @@ from legalrag.answering import cache, limits, rag
 from legalrag.answering.logs import setup as setup_logs
 from legalrag.evaluation.questiongen import load_prompts
 from legalrag.index import db, embed
-from legalrag.web import warm
+from legalrag.web import examples, warm
 from legalrag.web.app import Settings, create_app
 
 EMBED_AT_ONCE = 2  # decision 1: questions embedded at the same time; the others wait
 MODEL = "deepseek-flash"  # decision of 0d: thinking off
 PROMPT_ID = "answer.v3"
+TRANSLATE_PROMPT_ID = "translate.v1"
+TRANSLATE_ANSWER_PROMPT_ID = "translate_answer.v2"
 RUN = "default"
 
 
@@ -49,15 +51,18 @@ def production_engine() -> tuple[rag.AnswerEngine, Settings]:
         data_version = os.environ.get("DATA_VERSION") or cache.data_version(conn, RUN)
     engine = rag.AnswerEngine(
         retriever=rag.LegalRetriever(db.connect, run_id, embedder, "fr", article_rule=True), postprocessor=rag.NumberUnits(), llm=llm,
-        prompt=prompt, model=MODEL, prompt_id=PROMPT_ID, gate=limits.Limits(db.connect))
+        prompt=prompt, model=MODEL, prompt_id=PROMPT_ID, gate=limits.Limits(db.connect),
+        translate_prompt=load_prompts(db.ROOT / "prompts" / "translate.yaml")["prompts"][TRANSLATE_PROMPT_ID],
+        translate_answer_prompt=load_prompts(db.ROOT / "prompts" / "translate_answer.yaml")["prompts"][TRANSLATE_ANSWER_PROMPT_ID])
     settings = Settings(client_ip_header=os.environ.get("CLIENT_IP_HEADER") or None,
                         code_version=os.environ.get("CODE_VERSION") or "dev", data_version=data_version)
     return engine, settings
 
 
 def production_app() -> FastAPI:
-    """CACHE_WARM_FILE names the file of example questions to ask in the background at startup (none: no warm-up)."""
+    """The page shows the example questions of `examples.yaml`. CACHE_WARM_FILE names the file of example questions to
+    ask in the background at startup (none: no warm-up); set it to that same file to prepare the replies of the page."""
     setup_logs()
     engine, settings = production_engine()
     warm_file = os.environ.get("CACHE_WARM_FILE")
-    return create_app(engine, db.connect, settings, warm.load_questions(Path(warm_file)) if warm_file else None)
+    return create_app(engine, db.connect, settings, warm.load_questions(Path(warm_file)) if warm_file else None, examples.load())

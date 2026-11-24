@@ -29,10 +29,12 @@ class Status:
 
 
 def load_questions(path: Path) -> list[str]:
-    """A YAML file: a list of questions, or {"questions": [...]}."""
+    """A YAML file: a list of questions, or {"questions": [...]}; an entry is a text or a mapping with a `question`
+    (the format of `examples.yaml`)."""
     data = yaml.safe_load(path.read_text())
-    questions = data["questions"] if isinstance(data, dict) else data
-    if not isinstance(questions, list) or not all(isinstance(q, str) and q.strip() for q in questions):
+    entries = data["questions"] if isinstance(data, dict) else data
+    questions = [e.get("question") if isinstance(e, dict) else e for e in entries] if isinstance(entries, list) else None
+    if questions is None or not all(isinstance(q, str) and q.strip() for q in questions):
         raise ValueError(f"{path}: expected a list of questions")
     return [q.strip() for q in questions]
 

@@ -56,6 +56,23 @@ class FakeLLM:
         return SimpleNamespace(message=SimpleNamespace(content=self.reply), raw=SimpleNamespace(usage=usage))
 
 
+class ScriptedLLM(FakeLLM):
+    """Gives its replies one after the other (the translation first, then the answer)."""
+
+    def __init__(self, *replies):
+        super().__init__()
+        self.replies = list(replies)
+
+    def chat(self, messages, **kwargs):
+        self.reply = self.replies.pop(0)
+        return super().chat(messages, **kwargs)
+
+
+TRANSLATE = {"system": "Traduis en français.", "user": "{question}\n", "max_tokens": 200}
+TRANSLATE_ANSWER = {"system": "Translate into English.", "user": "{text}\n", "max_tokens": 700}
+ENGLISH = "Four months for an executive (cadre). [1]"  # the translation of the one sentence of GOOD, with its citation number
+
+
 @pytest.fixture(autouse=True)
 def secret(monkeypatch):
     monkeypatch.setenv("TRACE_SECRET", "test-secret")
@@ -71,7 +88,8 @@ def engine_for(url, llm=None, nodes=None, gate=True, threshold=0.55, limit_setti
     return rag.AnswerEngine(
         retriever=FakeRetriever(nodes if nodes is not None else [node(), node(0.65, "L1221-20")]),
         postprocessor=rag.NumberUnits(), llm=llm or FakeLLM(), prompt=PROMPT, model="deepseek-flash", prompt_id="answer.v3",
-        threshold=threshold, gate=limits.Limits(lambda: db.connect(url), limit_settings) if gate else None)
+        threshold=threshold, gate=limits.Limits(lambda: db.connect(url), limit_settings) if gate else None,
+        translate_prompt=TRANSLATE, translate_answer_prompt=TRANSLATE_ANSWER)
 
 
 @pytest.fixture
@@ -207,6 +225,140 @@ def test_a_failed_trace_write_does_not_break_the_answer(make, monkeypatch):
     client = make()
     monkeypatch.setattr(trace, "record", lambda conn, row: (_ for _ in ()).throw(RuntimeError("disk full")))
     assert client.post("/ask", json={"question": "Quelle durée ?"}).status_code == 200
+
+
+def test_personal_identifiers_are_masked_before_the_engine_the_cache_and_the_trace_and_the_reply_says_so(make, conn):
+    llm = FakeLLM()
+    c = make(llm)
+    asked = "Mon salarié (jean.dupont@example.com, 06 12 34 56 78) démissionne : quel préavis ?"
+    body = c.post("/ask", json={"question": asked}).json()
+    assert body["masked"] == ["email", "phone"] and body["question_masked"] == "Mon salarié ([e-mail], [téléphone]) démissionne : quel préavis ?"
+    stored = traced(conn, body["request_id"])[3]
+    assert stored == body["question_masked"] and "dupont" not in stored and "12 34" not in stored
+    # a second question that differs only by the identifier shares the cached answer: the cache key holds the masked text
+    other = c.post("/ask", json={"question": asked.replace("jean.dupont", "marie.martin")}).json()
+    assert other["cached"] and llm.calls == 1
+    assert c.post("/ask", json={"question": "Quelle durée pour un cadre ?"}).json()["masked"] == []
+
+
+def test_a_search_and_a_comment_are_masked_too(make, conn):
+    c = make()
+    found = c.post("/search", json={"question": "Mon e-mail est a.b@c.fr : quelle durée de préavis ?"}).json()
+    assert found["masked"] == ["email"] and "a.b@c.fr" not in traced(conn, found["request_id"])[3]
+    answer = c.post("/ask", json={"question": "Quelle durée pour un directeur ?"}).json()
+    c.post("/feedback", json={"request_id": answer["request_id"], "value": -1, "comment": "Écrivez-moi : x@y.fr"})
+    assert conn.execute("SELECT feedback_comment FROM query_traces WHERE request_id = %s", (answer["request_id"],)).fetchone()[0] == "Écrivez-moi : [e-mail]"
+
+
+FRENCH = "Quelle durée pour un cadre ?"
+
+
+def cost_of(conn, request_id):
+    return conn.execute("SELECT cost_usd FROM query_traces WHERE request_id = %s", (request_id,)).fetchone()[0]
+
+
+def test_a_translated_question_is_answered_in_french_and_the_reply_and_the_trace_hold_the_french_question(make, conn):
+    llm = ScriptedLLM(GOOD, FRENCH, GOOD)  # the plain answer, then the translation and the answer of the translated request
+    c = make(llm)
+    plain = c.post("/ask", json={"question": "Quelle durée pour un directeur ?"}).json()
+    assert plain["question_fr"] is None  # no translation asked: nothing added
+    body = c.post("/ask", json={"question": "How long for an executive?", "translate": True}).json()
+    assert body["outcome"] == "answered" and body["question_fr"] == FRENCH and llm.calls == 3
+    assert traced(conn, body["request_id"])[3] == FRENCH  # the question that was answered
+    assert cost_of(conn, body["request_id"]) == pytest.approx(2 * cost_of(conn, plain["request_id"]))  # answer + translation
+
+
+def test_a_translated_question_shares_the_cache_with_the_same_french_question_and_still_pays_for_the_translation(make, conn):
+    llm = ScriptedLLM(GOOD, FRENCH)
+    c = make(llm)
+    first = c.post("/ask", json={"question": FRENCH}).json()
+    hit = c.post("/ask", json={"question": "How long for an executive?", "translate": True}).json()
+    assert hit["cached"] and hit["question_fr"] == FRENCH and llm.calls == 2  # the answer call was not repeated
+    assert traced(conn, hit["request_id"])[1] == "cache_hit"
+    assert 0 < cost_of(conn, hit["request_id"]) < cost_of(conn, first["request_id"]) * 2
+    assert "question_fr" not in conn.execute("SELECT reply FROM answer_cache").fetchone()[0]  # stored without it
+
+
+def test_a_translation_is_refused_without_a_model_call_when_the_client_is_over_its_limit(make):
+    llm = ScriptedLLM(GOOD)
+    c = make(llm, limit_settings=limits.Settings(per_minute=1, per_day=30, cost_per_day_usd=0.10))
+    assert c.post("/ask", json={"question": FRENCH}).status_code == 200
+    reply = c.post("/ask", json={"question": "How long?", "translate": True})
+    assert reply.status_code == 429 and reply.json()["outcome"] == "rate_limited" and "Retry-After" in reply.headers
+    assert llm.calls == 1  # only the first answer: no translation was paid for
+
+
+@pytest.mark.parametrize("llm", [FakeLLM(error=TimeoutError()), ScriptedLLM(""), ScriptedLLM("x" * 600)])
+def test_a_failed_or_unusable_translation_is_a_502_and_no_answer_is_written(make, conn, llm):
+    reply = make(llm).post("/ask", json={"question": "How long?", "translate": True})
+    body = reply.json()
+    assert reply.status_code == 502 and body["outcome"] == "llm_error" and "traduction" in body["reason"]
+    assert llm.calls == 1 and traced(conn, body["request_id"])[1] == "llm_error"
+
+
+def translate(client, answer):
+    return client.post("/translate-answer", json={"request_id": answer["request_id"]})
+
+
+def test_the_english_translation_of_an_answer_is_made_once_stored_with_the_answer_and_paid_in_one_trace(make, conn):
+    llm = ScriptedLLM(GOOD, ENGLISH)
+    c = make(llm)
+    answer = c.post("/ask", json={"question": FRENCH}).json()
+    first = translate(c, answer)
+    assert first.status_code == 200
+    assert first.json() == {"request_id": answer["request_id"], "english": ENGLISH, "stored": False}
+    assert conn.execute("SELECT answer_en FROM answer_cache").fetchone()[0] == ENGLISH
+    hit = c.post("/ask", json={"question": FRENCH}).json()  # the same answer, from memory, with a request of its own
+    again = translate(c, hit)
+    assert again.json()["stored"] is True and again.json()["english"] == ENGLISH
+    assert llm.calls == 2  # one answer and one translation: the second translation was not paid for
+    count, cost = conn.execute("SELECT count(*), sum(cost_usd) FROM query_traces WHERE mode = 'translate'").fetchone()
+    assert count == 1 and cost > 0 and cost < 0.001
+    row = conn.execute("SELECT question, outcome FROM query_traces WHERE mode = 'translate'").fetchone()
+    assert row == ("", "answered")  # no text of any visitor
+
+
+def test_a_translation_is_never_counted_as_an_answer_of_the_visitor(make):
+    llm = ScriptedLLM(GOOD, ENGLISH)
+    c = make(llm, limit_settings=limits.Settings(per_minute=1, per_day=30, cost_per_day_usd=0.10))
+    answer = c.post("/ask", json={"question": FRENCH}).json()
+    assert translate(c, answer).status_code == 200  # the one allowed answer of the minute is used, and the translation still works
+    assert c.post("/ask", json={"question": "Quelle durée pour un directeur ?"}).status_code == 429
+
+
+def test_only_an_answer_that_is_stored_can_be_translated(make, conn):
+    c = make(FakeLLM(REFUSAL))
+    refused = c.post("/ask", json={"question": FRENCH}).json()
+    assert translate(c, refused).status_code == 404  # a refusal has nothing to translate
+    assert translate(c, {"request_id": "unknown"}).status_code == 404
+    c = make(ScriptedLLM(GOOD))
+    answer = c.post("/ask", json={"question": "Quelle durée pour un directeur ?"}).json()
+    conn.execute("UPDATE answer_cache SET expires_at = now() - interval '1 day'")
+    conn.commit()
+    assert translate(c, answer).status_code == 410
+
+
+@pytest.mark.parametrize("bad", ["Four months. [2]", "Four months. [1]\nAnd more. [1]", "Four months for an executive.", ""])
+def test_a_translation_that_loses_or_moves_a_citation_is_refused_and_not_stored(make, conn, bad):
+    llm = ScriptedLLM(GOOD, bad)
+    c = make(llm)
+    answer = c.post("/ask", json={"question": FRENCH}).json()
+    reply = translate(c, answer)
+    assert reply.status_code == 502
+    assert conn.execute("SELECT answer_en FROM answer_cache").fetchone()[0] is None
+    assert conn.execute("SELECT count(*) FROM query_traces WHERE mode = 'translate'").fetchone()[0] == 0
+
+
+def test_the_translation_has_its_own_limit_the_switch_and_the_budget(make, conn):
+    llm = ScriptedLLM(GOOD, GOOD, GOOD, ENGLISH)  # three answers asked first, then the one translation that is allowed
+    c = make(llm, settings=asking.Settings(translate_per_minute=1), limit_settings=limits.Settings(per_minute=9, per_day=30, cost_per_day_usd=0.10))
+    first, second, third = (c.post("/ask", json={"question": f"Quelle durée pour un cadre n° {i} ?"}).json() for i in range(3))
+    assert translate(c, first).status_code == 200
+    limited = translate(c, second)
+    assert limited.status_code == 429 and int(limited.headers["Retry-After"]) >= 1
+    limits.set_llm_enabled(conn, False)
+    assert translate(c, third).status_code == 503  # the switch stops a new translation
+    assert translate(c, first).status_code == 200  # a stored one is still served
 
 
 def test_health_says_whether_written_answers_are_on(make, conn):

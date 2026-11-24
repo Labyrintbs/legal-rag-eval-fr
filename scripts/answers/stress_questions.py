@@ -60,7 +60,19 @@ FRENCH = [  # the same ten questions as ENGLISH, in the same order
     "Mon patron m'a envoyé un message à 23 h, dois-je répondre ?",
     "Un employeur doit-il nommer un délégué à la protection des données ?",
 ]
-GROUPS = {"injection": INJECTION, "english": ENGLISH, "french": FRENCH}
+HR = [  # realistic questions of an HR visitor, to choose the example cards of the demo page
+    "Un salarié démissionne : quel préavis doit-il respecter ?",
+    "Quelle est la procédure pour licencier un salarié pour faute grave ?",
+    "Un salarié en télétravail peut-il demander à son employeur de payer ses frais ?",
+    "Combien de temps peut-on conserver le CV d'un candidat qui n'a pas été retenu ?",
+    "Quelle est la durée du préavis en cas de licenciement ?",
+    "Quelle est la durée du congé de maternité ?",
+    "Comment fonctionne la rupture conventionnelle ?",
+    "Un employeur peut-il installer une vidéosurveillance sur le lieu de travail ?",
+]
+ARTICLE = ["Que dit l'article L1221-13 du Code du travail ?", "Que dit l'article 17 du RGPD ?"]  # the article-number rule
+CARDS = [HR[0], HR[4], HR[6], HR[3], ARTICLE[0]]  # the new example cards of the demo page (the raw replies feed the preview)
+GROUPS = {"injection": INJECTION, "english": ENGLISH, "french": FRENCH, "hr": HR, "article": ARTICLE, "cards": CARDS}
 
 
 def main() -> None:
@@ -82,7 +94,8 @@ def main() -> None:
             result = engine.query(question).metadata["result"]
             rows.append({"kind": kind, "question": question, "outcome": result.outcome, "text": result.text,
                          "top_similarity": round(result.hits[0].similarity, 3) if result.hits else None,
-                         "top5": [h.label for h in result.hits], "reason": result.reason, "cost_usd": result.cost_usd})
+                         "top5": [h.label for h in result.hits], "reason": result.reason, "cost_usd": result.cost_usd,
+                         "raw": result.raw})
     judge_prompt = load_prompts(Path("prompts/answer_relevance.yaml"))["prompts"]["answer_relevance.v1"]
     budget = llm.Budget(run_cap=0.05, total_cap=5.0)
     with llm.make_http(os.environ["DEEPSEEK_API_KEY"]) as http:

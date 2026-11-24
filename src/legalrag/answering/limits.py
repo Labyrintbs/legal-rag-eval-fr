@@ -4,6 +4,7 @@ every request, limited ones included, for the counts to be right. A reply from t
 is checked by `decide_cached`: only its own minute counter applies.
 """
 
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -106,6 +107,21 @@ class Limits:
 
     def __init__(self, connect: Callable[[], psycopg.Connection], settings: Settings | None = None) -> None:
         self.connect, self.settings = connect, settings or Settings()
+        self.busy: set[str] = set()  # visitors with a request in progress (the service runs one process)
+        self.busy_lock = threading.Lock()
+
+    def begin(self, client: str | None) -> bool:
+        """One request at a time for a visitor. The counts above are written after the model call, so requests sent in a
+        burst would all be counted before any was recorded and all pass; this closes it. False: one is already in progress."""
+        with self.busy_lock:
+            if (client or "-") in self.busy:
+                return False
+            self.busy.add(client or "-")
+            return True
+
+    def end(self, client: str | None) -> None:
+        with self.busy_lock:
+            self.busy.discard(client or "-")
 
     def check(self, client: str | None, per_client: bool = True) -> Decision:
         with self.connect() as conn:
