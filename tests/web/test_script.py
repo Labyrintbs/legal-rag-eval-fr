@@ -35,7 +35,7 @@ class FakeNode {
   addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
   click() { for (const fn of this.listeners.click || []) fn({ currentTarget: this, preventDefault() {} }); }
   fire(type) { for (const fn of this.listeners[type] || []) fn({ currentTarget: this, preventDefault() {} }); }
-  focus() {}
+  focus() { document.activeElement = this; }
   scrollIntoView() {}
   get textContent() { return this.children.map((child) => (child.tag === "#text" ? child.text : child.textContent)).join(""); }
   set textContent(value) { this.children = [new TextNode(String(value))]; }
@@ -43,7 +43,7 @@ class FakeNode {
   set innerHTML(value) { this._inner = value; }
 }
 const registry = {};
-const document = { documentElement: { lang: "fr" }, createElement: (tag) => new FakeNode(tag), getElementById: (id) => registry[id] || null,
+const document = { activeElement: null, documentElement: { lang: "fr" }, createElement: (tag) => new FakeNode(tag), getElementById: (id) => registry[id] || null,
   querySelectorAll: () => [] };
 function makeStore(options = {}) {
   const data = {};
@@ -359,6 +359,44 @@ def test_the_english_headings_say_that_the_passages_and_articles_are_in_french(p
     start(page, 'lang = "en"')
     assert run(page, "[t('cited'), t('found', { n: 5 }), t('found_weak', { n: 5 })]") == [
         "Cited passages (in French)", "The 5 articles closest to your question (in French)", "The 5 closest articles (not very relevant here; in French)"]
+
+
+def test_every_button_of_an_entry_says_which_question_it_is_for_and_the_show_button_tells_if_it_is_open(page):
+    long = "Quelle est la durée de la période d'essai pour un cadre embauché en CDI ?"
+    history_page(page, (long, REPLY), ("Courte ?", {**REPLY, "request_id": "b"}))
+    labels = run(page, "byClass(registry.history, 'hist').map((e) => byTag(e, 'button').map((b) => b.getAttribute('aria-label')))")
+    assert labels[1] == ["Afficher la réponse : " + long[:40] + "…", "Modifier cette question : " + long[:40] + "…",
+                         "Supprimer cette entrée : " + long[:40] + "…"]
+    assert labels[0][0] == "Afficher la réponse : Courte ?"  # a short question is not cut
+    assert run(page, "toggles().map((b) => b.getAttribute('aria-expanded'))") == ["false", "false"]
+    start(page, "toggles()[0].click()")
+    assert run(page, "toggles()[0].getAttribute('aria-expanded')") == "true"
+    assert run(page, "toggles()[0].getAttribute('aria-label')") == "Masquer la réponse : Courte ?"
+    start(page, 'lang = "en"; drawHistory()')  # drawn again, still open
+    assert run(page, "[toggles()[0].getAttribute('aria-expanded'), toggles()[0].getAttribute('aria-label')]") == ["true", "Hide the answer : Courte ?"]
+
+
+def test_after_a_delete_the_focus_goes_to_the_entry_now_at_that_place_then_to_the_last_then_to_the_tick_box(page):
+    history_page(page, ("A ?", REPLY), ("B ?", {**REPLY, "request_id": "b"}), ("C ?", {**REPLY, "request_id": "c"}))  # shown: C, B, A
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete C: B is now first
+    assert run(page, "document.activeElement === toggles()[0] && readHistory().map((e) => e.question).join()") == "B ?,A ?"
+    start(page, "byTag(byClass(registry.history, 'hist')[1], 'button')[2].click()")  # delete the last one (A)
+    assert run(page, "document.activeElement === toggles()[0]") is True  # the last remaining
+    start(page, "byTag(byClass(registry.history, 'hist')[0], 'button')[2].click()")  # delete the only one
+    assert run(page, "document.activeElement === registry.keep") is True
+
+
+def test_the_erase_question_takes_the_focus_on_cancel_gives_it_back_and_is_not_asked_for_an_empty_list(page):
+    history_page(page)
+    start(page, "registry.clear.click()")
+    assert run(page, "registry.confirm.hidden") is True  # nothing to erase
+    history_page(page, ("A ?", REPLY))
+    start(page, "registry.clear.click()")
+    assert run(page, "[registry.confirm.hidden, document.activeElement === registry['confirm-no']]") == [False, True]
+    start(page, 'registry["confirm-no"].click()')
+    assert run(page, "[registry.confirm.hidden, document.activeElement === registry.clear]") == [True, True]
+    start(page, 'registry.clear.click(); registry["confirm-yes"].click()')
+    assert run(page, "[registry.confirm.hidden, readHistory().length, document.activeElement === registry.clear]") == [True, 0, True]
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):

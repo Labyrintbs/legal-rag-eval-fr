@@ -501,32 +501,44 @@ function clearHistory() {
   }
 }
 
-function historyEntry(entry) {
+// A button of an entry: its text, and for a screen reader the start of the question too, since every entry has the same buttons.
+function entryButton(key, excerpt, expanded = null) {
+  const button = make("button", { type: "button", class: "pill", text: t(key), "aria-label": `${t(key)} : ${excerpt}` });
+  if (expanded !== null) button.setAttribute("aria-expanded", String(expanded));
+  return button;
+}
+
+// One entry of the list. Returns its row and its show/hide button (the one that takes the focus when a neighbour is deleted).
+function historyEntry(entry, position) {
   const when = formatDate(entry.at);
   const body = make("div", { class: "hist-body", hidden: "" });
   const answered = entry.reply.outcome === "answered";
   const [show, hide] = answered ? ["history_show", "history_hide"] : ["history_show_result", "history_hide_result"]; // a refusal has no answer
-  const toggle = make("button", { type: "button", class: "pill", text: t(show) });
+  const excerpt = entry.question.length > 40 ? `${entry.question.slice(0, 40)}…` : entry.question;
+  let toggle = entryButton(show, excerpt, false);
   if (openEntries.has(entry.id)) { // an entry that was open stays open when the list is drawn again (a change of language)
     fillBody(entry, body);
     body.hidden = false;
-    toggle.textContent = t(hide);
+    toggle = entryButton(hide, excerpt, true);
   }
   toggle.addEventListener("click", () => {
     if (body.hidden) { fillBody(entry, body); openEntries.add(entry.id); } else openEntries.delete(entry.id);
     body.hidden = !body.hidden;
     toggle.textContent = t(body.hidden ? show : hide);
+    toggle.setAttribute("aria-label", `${toggle.textContent} : ${excerpt}`);
+    toggle.setAttribute("aria-expanded", String(!body.hidden));
   });
   const status = make("span", { class: `hist-status ${answered ? "ok" : "none"}`, text: t(answered ? "history_answered" : "history_noanswer") });
   // the French question that was searched stays visible on the closed line: a visitor who cannot read French can still tell entries apart
   const french = entry.reply.question_fr ? make("p", { class: "count hist-fr" }, make("span", { class: "tr-label", text: t("translated") }), " ",
     make("q", { text: entry.reply.question_fr })) : "";
-  const edit = make("button", { type: "button", class: "pill", text: t("history_edit") });
+  const edit = entryButton("history_edit", excerpt);
   edit.addEventListener("click", () => editFromHistory(entry.question));
-  const remove = make("button", { type: "button", class: "pill", text: t("history_delete") });
-  remove.addEventListener("click", () => { deleteEntry(entry.id); drawHistory(); });
-  return make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), " ", status,
+  const remove = entryButton("history_delete", excerpt);
+  remove.addEventListener("click", () => { deleteEntry(entry.id); drawHistory(position); });
+  const row = make("div", { class: "hist" }, make("span", { class: "tr-label", text: when }), " ", status,
     make("p", { class: "hist-q", text: entry.question }), french, make("div", { class: "hist-actions" }, toggle, edit, remove), body);
+  return { row, toggle };
 }
 
 const openEntries = new Set(); // the ids of the entries the visitor has opened
@@ -561,13 +573,17 @@ function takePrefill() {
   } catch (e) { return ""; }
 }
 
-function drawHistory() {
+// `focusAt`: the position of an entry that was just deleted. The focus goes to the entry now at that place (or the last one, or
+// the tick box when the list is empty), so that a keyboard user is not sent back to the top of the page.
+function drawHistory(focusAt = null) {
   const root = document.getElementById("history");
   if (!root) return;
   const list = readHistory();
   if (!storageWorks()) { root.replaceChildren(make("p", { class: "status problem", text: t("history_blocked") })); return; }
   const empty = `${t("history_empty")}${keepsHistory() ? "" : ` ${t("history_empty_tab")}`}`;
-  root.replaceChildren(...(list.length ? list.map(historyEntry) : [make("p", { class: "count", text: empty })]));
+  const rows = list.map(historyEntry);
+  root.replaceChildren(...(rows.length ? rows.map((r) => r.row) : [make("p", { class: "count", text: empty })]));
+  if (focusAt !== null) (rows.length ? rows[Math.min(focusAt, rows.length - 1)].toggle : document.getElementById("keep")).focus();
 }
 
 function setupHistory() {
@@ -576,10 +592,16 @@ function setupHistory() {
   keep.addEventListener("change", () => { setKeepHistory(keep.checked); drawHistory(); });
   // erasing everything asks first, with a question of its own: the button text is never swapped, so a change of language cannot
   // leave the page in a half-asked state
+  // The focus goes to "Cancel" (the safe choice) when the question opens, and back to the Erase button when it closes.
   const confirm = document.getElementById("confirm");
-  document.getElementById("clear").addEventListener("click", () => { confirm.hidden = false; });
-  document.getElementById("confirm-no").addEventListener("click", () => { confirm.hidden = true; });
-  document.getElementById("confirm-yes").addEventListener("click", () => { clearHistory(); confirm.hidden = true; drawHistory(); });
+  const clear = document.getElementById("clear");
+  clear.addEventListener("click", () => {
+    if (!readHistory().length) return; // nothing to erase: no question
+    confirm.hidden = false;
+    document.getElementById("confirm-no").focus();
+  });
+  document.getElementById("confirm-no").addEventListener("click", () => { confirm.hidden = true; clear.focus(); });
+  document.getElementById("confirm-yes").addEventListener("click", () => { clearHistory(); confirm.hidden = true; drawHistory(); clear.focus(); });
   drawHistory();
 }
 
