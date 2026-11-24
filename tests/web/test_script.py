@@ -29,13 +29,17 @@ class FakeNode {
   }
   append(...kids) { this.children.push(...this._adopt(kids)); }
   prepend(...kids) { this.children.unshift(...this._adopt(kids)); }
-  replaceChildren(...kids) { this.children = this._adopt(kids); }
-  replaceWith(other) { const list = this.parent.children; list[list.indexOf(this)] = other; other.parent = this.parent; }
+  replaceChildren(...kids) {
+    for (const child of this.children) if (child.tag !== "#text") child.parent = null;  // removed nodes are no longer part of the page
+    this.children = this._adopt(kids);
+  }
+  replaceWith(other) { const list = this.parent.children; list[list.indexOf(this)] = other; other.parent = this.parent; this.parent = null; }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); }
   addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
   click() { for (const fn of this.listeners.click || []) fn({ currentTarget: this, preventDefault() {} }); }
   fire(type) { for (const fn of this.listeners[type] || []) fn({ currentTarget: this, preventDefault() {} }); }
   focus() { document.activeElement = this; }
+  get isConnected() { let node = this; while (node.parent) node = node.parent; return Object.values(registry).includes(node); }
   scrollIntoView() {}
   get textContent() { return this.children.map((child) => (child.tag === "#text" ? child.text : child.textContent)).join(""); }
   set textContent(value) { this.children = [new TextNode(String(value))]; }
@@ -600,6 +604,108 @@ def test_a_long_word_cannot_push_the_history_sideways():
     css = (STATIC / "style.css").read_text()
     rule = next(line for line in css.splitlines() if ".hist .hist-q" in line and "overflow-wrap" in line)
     assert ".hist .hist-fr" in rule and "blockquote" in rule
+
+
+def slow_fetch(page, status, body):
+    """A fetch that answers only when `release()` is called: the request stays in flight."""
+    give(page, "slowReply", {"status": status, "body": body})
+    page.eval("""globalThis.requests = [];
+      fetch = (url, options) => { requests.push([url, JSON.parse(options.body)]);
+        return new Promise((resolve) => { globalThis.release = () => resolve({ status: slowReply.status, headers: { get: () => null }, json: async () => slowReply.body }); }); };""")
+
+
+def first_page(page):
+    for name in ("go", "result", "question", "count", "english", "translate", "cards"):
+        page.eval(f'registry.{name} = new FakeNode("{"button" if name in ("go", "translate") else "div"}")')
+    page.eval("registry.question.value = ''; registry.english.hidden = true")
+
+
+def test_only_one_question_runs_at_a_time_on_the_first_page_and_what_is_drawn_meanwhile_is_the_busy_line(page):
+    first_page(page)
+    slow_fetch(page, 200, REPLY)
+    start(page, 'examples = [{ question: "Carte ?", label: { fr: "C", en: "C" }, source: "ct" }]; drawExamples()')
+    start(page, 'ask("Q1 ?"); ask("Q2 ?"); ask("Q3 ?", true); ask("Q4 ?", false, true)')
+    assert run(page, "requests") == [["/ask", {"question": "Q1 ?", "translate": False}]]  # the others were not even sent
+    assert run(page, "[registry.go.disabled, registry.translate.disabled]") == [True, True]
+    start(page, "byClass(registry.cards, 'card')[0].click()")
+    assert run(page, "registry.question.value") == ""  # a card does not change the box while an answer is awaited
+    start(page, 'lang = "en"; show()')  # a language switch while the request runs
+    assert run(page, "registry.result.textContent") == "Searching…"
+    start(page, "release()")
+    assert run(page, "[registry.go.disabled, registry.translate.disabled, byClass(registry.result, 'answer').length]") == [False, False, 1]
+    assert run(page, "document.activeElement === registry.result") is True  # the keyboard focus lands on the new answer
+    start(page, 'ask("Q5 ?")')
+    assert run(page, "requests.length") == 2  # free again
+
+
+def test_a_vote_that_cannot_be_sent_says_so_and_a_double_click_sends_one_vote(page):
+    page.eval('fetch = async () => { throw new Error("offline"); }')
+    start(page, "globalThis.box = voteBox('r'.repeat(32)); byTag(box, 'button')[0].click()")
+    assert run(page, "byClass(box, 'count').map((n) => n.textContent)") == ["Le vote n'a pas pu être enregistré."]
+    slow_fetch(page, 200, {})
+    start(page, "byTag(box, 'button')[0].click(); byTag(box, 'button')[0].click(); byTag(box, 'button')[1].click()")
+    assert run(page, "requests.length") == 1  # the others wait for the first one
+    start(page, "release()")
+    assert "Merci" in run(page, "box.textContent")
+
+
+@pytest.mark.parametrize("body", [{}, [], {"detail": "x"}, {"outcome": "unheard_of"}, {"outcome": "answered"}, {"outcome": "answered", "claims": []},
+                                  {"outcome": "answered", "claims": "text"}, {"outcome": "rate_limited"}, "text", 5])
+def test_a_reply_with_status_200_that_is_not_a_reply_this_page_knows_is_a_failure_message_and_not_a_refusal_or_a_blank(page, body):
+    result_area(page)
+    fake_fetch(page, 200, body)
+    start(page, 'ask("Q ?")')
+    assert run(page, "registry.result.textContent") == "Le service a rencontré un problème. Réessayez dans un instant."
+    assert run(page, "readHistory()") == []
+
+
+def test_a_reply_whose_claims_have_the_wrong_shape_is_a_failure_message_and_not_an_error(page):
+    result_area(page)
+    fake_fetch(page, 200, {**REPLY, "claims": [{"text": "x"}, 5, {"text": "y", "citations": "z"}]})
+    start(page, 'ask("Q ?")')
+    assert "problème" in run(page, "registry.result.textContent") and run(page, "registry.go.disabled") is False
+
+
+def test_an_invalid_citation_is_a_refusal_in_words(page):
+    result_area(page)
+    fake_fetch(page, 200, {**REPLY, "outcome": "invalid_citation", "claims": []})
+    start(page, 'ask("Q ?")')
+    assert "Pas de réponse" in run(page, "registry.result.textContent")
+    assert run(page, "readHistory()") == []  # not a kind of reply the history keeps
+
+
+@pytest.mark.parametrize("english", ["", "   ", None, 5])
+def test_an_empty_translation_is_a_failure_and_not_an_empty_block(page, english):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, 200, {"english": english})
+    start(page, "globalThis.box = englishBlock(reply); byTag(box, 'button')[0].click()")
+    assert "n'a pas pu être faite" in run(page, "box.textContent") and run(page, "byTag(box, 'button')[0].disabled") is False
+    assert run(page, "reply.english === undefined")
+
+
+def test_a_translation_that_arrives_after_the_first_page_was_drawn_again_is_shown_and_asked_for_once(page):
+    first_page(page)
+    fake_fetch(page, 200, {**REPLY, "question_fr": "Quelle durée ?"})
+    start(page, 'ask("How long?", true)')
+    slow_fetch(page, 200, {"english": "Four months. [1]"})
+    start(page, "byTag(registry.result, 'button').filter((b) => b.className === 'pill')[0].click()")
+    start(page, 'lang = "en"; show()')  # the visitor switches language while it runs: new nodes
+    again = "byTag(registry.result, 'button').filter((b) => b.className === 'pill')[0]"
+    assert run(page, f"{again}.disabled") is True  # the new button is already off
+    start(page, f"{again}.click()")
+    assert run(page, "requests.length") == 1
+    start(page, "release()")
+    assert "Four months." in run(page, "registry.result.textContent")
+    assert run(page, "byClass(registry.result, 'en-answer')[0].children.filter((c) => c.tag === 'button').length") == 0
+    assert run(page, "requests.length") == 1
+
+
+def test_the_keyboard_focus_goes_to_the_translation_when_it_arrives(page):
+    give(page, "reply", {**REPLY, "question_fr": "Quelle durée ?"})
+    fake_fetch(page, 200, {"english": "Four months. [1]"})
+    page.eval('registry.box = null')
+    start(page, "globalThis.box = englishBlock(reply); registry.shown = box; byTag(box, 'button')[0].click()")
+    assert run(page, "document.activeElement === box") is True
 
 
 def test_the_first_page_takes_the_text_to_edit_once_and_fits_it_to_the_box(page):

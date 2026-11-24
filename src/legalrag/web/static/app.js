@@ -85,6 +85,7 @@ let lang = "fr";
 try { lang = localStorage.getItem("lang") === "en" ? "en" : "fr"; } catch (e) { /* no storage: French */ }
 let examples = [];
 let last = null; // {reply, status, retryAfter}: kept to draw it again when the language changes
+let asking = null; // "searching" or "translating" while a question is being answered
 
 const t = (key, values = {}) => (T[lang][key] ?? key).replace(/\{(\w+)\}/g, (_, name) => values[name]); // a missing text shows its key, not an error
 
@@ -205,8 +206,13 @@ function voteBox(requestId) {
   const down = make("button", { type: "button", class: "thumb", "aria-pressed": "false", "aria-label": t("down"), text: "👎" });
   let value = 0;
 
+  let sending = false; // a second click while the first vote is on its way would send it twice
   async function submit(extra) {
-    const status = await sendVote(requestId, value, extra && kind.value, extra && comment.value.trim());
+    if (sending) return;
+    sending = true;
+    let status = 0;
+    try { status = await sendVote(requestId, value, extra && kind.value, extra && comment.value.trim()); } catch (e) { /* offline: the message tells */ }
+    sending = false;
     message.textContent = status === 200 ? t("thanks") : status === 429 ? t("vote_limited") : t("vote_failed");
   }
   function vote(chosen, button, other) {
@@ -285,6 +291,7 @@ function show() {
   const result = document.getElementById("result");
   if (!result) return;
   result.replaceChildren();
+  if (asking) { result.append(make("div", { class: "status", text: t(asking) })); return; } // a request is running: not an old answer
   if (!last) return;
   drawReply();
   const line = translatedLine(last.reply);
@@ -334,13 +341,22 @@ function englishBlock(reply) {
     return box;
   }
   const button = make("button", { type: "button", class: "pill", text: t("show_english") });
+  if (translating.has(reply.request_id)) button.disabled = true; // the page was drawn again while the request runs
   button.addEventListener("click", () => askEnglish(reply, box, button));
   box.append(button);
   return box;
 }
 
 // One request for the translation of an answer. The note of an earlier try is removed first, so that notes do not pile up.
+const translating = new Set(); // the requests whose answer is being translated: one request each, whatever is drawn again meanwhile
+
 async function askEnglish(reply, box, button) {
+  if (translating.has(reply.request_id)) return;
+  translating.add(reply.request_id);
+  try { await askEnglishOnce(reply, box, button); } finally { translating.delete(reply.request_id); }
+}
+
+async function askEnglishOnce(reply, box, button) {
   button.disabled = true;
   if (button.note) button.note.remove();
   button.note = make("span", { class: "count", text: ` ${t("translating_answer")}` });
@@ -350,10 +366,11 @@ async function askEnglish(reply, box, button) {
     const response = await fetch("/translate-answer", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ request_id: reply.request_id }) });
     const data = await response.json().catch(() => ({}));
-    if (response.status === 200 && typeof data.english === "string") {
+    if (response.status === 200 && typeof data.english === "string" && data.english.trim()) {
       box.replaceChildren(make("span", { class: "tr-label", text: t("english_label") }), withMarkers(data.english));
       reply.english = data.english;
       refreshHistory(updateEntry(reply.request_id, { english: data.english }));
+      showLate(reply, box);
       return;
     }
     if (response.status === 429) message = t("limited", { n: Number(response.headers.get("Retry-After")) || 60 });
@@ -361,6 +378,7 @@ async function askEnglish(reply, box, button) {
       button.note.textContent = ` ${t("translate_gone")}`;
       reply.english_gone = true;
       refreshHistory(updateEntry(reply.request_id, { english_gone: true }));
+      showLate(reply, box);
       return;
     }
   } catch (e) { /* the message below tells */ }
@@ -383,16 +401,22 @@ function replyNode(reply, status, retryAfter, history = false) {
   if (status === 429) return problemCard(t("limited", { n: retryAfter || (reply && reply.retry_after) || 60 }), reply, history);
   if (status === 503) return problemCard(`${t("unavailable")}.`, reply, history);
   if (status === 502) return problemCard(t("upstream"), reply, history);
-  if (status !== 200 || !reply) return problemCard(t("failed"), null, history); // 500, 504, 404...: never read as a refusal of the model
-  if (reply.outcome === "answered") return answerCard(reply, history);
+  if (status !== 200 || !reply || typeof reply !== "object") return problemCard(t("failed"), null, history); // 500, 504, 404...: never a refusal
+  if (reply.outcome === "answered") {
+    return Array.isArray(reply.claims) && reply.claims.length ? answerCard(reply, history) : problemCard(t("failed"), null, history);
+  }
   if (reply.outcome === "refused_weak_retrieval") return refusalCard(t("weak"), { ...reply, reason: null }, history);
-  return refusalCard(t("noanswer"), reply, history);
+  if (REFUSALS.includes(reply.outcome)) return refusalCard(t("noanswer"), reply, history);
+  return problemCard(t("failed"), null, history); // an outcome this page does not know
 }
+
+const REFUSALS = ["refused_by_model", "invalid_citation"]; // the other outcome with no answer, refused_weak_retrieval, has its own wording
 
 function drawReply() {
   const { reply, status, retryAfter } = last;
-  const node = replyNode(reply, status, retryAfter);
-  if (node) document.getElementById("result").append(node);
+  let node;
+  try { node = replyNode(reply, status, retryAfter); } catch (e) { node = problemCard(t("failed"), null); } // a reply of the wrong shape
+  document.getElementById("result").append(node);
 }
 
 // The answer area is just under the question box; bring it into view, since the visitor may have clicked a card far below.
@@ -403,11 +427,15 @@ function showResultArea() {
 
 // `fromField`: the question is the French text of the translated-question field (kept on screen, since it is what was searched).
 async function ask(question, translate = false, fromField = false) {
+  if (asking) return; // one question at a time on this page: a second one would only be refused by the service
+  asking = translate ? "translating" : "searching";
   const go = document.getElementById("go");
+  const translateButton = document.getElementById("translate");
   const result = document.getElementById("result");
-  result.replaceChildren(make("div", { class: "status", text: t(translate ? "translating" : "searching") }));
+  result.replaceChildren(make("div", { class: "status", text: t(asking) }));
   showResultArea();
   go.disabled = true;
+  if (translateButton) translateButton.disabled = true;
   // Asked again from the French line: the entry keeps the English the visitor wrote, and replaces the one of the first try.
   const previous = last && last.reply ? last.reply.request_id : null;
   const typed = fromField && last && last.original ? last.original : question;
@@ -423,10 +451,14 @@ async function ask(question, translate = false, fromField = false) {
   } catch (e) {
     last = { reply: null, status: 0, original: typed };
   } finally {
+    asking = null;
     go.disabled = false;
+    if (translateButton) translateButton.disabled = false;
   }
   show();
   showResultArea();
+  result.setAttribute("tabindex", "-1"); // the redrawn area takes the keyboard focus, which was on a button that no longer exists
+  result.focus({ preventScroll: true });
 }
 
 function drawExamples() {
@@ -436,6 +468,7 @@ function drawExamples() {
     const card = make("button", { type: "button", class: "card" }, tag(e.source), make("b", { text: e.label[lang] || e.label.fr }),
       make("span", { text: e.question }), lang === "en" && e.question_en ? make("span", { class: "gloss", text: `(${e.question_en})` }) : "");
     card.addEventListener("click", () => {
+      if (asking) return; // the box and the answer shown must belong to the same question
       const box = document.getElementById("question");
       box.value = e.question;
       updateCount();
@@ -508,6 +541,7 @@ function writeHistory(list) {
 // The answer as it is kept: without the five articles of the search, which are large and not needed to read it again.
 function addToHistory(question, reply, replaces = null) {
   if (!HISTORY_OUTCOMES.includes(reply.outcome)) return null; // null: nothing to keep; false: it could not be kept
+  if (reply.outcome === "answered" && !(Array.isArray(reply.claims) && reply.claims.length)) return null; // not a reply worth keeping
   const kept = { request_id: reply.request_id, outcome: reply.outcome, reason: reply.reason, claims: reply.claims || [], articles: [],
     question_fr: reply.question_fr, masked: reply.masked, question_masked: reply.question_masked };
   const entry = { id: reply.request_id, at: new Date().toISOString(), question, reply: kept };
@@ -517,6 +551,14 @@ function addToHistory(question, reply, replaces = null) {
 }
 
 // The English translation of an answer, once the visitor has asked for it, goes into the entry of that answer.
+// After the reply of the service: if the box that asked was removed meanwhile (the page was drawn again, for a change of language),
+// the answer on the first page is drawn again from what is kept; if it is still there, the keyboard focus goes to it.
+function showLate(reply, box) {
+  if (box.isConnected === false) { if (last && last.reply === reply) show(); return; }
+  box.setAttribute("tabindex", "-1");
+  box.focus();
+}
+
 // Adds fields to the reply kept for a request (the translation, or the fact that the answer is gone). False when the entry is not
 // in the history or the browser refused to write.
 function updateEntry(requestId, changes) {
@@ -625,6 +667,10 @@ let lastDeleteAt = 0;
 // An entry changed by hand or by another version of the page may have the wrong shape: it says so instead of doing nothing.
 function fillBody(entry, body) {
   try {
+    const kept = entry.reply;
+    if (!HISTORY_OUTCOMES.includes(kept.outcome) || (kept.outcome === "answered" && !(Array.isArray(kept.claims) && kept.claims.length))) {
+      throw new Error("not a reply this page keeps");
+    }
     const key = entry.reply.outcome === "answered" ? "history_dated" : "history_dated_result";
     const date = formatDate(entry.at);
     const dated = date ? make("p", { class: "count", text: t(key, { date }) }) : null;
