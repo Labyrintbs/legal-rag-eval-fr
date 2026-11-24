@@ -16,7 +16,7 @@ spend ledger) sits beside them and imports nothing from the folders.
 | `answering/` | what a request to the service goes through | `search`, `units`, `answer`, `rag` (the LlamaIndex layer), `articlenum`, `limits`, `trace`, `logs`, `cache` (the answer cache) |
 | `experiments/` | the step 0c options that are not in the final setup | `rerank`, `rewrite`, `sparse`, `keyword`, `headsentence` |
 | `evaluation/` | measuring: gold, metrics, judges, outside datasets | `gold`, `goldjudge`, `draw`, `questiongen`, `metrics`, `evaluate`, `smoke`, `sanity`, `answermetrics`, `claimjudge`, `labelsheet`, `claimrag`, `citationcompare`, `cifixture`, `answer_relevance`, `ministry`, `judgecall` |
-| `web/` | the HTTP service (step 0f): the API and its reply shapes, answering one question (cache, engine, traces), the cache warm-up, and the real wiring | `app`, `schemas`, `asking`, `warm`, `build` |
+| `web/` | the HTTP service (step 0f): the API and its reply shapes, answering one question (cache, engine, traces), the cache warm-up, and the real wiring; `static/` holds the demo pages (question page, history, method, data, privacy) and their script, tested in QuickJS | `app`, `schemas`, `asking`, `warm`, `build` |
 | `cli/` | the `legalrag` command, one module per job | `corpus`, `index`, `evaluation`, `service`, and `common` (paths and helpers they share) |
 | top level | the model client | `llm` |
 
