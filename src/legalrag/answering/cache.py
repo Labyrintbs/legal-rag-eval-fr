@@ -84,11 +84,12 @@ def delete(conn: psycopg.Connection, key: str) -> bool:
 
 
 def drop_for_vote(conn: psycopg.Connection, request_id: str, client: str | None) -> bool:
-    """A thumbs-down removes the entry that served the request, but only when the voter is the client who got that
-    reply (otherwise a stranger could clear entries and make the service pay for new answers) and the entry is not
+    """A thumbs-down removes the entry that made the reply, but only when the voter is the client who was given that reply
+    by the model (an `answered` request: otherwise a stranger could clear entries and make the service pay for new
+    answers, and so could anyone who merely received a stored reply or a refusal for a question) and the entry is not
     pinned (the examples of the demo stay until the owner decides; the vote is kept on the trace either way)."""
-    row = conn.execute("SELECT cache_key, client_hash FROM query_traces WHERE request_id = %s", (request_id,)).fetchone()
-    if not row or not row[0] or client is None or row[1] != client:
+    row = conn.execute("SELECT cache_key, client_hash, outcome FROM query_traces WHERE request_id = %s", (request_id,)).fetchone()
+    if not row or not row[0] or client is None or row[1] != client or row[2] != "answered":
         return False
     removed = conn.execute("DELETE FROM answer_cache WHERE key = %s AND NOT pinned", (row[0],)).rowcount == 1
     conn.commit()

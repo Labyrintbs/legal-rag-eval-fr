@@ -11,7 +11,18 @@ from concurrent.futures import ThreadPoolExecutor
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from test_app import FRENCH, GOOD, FakeLLM, ScriptedLLM, engine_for, make, secret, traced, url  # noqa: F401 - fixtures
+from test_app import (  # noqa: F401 - fixtures
+    FRENCH,
+    GOOD,
+    FakeLLM,
+    ScriptedLLM,
+    engine_for,
+    make,
+    secret,
+    traced,
+    translate,
+    url,
+)
 
 from legalrag.answering import limits
 from legalrag.index import db
@@ -165,14 +176,14 @@ def test_every_reply_even_an_error_has_the_security_headers(make):
         assert "default-src 'self'" in reply.headers["content-security-policy"] and "frame-ancestors 'none'" in reply.headers["content-security-policy"]
 
 
-def test_the_client_header_takes_the_first_address_and_an_empty_or_huge_one_does_no_harm(make):
+def test_the_client_header_takes_the_last_address_and_an_empty_or_huge_one_does_no_harm(make):
     c = make(settings=asking.Settings(client_ip_header="x-real"), limit_settings=limits.Settings(per_minute=1, per_day=30, cost_per_day_usd=0.10))
-    assert ask_as(c, "1.1.1.1, 9.9.9.9", "Q une ?").status_code == 200
-    assert ask_as(c, "1.1.1.1, 8.8.8.8", "Q deux ?").status_code == 429  # the same first address: the same visitor
-    assert ask_as(c, "2.2.2.2", "Q trois ?").status_code == 200  # another visitor
+    assert ask_as(c, "9.9.9.9, 1.1.1.1", "Q une ?").status_code == 200
+    assert ask_as(c, "8.8.8.8, 1.1.1.1", "Q deux ?").status_code == 429  # the same last address: the same visitor, whatever they wrote first
+    assert ask_as(c, "1.1.1.1, 2.2.2.2", "Q trois ?").status_code == 200  # another visitor
     assert ask_as(c, "", "Q quatre ?").status_code == 200  # an empty header: the address of the connection
     assert ask_as(c, "", "Q cinq ?").status_code == 429
-    assert ask_as(c, "3.3.3.3, " + "9.9.9.9, " * 2000, "Q six ?").status_code == 200
+    assert ask_as(c, "9.9.9.9, " * 2000 + "3.3.3.3", "Q six ?").status_code == 200
 
 
 def test_a_forged_client_header_is_ignored_when_none_is_named(make):
@@ -274,19 +285,20 @@ def test_requests_of_different_visitors_do_not_wait_for_each_other(make):
 
 def test_parallel_votes_and_translations_of_one_visitor_stay_within_their_limits(make):
     llm = ScriptedLLM(*([GOOD] * 6 + ["Four months. [1]"] * 6))
-    c = make(llm, settings=asking.Settings(translate_per_minute=2, feedback_per_minute=3),
-             limit_settings=limits.Settings(per_minute=20, per_day=30, cost_per_day_usd=0.10))
+    c = make(llm, settings=asking.Settings(feedback_per_minute=3),
+             limit_settings=limits.Settings(per_minute=20, per_day=30, translate_per_minute=2, cost_per_day_usd=0.10))
     answers = [c.post("/ask", json={"question": f"Quelle durée pour le cas {i} ?"}).json() for i in range(6)]
     with ThreadPoolExecutor(6) as pool:
         translated = list(pool.map(lambda a: c.post("/translate-answer", json={"request_id": a["request_id"]}), answers))
         voted = list(pool.map(lambda a: c.post("/feedback", json={"request_id": a["request_id"], "value": 1}), answers))
-    assert sum(r.status_code == 200 for r in translated) == 2 and sum(r.status_code == 429 for r in translated) == 4
+    done = sum(r.status_code == 200 for r in translated)
+    assert 1 <= done <= 2 and {r.status_code for r in translated} <= {200, 429}  # one at a time for a visitor, and 2 a minute at most
     assert sum(r.status_code == 200 for r in voted) == 3 and sum(r.status_code == 429 for r in voted) == 3
 
 
 def test_the_translation_limit_counts_only_new_translations(make):
     llm = ScriptedLLM(GOOD, "Four months. [1]")
-    c = make(llm, settings=asking.Settings(translate_per_minute=1))
+    c = make(llm, limit_settings=limits.Settings(translate_per_minute=1))
     answer = c.post("/ask", json={"question": FRENCH}).json()
     codes = [c.post("/translate-answer", json={"request_id": answer["request_id"]}).status_code for _ in range(5)]
     assert codes == [200] * 5 and llm.calls == 2  # the stored translation is free and does not use the limit
@@ -335,6 +347,95 @@ def test_an_identifier_in_an_english_question_is_masked_before_the_translation_c
     llm = Spy("Quelle durée ? Mon e-mail est [e-mail]", GOOD)
     make(llm).post("/ask", json={"question": "How long? My e-mail is jean@example.com", "translate": True})
     assert "jean@example.com" not in seen[0] and "[e-mail]" in seen[0]  # the model that translates never sees the address
+
+
+def test_the_same_new_question_asked_by_many_visitors_at_once_calls_the_model_once(make):
+    """Twenty visitors asking the same new question used to cause twenty model calls for one stored answer."""
+    llm = SlowLLM()
+    c = make(llm, settings=asking.Settings(client_ip_header="x-real"))
+    with ThreadPoolExecutor(10) as pool:
+        replies = list(pool.map(lambda i: ask_as(c, f"10.8.0.{i}", FRENCH).json(), range(10)))
+    assert llm.calls == 1 and sorted(r["outcome"] for r in replies) == ["answered"] * 10
+    assert sorted(r["cached"] for r in replies) == [False] + [True] * 9  # one visitor paid, the nine others read it
+
+
+def test_the_same_answer_translated_by_many_visitors_at_once_is_translated_once(make):
+    class SlowTranslation(ScriptedLLM):
+        def chat(self, messages, **kwargs):
+            time.sleep(0.3)
+            return super().chat(messages, **kwargs)
+
+    llm = SlowTranslation(GOOD, "Four months. [1]", "never used")
+    c = make(llm, settings=asking.Settings(client_ip_header="x-real"))
+    answer = ask_as(c, "10.9.0.0", FRENCH).json()
+    with ThreadPoolExecutor(8) as pool:
+        replies = list(pool.map(lambda i: c.post("/translate-answer", json={"request_id": answer["request_id"]},
+                                                 headers={"x-real": f"10.9.1.{i}"}), range(8)))
+    assert llm.calls == 2 and [r.status_code for r in replies] == [200] * 8  # the answer and one translation, for eight visitors
+    assert sorted(r.json()["stored"] for r in replies) == [False] + [True] * 7
+
+
+def test_the_translation_of_answers_has_a_daily_cap_and_a_stored_one_is_free(make):
+    llm = ScriptedLLM(*([GOOD] * 4 + ["Four months. [1]"] * 4))
+    c = make(llm, limit_settings=limits.Settings(per_minute=20, translate_per_minute=20, translate_per_day=2, cost_per_day_usd=0.10))
+    answers = [c.post("/ask", json={"question": f"Quelle durée pour le cas {i} ?"}).json() for i in range(4)]
+    codes = [translate(c, a).status_code for a in answers]
+    assert codes == [200, 200, 429, 429]
+    assert translate(c, answers[0]).status_code == 200  # already stored: not counted again
+
+
+def test_a_search_queue_that_is_full_refuses_at_once_and_recovers():
+    import numpy as np
+
+    from legalrag.web import build
+
+    class Slow:
+        def encode_queries(self, texts, batch_size):
+            time.sleep(0.3)
+            return np.ones((len(texts), 4), dtype=np.float32)
+
+    limited = build.LimitedEmbedder(Slow(), at_once=1, waiting=1)
+    results = []
+
+    def call():
+        try:
+            limited.encode_queries(["q"], 1)
+            results.append("ok")
+        except limits.Overloaded:
+            results.append("busy")
+
+    threads = []
+    for _ in range(3):  # the first runs, the second waits, the third finds the queue full
+        threads.append(threading.Thread(target=call))
+        threads[-1].start()
+        time.sleep(0.05)
+    for t in threads:
+        t.join()
+    assert sorted(results) == ["busy", "ok", "ok"] and limited.waiting == 0
+    limited.encode_queries(["q"], 1)  # the places are free again
+
+
+def test_a_refused_search_is_a_503_with_a_wait_and_nothing_is_leaked(url):
+    from llama_index.core.retrievers import BaseRetriever
+
+    class Busy(BaseRetriever):
+        def _retrieve(self, query_bundle):
+            raise limits.Overloaded
+
+    client = TestClient(web.create_app(broken_app(url, retriever=Busy()), lambda: db.connect(url)), raise_server_exceptions=False)
+    for path in ("/ask", "/search"):
+        reply = client.post(path, json={"question": FRENCH})
+        assert reply.status_code == 503 and reply.headers["retry-after"] == "3" and "Overloaded" not in reply.text
+
+
+def test_the_rate_windows_forget_addresses_with_nothing_left_in_the_window(monkeypatch):
+    monkeypatch.setattr(web, "FORGET_AFTER", 10)
+    window = web.Recent(5, seconds=60)
+    for i in range(30):
+        assert window.allow(f"a{i}", now=float(i))
+    assert len(window.events) == 30  # all still inside their minute
+    assert window.allow("late", now=1000.0) and len(window.events) == 1  # a lot of idle ones: forgotten
+    assert window.allow("late", now=1001.0) and window.retry_after("late", now=1002.0) >= 1
 
 
 def test_the_busy_slot_is_per_visitor_and_the_cache_does_not_hide_a_burst(make):

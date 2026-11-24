@@ -1,3 +1,5 @@
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -141,6 +143,90 @@ def test_the_warm_up_decision_keeps_the_switch_and_the_budget_but_not_the_client
     limits.set_llm_enabled(conn, True)
     add(conn, 2, client="a", cost_usd=0.05)
     assert limits.decide(conn, None, SETTINGS, NOW, per_client=False).status == 503
+
+
+def add_translation(conn, n=1, client="c1", ago=timedelta(seconds=10), cost=0.0002, outcome="answered"):
+    add(conn, n, client=client, outcome=outcome, ago=ago, mode="translate", question="", cost_usd=cost)
+
+
+def translation(conn, client="c1"):
+    return limits.decide_translation(conn, client, SETTINGS, NOW)
+
+
+def test_a_translation_has_its_own_minute_counter_and_the_sixth_is_refused(conn):
+    add_translation(conn, 4)
+    assert translation(conn).allowed
+    add_translation(conn, 1)
+    verdict = translation(conn)
+    assert (verdict.allowed, verdict.outcome, verdict.status) == (False, "rate_limited", 429)
+    assert 1 <= verdict.retry_after <= 60 and "translations" in verdict.reason
+    assert translation(conn, "c2").allowed  # another visitor
+
+
+def test_a_translation_has_a_daily_counter_too_and_old_ones_count_for_the_day_only(conn):
+    add_translation(conn, 29, ago=timedelta(minutes=5))
+    assert translation(conn).allowed
+    add_translation(conn, 1, ago=timedelta(minutes=5))
+    verdict = translation(conn)
+    assert (verdict.status, verdict.outcome) == (429, "rate_limited") and "today" in verdict.reason
+    assert verdict.retry_after == int((datetime(2026, 11, 10, tzinfo=UTC) - NOW).total_seconds()) + 1
+    conn.execute("DELETE FROM query_traces")
+    add_translation(conn, 40, ago=timedelta(hours=13))  # yesterday
+    assert translation(conn).allowed
+
+
+def test_translations_and_answers_do_not_use_each_others_allowances(conn):
+    add_translation(conn, 10)
+    assert decide(conn).allowed  # ten translations are no answer of the minute
+    conn.execute("DELETE FROM query_traces")
+    add(conn, 5)
+    assert not decide(conn).allowed and translation(conn).allowed  # five answers do not block a translation
+
+
+def test_a_translation_needs_the_switch_and_the_budget_and_its_cost_counts_in_the_budget(conn):
+    add_translation(conn, 2, client="a", cost=0.05)  # the day's budget is used up by translations alone
+    verdict = translation(conn, "someone-new")
+    assert (verdict.allowed, verdict.status) == (False, 503)
+    assert decide(conn, "someone-new").status == 503  # and answers are stopped too
+    conn.execute("DELETE FROM query_traces")
+    limits.set_llm_enabled(conn, False)
+    assert translation(conn).outcome == "llm_disabled"
+
+
+def test_a_failed_translation_counts_even_without_a_known_cost(conn):
+    add_translation(conn, 5, cost=None, outcome="llm_error")
+    assert not translation(conn).allowed  # the call was made: it uses a place
+
+
+def test_one_request_at_a_time_per_visitor_and_the_slot_is_freed(conn):
+    gate = limits.Limits(lambda: None)
+    assert gate.begin("a") and not gate.begin("a") and gate.begin("b") and gate.begin(None) and not gate.begin(None)
+    gate.end("a")
+    assert gate.begin("a")
+    gate.end("zz")  # ending a slot that is not taken does nothing
+    assert gate.busy == {"a", "b", "-"}
+
+
+def test_the_lock_of_a_question_is_dropped_when_nobody_uses_it_and_is_held_by_one_at_a_time():
+    gate = limits.Limits(lambda: None)
+    order = []
+
+    def use(name):
+        with gate.single_flight("same question"):
+            order.append(("in", name))
+            time.sleep(0.05)
+            order.append(("out", name))
+
+    threads = [threading.Thread(target=use, args=(i,)) for i in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert [kind for kind, _ in order] == ["in", "out"] * 4  # never two inside at the same time
+    assert gate.flights == {}  # nothing is left behind
+    with gate.single_flight("a"), gate.single_flight("b"):  # other questions do not wait for each other
+        assert set(gate.flights) == {"a", "b"}
+    assert gate.flights == {}
 
 
 def test_limits_wrapper_opens_its_own_connection(conn, database_name):

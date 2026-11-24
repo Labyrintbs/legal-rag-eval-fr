@@ -213,10 +213,12 @@ def test_feedback_is_limited_per_client(make):
 def test_the_client_is_read_from_the_proxy_header_only_when_one_is_named(make, conn):
     ask = {"question": "Quelle durée ?"}
     behind = make(settings=web.Settings(client_ip_header="x-forwarded-for"))
-    first = behind.post("/ask", json=ask, headers={"x-forwarded-for": "203.0.113.7, 10.0.0.1"}).json()["request_id"]
+    # the last value is the one our proxy appended; a first value written by the visitor does not change who they are
+    first = behind.post("/ask", json=ask, headers={"x-forwarded-for": "10.0.0.1, 203.0.113.7"}).json()["request_id"]
     again = behind.post("/ask", json=ask, headers={"x-forwarded-for": "203.0.113.7"}).json()["request_id"]
+    forged = behind.post("/ask", json=ask, headers={"x-forwarded-for": "198.51.100.2, 203.0.113.7"}).json()["request_id"]
     other = behind.post("/ask", json=ask, headers={"x-forwarded-for": "198.51.100.2"}).json()["request_id"]
-    assert traced(conn, first)[2] == traced(conn, again)[2] != traced(conn, other)[2]
+    assert traced(conn, first)[2] == traced(conn, again)[2] == traced(conn, forged)[2] != traced(conn, other)[2]
     direct = make().post("/ask", json=ask, headers={"x-forwarded-for": "203.0.113.7"}).json()["request_id"]
     assert traced(conn, direct)[2] != traced(conn, first)[2]  # without a named header the connection address counts
 
@@ -265,7 +267,9 @@ def test_a_translated_question_is_answered_in_french_and_the_reply_and_the_trace
     body = c.post("/ask", json={"question": "How long for an executive?", "translate": True}).json()
     assert body["outcome"] == "answered" and body["question_fr"] == FRENCH and llm.calls == 3
     assert traced(conn, body["request_id"])[3] == FRENCH  # the question that was answered
-    assert cost_of(conn, body["request_id"]) == pytest.approx(2 * cost_of(conn, plain["request_id"]))  # answer + translation
+    assert cost_of(conn, body["request_id"]) == pytest.approx(cost_of(conn, plain["request_id"]))  # the answer row holds the answer only
+    count, cost = conn.execute("SELECT count(*), sum(cost_usd) FROM query_traces WHERE mode = 'translate'").fetchone()
+    assert count == 1 and cost == pytest.approx(cost_of(conn, plain["request_id"]))  # the translation is traced apart, with its cost
 
 
 def test_a_translated_question_shares_the_cache_with_the_same_french_question_and_still_pays_for_the_translation(make, conn):
@@ -274,18 +278,36 @@ def test_a_translated_question_shares_the_cache_with_the_same_french_question_an
     first = c.post("/ask", json={"question": FRENCH}).json()
     hit = c.post("/ask", json={"question": "How long for an executive?", "translate": True}).json()
     assert hit["cached"] and hit["question_fr"] == FRENCH and llm.calls == 2  # the answer call was not repeated
-    assert traced(conn, hit["request_id"])[1] == "cache_hit"
-    assert 0 < cost_of(conn, hit["request_id"]) < cost_of(conn, first["request_id"]) * 2
+    assert traced(conn, hit["request_id"])[1] == "cache_hit" and not cost_of(conn, hit["request_id"])  # a stored reply costs nothing...
+    assert conn.execute("SELECT count(*), sum(cost_usd) FROM query_traces WHERE mode = 'translate'").fetchone()[0] == 1  # ...but the translation did
+    assert first["cached"] is False
     assert "question_fr" not in conn.execute("SELECT reply FROM answer_cache").fetchone()[0]  # stored without it
 
 
-def test_a_translation_is_refused_without_a_model_call_when_the_client_is_over_its_limit(make):
-    llm = ScriptedLLM(GOOD)
-    c = make(llm, limit_settings=limits.Settings(per_minute=1, per_day=30, cost_per_day_usd=0.10))
-    assert c.post("/ask", json={"question": FRENCH}).status_code == 200
-    reply = c.post("/ask", json={"question": "How long?", "translate": True})
+def test_a_translated_question_has_its_own_counters_and_is_refused_without_a_model_call_over_them(make):
+    llm = ScriptedLLM(FRENCH, GOOD)
+    c = make(llm, limit_settings=limits.Settings(translate_per_minute=1, translate_per_day=30, cost_per_day_usd=0.10))
+    assert c.post("/ask", json={"question": "How long?", "translate": True}).status_code == 200
+    reply = c.post("/ask", json={"question": "How long again?", "translate": True})
     assert reply.status_code == 429 and reply.json()["outcome"] == "rate_limited" and "Retry-After" in reply.headers
-    assert llm.calls == 1  # only the first answer: no translation was paid for
+    assert llm.calls == 2  # the first translation and its answer: the second translation was not paid for
+
+
+def test_a_translated_question_whose_answer_is_in_memory_still_uses_the_translation_counters(make, conn):
+    """A translation call was made for each of these requests although every answer came from the memory: before, nothing counted them."""
+    llm = ScriptedLLM(GOOD, *([FRENCH] * 8))
+    c = make(llm, limit_settings=limits.Settings(translate_per_minute=3, translate_per_day=30, cost_per_day_usd=0.10))
+    c.post("/ask", json={"question": FRENCH})  # now in memory
+    codes = [c.post("/ask", json={"question": f"English question {i}?", "translate": True}).status_code for i in range(8)]
+    assert codes == [200, 200, 200] + [429] * 5 and llm.calls == 1 + 3
+    assert conn.execute("SELECT count(*) FROM query_traces WHERE mode = 'translate'").fetchone()[0] == 3
+
+
+def test_a_translated_question_that_ends_in_a_weak_search_still_counts_its_translation(make, conn):
+    llm = ScriptedLLM(*([FRENCH] * 6))
+    c = make(llm, nodes=[node(0.40)], limit_settings=limits.Settings(translate_per_minute=2, translate_per_day=30, cost_per_day_usd=0.10))
+    codes = [c.post("/ask", json={"question": f"English question {i}?", "translate": True}).status_code for i in range(4)]
+    assert codes == [200, 200, 429, 429] and llm.calls == 2  # refused for a weak search: no answer, but the translation was paid
 
 
 @pytest.mark.parametrize("llm", [FakeLLM(error=TimeoutError()), ScriptedLLM(""), ScriptedLLM("x" * 600)])
@@ -293,7 +315,10 @@ def test_a_failed_or_unusable_translation_is_a_502_and_no_answer_is_written(make
     reply = make(llm).post("/ask", json={"question": "How long?", "translate": True})
     body = reply.json()
     assert reply.status_code == 502 and body["outcome"] == "llm_error" and "traduction" in body["reason"]
-    assert llm.calls == 1 and traced(conn, body["request_id"])[1] == "llm_error"
+    assert llm.calls == 1
+    # the call was made, so it counts as a translation (without a cost: the model's usage is not known) and no answer row exists
+    assert conn.execute("SELECT outcome FROM query_traces WHERE mode = 'translate'").fetchall() == [("llm_error",)]
+    assert conn.execute("SELECT count(*) FROM query_traces WHERE mode = 'answer'").fetchone()[0] == 0
 
 
 def translate(client, answer):
@@ -351,7 +376,7 @@ def test_a_translation_that_loses_or_moves_a_citation_is_refused_and_not_stored(
 
 def test_the_translation_has_its_own_limit_the_switch_and_the_budget(make, conn):
     llm = ScriptedLLM(GOOD, GOOD, GOOD, ENGLISH)  # three answers asked first, then the one translation that is allowed
-    c = make(llm, settings=asking.Settings(translate_per_minute=1), limit_settings=limits.Settings(per_minute=9, per_day=30, cost_per_day_usd=0.10))
+    c = make(llm, limit_settings=limits.Settings(per_minute=9, per_day=30, translate_per_minute=1, cost_per_day_usd=0.10))
     first, second, third = (c.post("/ask", json={"question": f"Quelle durée pour un cadre n° {i} ?"}).json() for i in range(3))
     assert translate(c, first).status_code == 200
     limited = translate(c, second)
@@ -514,16 +539,19 @@ def test_a_thumbs_down_from_the_client_who_got_the_reply_removes_it_from_the_cac
     assert cached_entries(conn) == 0
 
 
-def test_a_thumbs_down_from_another_client_leaves_the_cache_alone_and_one_on_a_cached_reply_removes_it(make, conn):
+def test_only_the_visitor_whom_the_model_answered_can_remove_a_stored_answer_with_a_thumbs_down(make, conn):
     behind = make(settings=web.Settings(client_ip_header="x-forwarded-for"))
-    alice, bob = {"x-forwarded-for": "203.0.113.7"}, {"x-forwarded-for": "198.51.100.2"}
+    alice, bob, carol = ({"x-forwarded-for": address} for address in ("203.0.113.7", "198.51.100.2", "192.0.2.9"))
     first = behind.post("/ask", json=ASK, headers=alice).json()["request_id"]
     behind.post("/feedback", json={"request_id": first, "value": -1}, headers=bob)
     assert cached_entries(conn) == 1  # bob did not get alice's reply
     served = behind.post("/ask", json=ASK, headers=bob).json()
     assert served["cached"] is True
     behind.post("/feedback", json={"request_id": served["request_id"], "value": -1}, headers=bob)
-    assert cached_entries(conn) == 0  # bob got that reply, from the cache
+    assert cached_entries(conn) == 1  # bob received a stored reply: he did not pay for it, so his vote cannot clear it for everyone
+    behind.post("/feedback", json={"request_id": first, "value": -1}, headers=alice)
+    assert cached_entries(conn) == 0  # alice was answered by the model: her vote removes the entry
+    assert behind.post("/ask", json=ASK, headers=carol).json()["cached"] is False  # the next visitor gets a fresh answer
 
 
 def test_the_warm_up_asks_each_example_once_without_the_client_limits_and_skips_the_cached_ones(url, conn, make):

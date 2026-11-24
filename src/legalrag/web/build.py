@@ -18,6 +18,7 @@ from legalrag.web import examples, warm
 from legalrag.web.app import Settings, create_app
 
 EMBED_AT_ONCE = 2  # decision 1: questions embedded at the same time; the others wait
+EMBED_WAITING = 6  # questions that may queue behind them (about 3 s of waiting); the next ones get a 503
 MODEL = "deepseek-flash"  # decision of 0d: thinking off
 PROMPT_ID = "answer.v3"
 TRANSLATE_PROMPT_ID = "translate.v1"
@@ -26,14 +27,29 @@ RUN = "default"
 
 
 class LimitedEmbedder:
-    """Lets at most `at_once` calls into the model together; the CPU is shared with the web server."""
+    """Lets at most `at_once` calls into the model together; the CPU is shared with the web server. At most `waiting` more
+    calls queue (about 0.4 s each: a few seconds of waiting); a further one is refused at once with `Overloaded` (a 503),
+    since otherwise a few visitors searching at the same time make everyone wait for minutes."""
 
-    def __init__(self, embedder, at_once: int = EMBED_AT_ONCE) -> None:
-        self.embedder, self.slots = embedder, threading.BoundedSemaphore(at_once)
+    def __init__(self, embedder, at_once: int = EMBED_AT_ONCE, waiting: int = EMBED_WAITING) -> None:
+        self.embedder, self.slots, self.max_waiting = embedder, threading.BoundedSemaphore(at_once), waiting
+        self.waiting, self.lock = 0, threading.Lock()
 
     def encode_queries(self, texts: list[str], batch_size: int):
-        with self.slots:
+        if not self.slots.acquire(blocking=False):  # every place is taken: queue, if the queue is not full
+            with self.lock:
+                if self.waiting >= self.max_waiting:
+                    raise limits.Overloaded
+                self.waiting += 1
+            try:
+                self.slots.acquire()
+            finally:
+                with self.lock:
+                    self.waiting -= 1
+        try:
             return self.embedder.encode_queries(texts, batch_size)
+        finally:
+            self.slots.release()
 
 
 def production_engine() -> tuple[rag.AnswerEngine, Settings]:

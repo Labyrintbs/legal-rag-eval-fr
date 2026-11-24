@@ -6,6 +6,7 @@ is checked by `decide_cached`: only its own minute counter applies.
 
 import threading
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -25,6 +26,8 @@ class Settings:
     per_minute: int = 5  # per client: replies that called the model
     per_day: int = 30  # per client, UTC day, replies that called the model
     per_minute_cached: int = 30  # per client: replies from the cache (they cost no model call); a guess, untested
+    translate_per_minute: int = 5  # per client: new translations, of a question or of an answer (each is a model call); the user's choice
+    translate_per_day: int = 30  # per client, UTC day: the same count as the answers; a first value, to review
     cost_per_day_usd: float = 0.10  # whole service, UTC day
 
 
@@ -95,6 +98,33 @@ def decide(conn: psycopg.Connection, client: str | None, settings: Settings, now
     return ALLOWED
 
 
+COUNTED_TRANSLATIONS = ("SELECT count(*), min(created_at) FROM query_traces WHERE client_hash IS NOT DISTINCT FROM %s::text "
+                        "AND mode = 'translate' AND created_at >= %s")
+
+
+def decide_translation(conn: psycopg.Connection, client: str | None, settings: Settings, now: datetime | None = None) -> Decision:
+    """Whether this client may have a new translation now (of a question before the search, or of an answer). It is a model
+    call: it needs the switch and the day's budget like an answer, and it has counters of its own, per minute and per day,
+    because it is traced apart (mode "translate"), whatever the outcome of the answer that follows."""
+    now = now or datetime.now(UTC)
+    base = decide(conn, client, settings, now, per_client=False)
+    if not base.allowed:
+        return base
+    count, oldest = conn.execute(COUNTED_TRANSLATIONS, (client, now - timedelta(minutes=1))).fetchone()
+    if blocked := _too_many(count, oldest, settings.translate_per_minute, "translations", now):
+        return blocked
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    in_day = conn.execute(COUNTED_TRANSLATIONS, (client, day_start)).fetchone()[0]
+    if in_day >= settings.translate_per_day:
+        return Decision(False, "rate_limited", f"more than {settings.translate_per_day} translations today", 429,
+                        _seconds_until(day_start + timedelta(days=1), now))
+    return ALLOWED
+
+
+class Overloaded(Exception):
+    """Too many searches are waiting for the processor: the request is refused at once (a 503) instead of waiting for minutes."""
+
+
 def decide_cached(conn: psycopg.Connection, client: str | None, settings: Settings, now: datetime | None = None) -> Decision:
     """Whether this client may have a reply from the cache now. It costs nothing, so the switch and the daily budget do
     not apply (cached replies keep working when the cap is used up), and the model allowance is not used: only the
@@ -109,6 +139,8 @@ class Limits:
         self.connect, self.settings = connect, settings or Settings()
         self.busy: set[str] = set()  # visitors with a request in progress (the service runs one process)
         self.busy_lock = threading.Lock()
+        self.flights: dict[str, tuple[threading.Lock, int]] = {}  # questions being answered, with the number of requests on each
+        self.flight_lock = threading.Lock()
 
     def begin(self, client: str | None) -> bool:
         """One request at a time for a visitor. The counts above are written after the model call, so requests sent in a
@@ -122,6 +154,28 @@ class Limits:
     def end(self, client: str | None) -> None:
         with self.busy_lock:
             self.busy.discard(client or "-")
+
+    @contextmanager
+    def single_flight(self, key: str):
+        """The same question asked by several visitors at the same time is answered once: the others wait for the first, then
+        find its answer in the memory instead of each calling the model. The lock of a key is dropped when nobody uses it."""
+        with self.flight_lock:
+            lock, users = self.flights.get(key, (threading.Lock(), 0))
+            self.flights[key] = (lock, users + 1)
+        try:
+            with lock:
+                yield
+        finally:
+            with self.flight_lock:
+                lock, users = self.flights[key]
+                if users == 1:
+                    del self.flights[key]
+                else:
+                    self.flights[key] = (lock, users - 1)
+
+    def check_translation(self, client: str | None) -> Decision:
+        with self.connect() as conn:
+            return decide_translation(conn, client, self.settings)
 
     def check(self, client: str | None, per_client: bool = True) -> Decision:
         with self.connect() as conn:

@@ -116,6 +116,17 @@ def test_a_vote_removes_the_entry_only_for_the_client_who_got_the_reply(conn):
     assert cache.drop_for_vote(conn, "r1", "alice") is True and cache.counts(conn)[0] == 0
 
 
+def test_a_vote_on_a_stored_reply_or_a_refusal_cannot_remove_an_entry_only_the_visitor_the_model_answered_can(conn):
+    for outcome in ("cache_hit", "rate_limited", "refused_weak_retrieval", "refused_by_model", "llm_error", "llm_disabled"):
+        cache.put(conn, key(), "answered", REPLY, NOW)
+        trace.record(conn, trace.Trace(request_id=outcome, lang="fr", question="q", mode="answer", outcome=outcome, client_hash="alice",
+                                       cache_key=key()))
+        assert cache.drop_for_vote(conn, outcome, "alice") is False and cache.counts(conn, NOW)[0] == 1, outcome
+    trace.record(conn, trace.Trace(request_id="paid", lang="fr", question="q", mode="answer", outcome="answered", client_hash="alice",
+                                   cache_key=key()))
+    assert cache.drop_for_vote(conn, "paid", "alice") is True and cache.counts(conn, NOW)[0] == 0
+
+
 def test_a_vote_keeps_a_pinned_entry(conn):
     cache.put(conn, key(), "answered", REPLY, NOW, pinned=True)
     add_trace(conn, "r1", "alice", key())

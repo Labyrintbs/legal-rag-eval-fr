@@ -27,8 +27,11 @@ log = logging.getLogger("legalrag.web")
 
 
 def client_address(request: Request, header: str | None) -> str | None:
+    """The address in the header named in the settings, or the address of the connection. A header with several values
+    ("a, b, c") is read from the end: the last one is the value that our own proxy appended, while the first can be
+    written by the visitor."""
     if header and (value := request.headers.get(header)):
-        return value.split(",")[0].strip() or None
+        return value.split(",")[-1].strip() or None
     return request.client.host if request.client else None
 
 
@@ -43,6 +46,8 @@ class Recent:
     def allow(self, key: str, now: float | None = None) -> bool:
         now = time.monotonic() if now is None else now
         with self.lock:
+            if len(self.events) > FORGET_AFTER:  # many addresses seen: forget the ones with nothing in the window
+                self.events = defaultdict(deque, {k: v for k, v in self.events.items() if v and v[-1] > now - self.seconds})
             events = self.events[key]
             while events and events[0] <= now - self.seconds:
                 events.popleft()
@@ -61,6 +66,7 @@ class Recent:
 
 STATIC = Path(__file__).with_name("static")
 MAX_BODY = 16 * 1024  # bytes: 500 characters of any alphabet are at most 2 kB
+FORGET_AFTER = 5000  # addresses kept by a `Recent` window before the idle ones are dropped
 # The pages load only their own files; nothing is written into them from outside (the script builds the DOM with textContent).
 SECURITY_HEADERS = {
     "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
@@ -99,7 +105,6 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
                   openapi_url="/api/openapi.json" if docs else None, lifespan=lifespan)
     feedback_window = Recent(settings.feedback_per_minute)
     search_window = Recent(settings.search_per_minute)
-    translate_window = Recent(settings.translate_per_minute)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
@@ -107,6 +112,11 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
         (and a value that cannot be written as UTF-8 would have broken the reply itself)."""
         problems = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in error.errors()]
         return JSONResponse({"detail": problems}, status_code=422)
+
+    @app.exception_handler(limits.Overloaded)
+    async def overloaded(request: Request, error: limits.Overloaded) -> JSONResponse:
+        """Searches wait for the processor, two at a time; beyond a short queue the request is refused at once."""
+        return JSONResponse({"detail": "the service is busy, try again in a moment"}, status_code=503, headers={"Retry-After": "3"})
 
     @app.exception_handler(psycopg.Error)
     async def database_failed(request: Request, error: psycopg.Error) -> JSONResponse:
@@ -209,7 +219,7 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
     def translate_answer(body: schemas.TranslateAnswerRequest, request: Request) -> schemas.TranslateAnswerReply:
         client = trace.client_hash(client_address(request, settings.client_ip_header))
         try:
-            return asking.english_of_answer(engine, connect, settings, body.request_id, client, translate_window)
+            return asking.english_of_answer(engine, connect, settings, body.request_id, client)
         except asking.Refused as refused:
             headers = {"Retry-After": str(refused.retry_after)} if refused.retry_after else None
             raise HTTPException(refused.status, refused.detail, headers=headers) from refused
