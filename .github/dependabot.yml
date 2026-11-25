@@ -5,7 +5,16 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      # One weekly pull request for the ordinary packages. The llama-index packages are pinned on purpose (their API
+      # changes between versions) and torch is pinned for macOS 12: each of those gets its own pull request.
+      python-packages:
+        patterns: ["*"]
+        exclude-patterns: ["llama-index*", "torch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
