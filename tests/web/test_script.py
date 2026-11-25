@@ -91,7 +91,8 @@ def page():
     ctx = quickjs.Context()
     ctx.eval(HARNESS)
     ctx.eval((STATIC / "texts_en.js").read_text())
-    ctx.eval((STATIC / "app.js").read_text())
+    for name in ("history.js", "mail.js", "app.js"):  # the order of the pages
+        ctx.eval((STATIC / name).read_text())
     return ctx
 
 

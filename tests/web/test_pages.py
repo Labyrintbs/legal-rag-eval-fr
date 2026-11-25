@@ -27,7 +27,7 @@ def client(**kwargs):
 def test_the_pages_and_their_files_are_served_with_security_headers():
     c = client()
     for path, marker in (("/", "Posez une question"), ("/method", "ce que nous avons mesuré"), ("/data", "Les données"), ("/privacy", "Qui est responsable"), ("/history", "Historique de vos questions"),
-                         ("/static/app.js", "use strict"), ("/static/texts_en.js", "const EN"), ("/static/style.css", "--accent")):
+                         ("/static/app.js", "use strict"), ("/static/history.js", "use strict"), ("/static/mail.js", "use strict"),("/static/texts_en.js", "const EN"), ("/static/style.css", "--accent")):
         reply = c.get(path)
         assert reply.status_code == 200 and marker in reply.text, path
         assert reply.headers["x-content-type-options"] == "nosniff"
@@ -55,7 +55,7 @@ def test_pages_are_revalidated_the_health_is_never_kept_and_the_examples_for_fiv
 
 
 def test_the_links_of_a_reply_are_written_only_when_they_are_https():
-    source = (STATIC / "app.js").read_text()
+    source = script()
     assert source.count("href:") == 1 and r"/^https:\/\//.test(url)" in source  # the one place that writes a link checks the scheme
 
 
@@ -65,8 +65,11 @@ def test_the_examples_route_sends_the_given_examples_or_an_empty_list():
     assert client(examples=given).get("/examples").json() == given
 
 
+SCRIPT_FILES = ("history.js", "mail.js", "app.js")  # in the order the pages load them
+
+
 def script() -> str:
-    return (STATIC / "app.js").read_text()
+    return "\n".join((STATIC / name).read_text() for name in SCRIPT_FILES)
 
 
 def test_every_element_the_script_looks_for_exists_in_a_page():
@@ -117,15 +120,16 @@ def test_every_page_has_one_main_heading_a_language_a_viewport_and_the_scripts_i
     for page in PAGES:
         html = (STATIC / page).read_text()
         assert html.count("<h1") == 1 and '<html lang="fr">' in html and 'name="viewport"' in html, page
-        assert html.index("texts_en.js") < html.index("app.js"), page  # the English texts are defined before the script uses them
+        order = [html.index(f"/static/{name}") for name in ("texts_en.js", *SCRIPT_FILES)]
+        assert order == sorted(order), page  # the English texts and the helper files come before the script that calls them
         for link in ('href="/"', 'href="/history"', 'href="/method"', 'href="/data"', 'href="/privacy"'):
             assert link in html or link == f'href="/{page.removesuffix(".html")}"', (page, link)  # a page need not link to itself
 
 
 def test_the_translation_button_asks_for_a_translation_only_when_pressed():
-    html, script = (STATIC / "index.html").read_text(), (STATIC / "app.js").read_text()
+    html, source = (STATIC / "index.html").read_text(), script()
     assert 'id="translate"' in html and 'id="english"' in html and 'data-i18n="tr_button"' in html
-    assert 'ask(question, true)' in script and "translate = false" in script  # the plain form never translates
+    assert 'ask(question, true)' in source and "translate = false" in source  # the plain form never translates
 
 
 def test_the_contact_address_is_not_written_in_any_page_or_script_but_the_pages_carry_the_parts_to_build_it():
@@ -134,7 +138,7 @@ def test_the_contact_address_is_not_written_in_any_page_or_script_but_the_pages_
         assert "labyrintbs@gmail.com" not in html and "mailto:" not in html, page
         assert 'class="mail"' in html and 'data-user="labyrintbs"' in html and 'data-host="gmail.com"' in html, page
         assert "Hongming Fang" in html and "linkedin.com/in/hongming-fang" in html, page  # the author line of the footer
-    assert "labyrintbs@gmail.com" not in (STATIC / "app.js").read_text()
+    assert "labyrintbs@gmail.com" not in script()
 
 
 def test_the_pages_use_no_inline_script_or_style_that_the_policy_would_block():
