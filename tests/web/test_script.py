@@ -33,6 +33,7 @@ class FakeNode {
     for (const child of this.children) if (child.tag !== "#text") child.parent = null;  // removed nodes are no longer part of the page
     this.children = this._adopt(kids);
   }
+  after(other) { const list = this.parent.children; list.splice(list.indexOf(this) + 1, 0, other); other.parent = this.parent; }
   replaceWith(other) { const list = this.parent.children; list[list.indexOf(this)] = other; other.parent = this.parent; this.parent = null; }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); }
   addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
@@ -117,6 +118,15 @@ def give(ctx, name, value):
 
 def test_the_script_and_the_english_texts_load_and_the_setup_runs_on_a_page_without_elements(page):
     assert run(page, "[typeof replyNode, typeof drawHistory, typeof looksEnglish, typeof EN.title, lang]") == ["function", "function", "function", "string", "fr"]
+
+
+def test_the_contact_link_opens_the_mail_program_and_shows_the_address_once(page):
+    run(page, """(() => {
+      const box = new FakeNode("p"), link = new FakeNode("a");
+      link.dataset = { user: "me", host: "example.org" }; box.append(link); globalThis.link = link; return 1; })()""")
+    for _ in range(2):
+        run(page, "(openMail({ currentTarget: link, preventDefault() {} }), 1)")
+    assert run(page, "[window.location.href, link.parent.textContent]") == ["mailto:me@example.org", " (me@example.org)"]
 
 
 @pytest.mark.parametrize("text, english", [

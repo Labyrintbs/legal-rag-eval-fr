@@ -826,7 +826,16 @@ function setupHistory() {
 function openMail(event) {
   const link = event.currentTarget;
   event.preventDefault();
-  window.location.href = `mailto:${link.dataset.user}@${link.dataset.host}`;
+  const address = `${link.dataset.user}@${link.dataset.host}`;
+  // Shown as text too: with no mail program set up, the mailto link does nothing.
+  let shown = link.addressNote;
+  if (!shown) {
+    shown = document.createElement("span");
+    link.after(shown);
+    link.addressNote = shown;
+  }
+  shown.textContent = ` (${address})`;
+  window.location.href = `mailto:${address}`;
 }
 
 function setup() {
