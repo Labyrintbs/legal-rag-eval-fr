@@ -26,7 +26,7 @@ jobs:
       CI: "true"
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
       - run: uv sync --extra serve --locked
       - name: Lint
         run: uv run ruff check .
@@ -56,6 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
       - run: uv export --extra serve --locked --no-hashes --no-emit-project > requirements-audit.txt
       - run: uvx pip-audit -r requirements-audit.txt --no-deps --disable-pip
