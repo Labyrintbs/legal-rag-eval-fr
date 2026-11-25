@@ -50,3 +50,12 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+  audit:
+    # Known vulnerabilities in the locked packages (the Linux set CI installs). Not run for the macOS-only pins.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv export --extra serve --locked --no-hashes --no-emit-project > requirements-audit.txt
+      - run: uvx pip-audit -r requirements-audit.txt --no-deps --disable-pip
