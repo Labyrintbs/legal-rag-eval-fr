@@ -36,8 +36,10 @@ jobs:
         run: |
           gh release download ci-fixture-v1 --pattern ci-fixture.tar.gz --dir data/ci
           tar -xzf data/ci/ci-fixture.tar.gz -C data/ci
-      - name: Tests and quality gate
-        run: uv run pytest -q
+      - name: Fetch the bge-m3 tokenizer (checksum verified; the chunking tests need it)
+        run: uv run legalrag fetch tokenizer
+      - name: Tests and quality gate (a skipped test fails here, see tests/conftest.py)
+        run: uv run pytest -q -rs
 
   secrets:
     runs-on: ubuntu-latest
