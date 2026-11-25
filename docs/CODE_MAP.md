@@ -22,7 +22,7 @@ spend ledger) sits beside them and imports nothing from the folders.
 
 ## `tests/` and `scripts/`
 
-`tests/<folder>/test_<module>.py` for the modules above (`tests/web/` needs the serve extra); `tests/gate/` is the quality gate of CI (step 0e, see `docs/decisions/0007-step-0e-quality-gate.md`); `tests/conftest.py` (database fixtures) and `tests/fixtures/` stay at
+`tests/<folder>/test_<module>.py` for the modules above (`tests/web/` needs the serve extra); `tests/gate/` is the quality gate of CI (step 0e, see `docs/decisions/0007-step-0e-quality-gate.md`); `tests/test_repository.py` (nothing forbidden tracked, the code map and the README agree with the code), `tests/conftest.py` (database fixtures, and skips fail in CI) and `tests/fixtures/` stay at
 the top, and `tests/test_llm.py` tests `llm.py`.
 
 | `scripts/` folder | Holds |
