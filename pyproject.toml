@@ -64,7 +64,6 @@ packages = ["src/legalrag"]
 
 [tool.ruff]
 line-length = 100
-extend-exclude = ["docs/exploration_scripts"]
 
 [tool.ruff.lint]
 ignore = ["ISC004"]
