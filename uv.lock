@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -1077,7 +1077,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'serve'", specifier = ">=0.162.7" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "llama-index-core", marker = "extra == 'serve'", specifier = "==0.14.25" },
-    { name = "llama-index-llms-deepseek", marker = "extra == 'serve'", specifier = "==0.4.1" },
+    { name = "llama-index-llms-deepseek", marker = "extra == 'serve'", specifier = "==0.5.0" },
     { name = "lxml" },
     { name = "pandas" },
     { name = "pgvector", specifier = ">=0.5.1" },
@@ -1157,14 +1157,14 @@ wheels = [
 
 [[package]]
 name = "llama-index-llms-deepseek"
-version = "0.4.1"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-llms-openai-like" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/6f/7a8aff2ea46be2fd0d8984cfdf06d52039e45d28875b227aec41b984e06b/llama_index_llms_deepseek-0.4.1.tar.gz", hash = "sha256:cf5e9027c6f08d1bff83359dc74d46509f6cb09717277bcb6bab453dacecadd5", size = 3718, upload-time = "2026-08-31T16:30:12.256Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/10/b445baaabb64faece4af02959609ef274c47ceaa9ca6ef4b44549dffa1b5/llama_index_llms_deepseek-0.5.0.tar.gz", hash = "sha256:a4e4d390c44c65087064c4d8bc089c0982f9ec33d01a30890cff45f0ceb19231", size = 3718, upload-time = "2026-11-14T02:12:19.153Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/14/dfa0b0a588a7c887670ae257d96caea4fe11685dc52cecdd32d127b13cfe/llama_index_llms_deepseek-0.4.1-py3-none-any.whl", hash = "sha256:5a46068867c17e0f1d4633ecb56bd1b48c442bf4c0c338a4437525bb6741c2b1", size = 3575, upload-time = "2026-08-31T16:30:11.565Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/8a/aa67dc2b5a7192871df49270ae33328cf1f4fbacb43dafaa66cfd1524776/llama_index_llms_deepseek-0.5.0-py3-none-any.whl", hash = "sha256:19021a20c78c7961419034f786a35d868a82d5b1ea26e71f634b339cf4fb9e19", size = 3576, upload-time = "2026-11-14T02:12:18.376Z" },
 ]
 
 [[package]]
