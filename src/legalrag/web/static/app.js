@@ -837,19 +837,27 @@ function showAddress(link, address, startedAt) {
   link.after(link.addressNote);
 }
 
+// The real mailto target is set when the visitor reaches the link (hover, tab) or clicks it, and the browser then
+// follows it as an ordinary link, which works in more browsers than a script navigation.
+function prepareMail(event) {
+  const link = event.currentTarget;
+  link.setAttribute("href", `mailto:${link.dataset.user}@${link.dataset.host}`);
+}
+
 function openMail(event) {
   const link = event.currentTarget;
-  event.preventDefault();
-  const address = `${link.dataset.user}@${link.dataset.host}`;
-  setTimeout(showAddress, MAIL_WAIT_MS, link, address, Date.now());
-  window.location.href = `mailto:${address}`;
+  prepareMail(event);
+  setTimeout(showAddress, MAIL_WAIT_MS, link, `${link.dataset.user}@${link.dataset.host}`, Date.now());
 }
 
 function setup() {
   applyLanguage();
   window.addEventListener("blur", noteFocusLoss);
   document.addEventListener("visibilitychange", noteFocusLoss);
-  for (const link of document.querySelectorAll("a.mail")) link.addEventListener("click", openMail);
+  for (const link of document.querySelectorAll("a.mail")) {
+    for (const type of ["mouseenter", "focus", "touchstart"]) link.addEventListener(type, prepareMail);
+    link.addEventListener("click", openMail);
+  }
   for (const button of document.querySelectorAll("[data-lang]")) {
     button.addEventListener("click", () => {
       lang = button.dataset.lang;

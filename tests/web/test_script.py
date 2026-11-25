@@ -132,7 +132,7 @@ def click_mail(page):
 def test_the_contact_link_opens_the_mail_program_and_shows_no_address_when_the_page_lost_focus(page):
     click_mail(page)
     run(page, "(noteFocusLoss(), timers.forEach((fn) => fn()), 1)")  # the mail program took the focus
-    assert run(page, "[window.location.href, link.parent.textContent]") == ["mailto:me@example.org", ""]
+    assert run(page, "[link.getAttribute('href'), link.parent.textContent]") == ["mailto:me@example.org", ""]
 
 
 def test_the_contact_link_shows_the_address_once_when_the_page_kept_focus(page):
