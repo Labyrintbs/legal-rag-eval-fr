@@ -1,8 +1,10 @@
 # legal-rag-eval-fr
 
-Question answering over French labour law (Code du travail) and the GDPR, with measured evaluation. French questions first. Answers will cite articles and refuse when the corpus cannot answer.
+Question answering over French labour law (Code du travail) and the GDPR, with measured evaluation. French questions first. Answers cite articles and refuse when the corpus cannot answer.
 
-**Status:** steps 0a to 0e are done: ingest and storage, the evaluation set, the retrieval experiments, cited answers with refusals and guardrails, and a quality gate in CI (`docs/stage_0d_summary.md`, `docs/stage_0e_summary.md`). The web service and demo page (0f) come next. Nothing is deployed.
+**Status:** steps 0a to 0f are done: ingest and storage, the evaluation set, the retrieval experiments, cited answers with refusals and guardrails, a quality gate in CI, and the web service with its demo pages (`docs/stage_0d_summary.md`, `docs/stage_0e_summary.md`, `docs/decisions/0008-step-0f-decisions.md`). The demo runs locally; nothing is deployed yet.
+
+**The demo pages** (French, with an English switch): a question box with example cards and an answer that cites its articles; an optional English translation of an English question and of the answer; thumbs up and down; a history of the visitor's questions kept in the browser only (this tab, or the device if the visitor asks); `/method`, `/data` and `/privacy`. A personal-data filter runs before anything is sent, and the text of ordinary requests is erased after 7 days. The pages are plain files in `src/legalrag/web/static/`; their script is tested for real in a JavaScript engine (QuickJS).
 
 **Disclaimer:** legal information, not legal advice. The corpus has a date (below) and may not contain the current law.
 
@@ -64,11 +66,12 @@ The vectors are shared as a GitHub Release asset and are never committed. To rec
 
 ## Known limits
 
+- This section describes the retrieval of step 0a; later steps (answers, the reranker and keyword options of step 0c, the article-number rule of the service) are in `docs/decisions/` and `EXPERIMENT.md`.
 - Dense search only; the French stemmer of Postgres maps "démission" and "démissions" to different roots, which matters once keyword search is added.
 - Long annexes (flattened tables) are split into many chunks and are hard to find by a detail inside.
 - French and English GDPR chunks share one index; a French question gets English copies in its top 5.
 - The vector index is approximate. With the default `hnsw.ef_search` of 40 it missed a correct article in one smoke question; the smoke command uses 100.
-- No answer generation, no refusal rule, no reranker yet.
+- The answer quality is measured on dev questions (faithfulness, answer relevancy, a ministry-sheet check); it is not a guarantee. Some answers are too thin or miss a figure (see `docs/decisions/0008-step-0f-decisions.md`).
 
 ## Where things are
 
