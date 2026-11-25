@@ -13,6 +13,8 @@ from typing import Literal, get_args
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
+from legalrag.evaluation import judgecall
+
 Label = Literal["addresses", "partly", "does not address"]
 LABELS = get_args(Label)
 ORDER = {"does not address": 0, "partly": 1, "addresses": 2}
@@ -24,10 +26,7 @@ class Verdict(BaseModel):
     reason: str = ""
     label: Label
 
-    @field_validator("label", mode="before")
-    @classmethod
-    def lowercase(cls, value):
-        return value.strip().lower() if isinstance(value, str) else value
+    _lowercase = field_validator("label", mode="before")(judgecall.lowercase)
 
 
 class Generated(BaseModel):

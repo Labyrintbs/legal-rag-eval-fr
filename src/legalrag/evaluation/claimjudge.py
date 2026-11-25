@@ -13,7 +13,7 @@ import httpx
 from pydantic import BaseModel, field_validator
 
 from legalrag import llm
-from legalrag.evaluation import labelsheet
+from legalrag.evaluation import judgecall, labelsheet
 from legalrag.evaluation import questiongen as qg
 
 Label = Literal["supported", "partly", "not supported"]
@@ -26,10 +26,7 @@ class Verdict(BaseModel):
     reason: str = ""
     label: Label
 
-    @field_validator("label", mode="before")
-    @classmethod
-    def lowercase(cls, value):
-        return value.strip().lower() if isinstance(value, str) else value
+    _lowercase = field_validator("label", mode="before")(judgecall.lowercase)
 
 
 @dataclass(frozen=True)

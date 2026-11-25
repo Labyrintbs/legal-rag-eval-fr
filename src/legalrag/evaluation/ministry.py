@@ -10,6 +10,8 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, field_validator
 
+from legalrag.evaluation import judgecall
+
 Label = Literal["agrees", "not covered", "contradicts"]
 LABELS = get_args(Label)
 
@@ -18,10 +20,7 @@ class Verdict(BaseModel):
     reason: str = ""
     label: Label
 
-    @field_validator("label", mode="before")
-    @classmethod
-    def lowercase(cls, value):
-        return value.strip().lower() if isinstance(value, str) else value
+    _lowercase = field_validator("label", mode="before")(judgecall.lowercase)
 
 
 def normalise(text: str) -> str:

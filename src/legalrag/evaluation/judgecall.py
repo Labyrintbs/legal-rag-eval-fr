@@ -6,6 +6,11 @@ from pydantic import BaseModel, ValidationError
 from legalrag import llm
 
 
+def lowercase(value):
+    """For `field_validator("label", mode="before")` of a judge's verdict: the model may answer "Addresses"."""
+    return value.strip().lower() if isinstance(value, str) else value
+
+
 def chat_messages(prompt: dict, **fields: str) -> list[dict]:
     return [{"role": "system", "content": prompt["system"].strip()}, {"role": "user", "content": prompt["user"].format(**fields)}]
 
