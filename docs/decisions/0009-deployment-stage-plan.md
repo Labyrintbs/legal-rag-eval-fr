@@ -51,6 +51,9 @@ Recommendation: **on the decision day, check A and B live; take A if it can be o
 |---|---|---|
 | A. DeepSeek direct | cheapest (about $0.14 / $0.28 per million tokens **(web)**), the model we measured | data stored in China per its policy, regulator investigations **(web)**; the transfers sentence of `/privacy` would have to say so |
 | B. DeepSeek V4 Flash on an EU host (Scaleway lists it, EUR 0.40 / 0.08 / 0.80 **(web)**) | same model family, data stays in Europe | about 3 times the price; a different model version than the one measured; code change for base URL and model name |
+| B2. DeepSeek V4 Flash on Nebius Token Factory (about $0.14 in / $0.28 out per million, the same as DeepSeek direct, from third-party trackers, not Nebius's own page **(web, unverified)**) | cheapest EU-linked option found; same model | residency is guaranteed only on a dedicated endpoint in Finland (eu-north1); public serverless endpoints "can change region" **(web)**; a dedicated endpoint costs far more than a per-token plan **(unverified)** |
+| B3. OVHcloud AI Endpoints (DeepSeek V4.1 Flash from about $0.31 input, one tracker **(web, unverified)**) | French company, same host as the server option | V4.1 is a different model than the one measured; price not confirmed on OVH's pages |
+| B4. OpenRouter (30 providers serve the 0731 model, price about $0.14 / $0.28 **(web, conflicting)**) | one key, automatic failover, provider pinning | a request may go to any provider; the page said no EU in-region routing for the 0423 model **(web)**; a GDPR answer would need pinning to one named EU provider, which loses the point of OpenRouter |
 | C. An EU-native model (for example Mistral Small on Scaleway, EUR 0.15 / 0.35 **(web)**) | EU company, cheapest EU option | a different model: the whole answer evaluation and the prompts are re-measured |
 | D. Self-host a model | no transfer at all | needs a GPU server: far over budget |
 
