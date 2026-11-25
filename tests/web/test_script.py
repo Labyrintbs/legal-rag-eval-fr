@@ -48,7 +48,7 @@ class FakeNode {
   set innerHTML(value) { this._inner = value; }
 }
 const registry = {};
-const document = { activeElement: null, documentElement: { lang: "fr" }, createElement: (tag) => new FakeNode(tag), getElementById: (id) => registry[id] || null,
+const document = { activeElement: null, addEventListener() {}, documentElement: { lang: "fr" }, createElement: (tag) => new FakeNode(tag), getElementById: (id) => registry[id] || null,
   querySelectorAll: () => [] };
 function makeStore(options = {}) {
   const data = {};
@@ -120,13 +120,25 @@ def test_the_script_and_the_english_texts_load_and_the_setup_runs_on_a_page_with
     assert run(page, "[typeof replyNode, typeof drawHistory, typeof looksEnglish, typeof EN.title, lang]") == ["function", "function", "function", "string", "fr"]
 
 
-def test_the_contact_link_opens_the_mail_program_and_shows_the_address_once(page):
+def click_mail(page):
+    """Click a fresh contact link; the timer is replaced by a list the test runs by hand."""
     run(page, """(() => {
       const box = new FakeNode("p"), link = new FakeNode("a");
-      link.dataset = { user: "me", host: "example.org" }; box.append(link); globalThis.link = link; return 1; })()""")
-    for _ in range(2):
-        run(page, "(openMail({ currentTarget: link, preventDefault() {} }), 1)")
-    assert run(page, "[window.location.href, link.parent.textContent]") == ["mailto:me@example.org", " (me@example.org)"]
+      link.dataset = { user: "me", host: "example.org" }; box.append(link); globalThis.link = link;
+      globalThis.timers = []; globalThis.setTimeout = (fn, ms, ...args) => timers.push(() => fn(...args));
+      openMail({ currentTarget: link, preventDefault() {} }); return 1; })()""")
+
+
+def test_the_contact_link_opens_the_mail_program_and_shows_no_address_when_the_page_lost_focus(page):
+    click_mail(page)
+    run(page, "(noteFocusLoss(), timers.forEach((fn) => fn()), 1)")  # the mail program took the focus
+    assert run(page, "[window.location.href, link.parent.textContent]") == ["mailto:me@example.org", ""]
+
+
+def test_the_contact_link_shows_the_address_once_when_the_page_kept_focus(page):
+    click_mail(page)
+    run(page, "(lastFocusLoss = 0, timers.forEach((fn) => fn()), timers.forEach((fn) => fn()), 1)")
+    assert run(page, "link.parent.textContent") == " (me@example.org)"
 
 
 @pytest.mark.parametrize("text, english", [

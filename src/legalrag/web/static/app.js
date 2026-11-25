@@ -823,23 +823,32 @@ function setupHistory() {
 
 // The contact address is never written in the page: it is put together when the visitor clicks, so that programs
 // which read pages for addresses do not find it.
+// A browser cannot say whether a mailto worked; when a mail program opens, the page loses focus. No loss of focus
+// within MAIL_WAIT_MS: the address is shown as text instead.
+const MAIL_WAIT_MS = 1500;
+let lastFocusLoss = 0;
+
+function noteFocusLoss() { lastFocusLoss = Date.now(); }
+
+function showAddress(link, address, startedAt) {
+  if (lastFocusLoss >= startedAt || link.addressNote) return;
+  link.addressNote = document.createElement("span");
+  link.addressNote.textContent = ` (${address})`;
+  link.after(link.addressNote);
+}
+
 function openMail(event) {
   const link = event.currentTarget;
   event.preventDefault();
   const address = `${link.dataset.user}@${link.dataset.host}`;
-  // Shown as text too: with no mail program set up, the mailto link does nothing.
-  let shown = link.addressNote;
-  if (!shown) {
-    shown = document.createElement("span");
-    link.after(shown);
-    link.addressNote = shown;
-  }
-  shown.textContent = ` (${address})`;
+  setTimeout(showAddress, MAIL_WAIT_MS, link, address, Date.now());
   window.location.href = `mailto:${address}`;
 }
 
 function setup() {
   applyLanguage();
+  window.addEventListener("blur", noteFocusLoss);
+  document.addEventListener("visibilitychange", noteFocusLoss);
   for (const link of document.querySelectorAll("a.mail")) link.addEventListener("click", openMail);
   for (const button of document.querySelectorAll("[data-lang]")) {
     button.addEventListener("click", () => {
