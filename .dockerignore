@@ -1,0 +1,21 @@
+# The image holds only the code, the prompts and the migrations: no data, no secrets, no history.
+.git
+.github
+.vscode
+.venv
+.env
+.env.*
+**/__pycache__
+.pytest_cache
+.ruff_cache
+data
+docs
+eval
+scripts
+tests
+*.md
+!README.md
+Makefile
+docker-compose.yml
+compose.yaml
+Dockerfile
