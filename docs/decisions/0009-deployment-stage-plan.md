@@ -72,6 +72,21 @@ Recommendation: **B (Scaleway) now**, because its hosting place and data handlin
 - Caddy terminates HTTPS (automatic certificates **(web)**) and passes the request to `app:8000`. In Caddy, only listed upstream peers are believed for forwarded headers (`trusted_proxies`), and forum reports show header settings that fail silently **(web)**. Recommendation: Caddy sets one header (`X-Real-IP` or `X-Forwarded-For` from its own view of the connection), the app reads it through `CLIENT_IP_HEADER` and trusts only the proxy's address (`--forwarded-allow-ips`), and **a test from outside proves that a forged header changes nothing** (the red team of 0f found this is not covered by the app alone).
 - Proxy limits to add (from the red-team list): body cap 16 kB, body read timeout, header size limits, refusal of ambiguous requests; Caddy access logs off or with a short retention, since they hold raw addresses.
 
+**Status (2026-11-26): decided, option A (nginx now, certbot added in phase 2).** The user wants to learn nginx. The paragraphs above, D3, the phase 1 row, the goal of 5a, S4 and S5 still say Caddy and are reworded when S4 is written; until then read "Caddy" there as "the proxy". Still open inside A: how certbot runs under Docker (second container or a plugin). Notes from the discussion (from memory, unverified unless marked):
+- Why nginx is common: older (about 2004, Caddy about 2015), so most guides and templates use it; it does more (load balancing, caching, very high traffic) than a one-server demo needs; for companies certbot is a one-time script.
+- Where Caddy is simpler: it gets and renews HTTPS certificates itself. With nginx, certbot and a renewal timer are added, and a silent renewal failure shows as a browser warning about 90 days later.
+- In phase 1 (on the Mac, plain port 80, no domain) the two cost about the same; the certificate difference only appears in phase 2.
+- The forged-address header is one line in nginx (`proxy_set_header X-Real-IP $remote_addr;`); S5 tests it whichever proxy is used.
+- Switching later is cheap: one config file and one service in `compose.yaml`; the app does not change.
+
+| Option | For | Against |
+|---|---|---|
+| A. nginx now, certbot added in phase 2 | the user learns the common standard; plain port 80 is enough for phase 1 | more setup in phase 2; more settings to get wrong |
+| B. Caddy now (the working assumption) | shortest config, automatic HTTPS | the user does not learn nginx |
+| C. Caddy now, nginx rebuilt later as an exercise | demo first, learning second | the work is done twice |
+
+Recommendation (not final): **A**, because the learning goal is the user's and phase 1 is where nginx costs least. Still to cover before deciding: how certbot works inside Docker (a second container or a plugin in the proxy), and a line-by-line reading of a small nginx file.
+
 ### D5. Data on the server
 Rebuild from the Release assets (`migrate`, `load-chunks`, `load-embeddings` of the `default` run only, `db-check`, then the gate floors on the server) rather than copy a dump: it is the reproducible path and `fresh-rebuild` already tests it. The corpus snapshot date stays on `/data`.
 
