@@ -217,6 +217,17 @@ def run_size(conn: psycopg.Connection, name: str) -> tuple[int, int] | None:
     return None if row is None else (row[1], row[2])
 
 
+def embedding_revision(conn: psycopg.Connection, run_id: int, model: str = MODEL) -> str:
+    """The model revision of the stored vectors of a run. The service embeds questions with this revision, so that
+    questions and passages come from the same weights."""
+    rows = conn.execute(
+        "SELECT DISTINCT e.model_revision FROM chunk_embeddings e JOIN chunks c ON c.id = e.chunk_id "
+        "WHERE e.model = %s AND c.run_id = %s", (model, run_id)).fetchall()
+    if len(rows) != 1:
+        raise ValueError(f"the run holds {len(rows)} revisions of {model}, expected exactly one")
+    return rows[0][0]
+
+
 def delete_run(conn: psycopg.Connection, name: str) -> None:
     """Delete the run; its chunks and their vectors go with it (ON DELETE CASCADE). Articles stay."""
     conn.execute("DELETE FROM chunking_runs WHERE name = %s", (name,))

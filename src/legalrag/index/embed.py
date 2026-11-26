@@ -184,12 +184,23 @@ def write_run_json(path: Path, info: dict) -> None:
     path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n")
 
 
-class SentenceTransformerEmbedder:
-    """An embedding model in fp16 on the GPU, or in float32 on the CPU. Imports torch lazily."""
+def resolve_revision(name: str, pinned: str | None) -> str:
+    """The revision to load: the pinned one (no network), else the newest on Hugging Face, which embedding jobs record
+    with their vectors."""
+    if pinned:
+        return pinned
+    from huggingface_hub import model_info
 
-    def __init__(self, device: str = "cuda", max_seq_length: int | None = None, model_key: str = BASELINE_KEY) -> None:
+    return model_info(name).sha
+
+
+class SentenceTransformerEmbedder:
+    """An embedding model in fp16 on the GPU, or in float32 on the CPU. Imports torch lazily. `revision` pins the model
+    weights (the service passes the revision of the stored vectors); without it the newest revision is used."""
+
+    def __init__(self, device: str = "cuda", max_seq_length: int | None = None, model_key: str = BASELINE_KEY,
+                 revision: str | None = None) -> None:
         import torch
-        from huggingface_hub import model_info
         from sentence_transformers import SentenceTransformer
 
         if device == "auto":
@@ -200,7 +211,7 @@ class SentenceTransformerEmbedder:
             raise RuntimeError("CUDA is not available; use --device cpu or auto")
         self.device = device
         self.spec = EMBEDDING_MODELS[model_key]
-        self.revision = model_info(self.spec.name).sha
+        self.revision = resolve_revision(self.spec.name, revision)
         self.model = SentenceTransformer(
             self.spec.name,
             device=device,

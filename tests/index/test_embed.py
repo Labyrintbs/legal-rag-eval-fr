@@ -1,9 +1,32 @@
+import sys
+from types import SimpleNamespace
+
 import numpy as np
 import pyarrow.parquet as pq
 import pytest
 
 from legalrag.corpus.models import Chunk
-from legalrag.index.embed import DIM, check_chunks, embed_chunks, embed_text_hash, merge_shards
+from legalrag.index.embed import (
+    DIM,
+    check_chunks,
+    embed_chunks,
+    embed_text_hash,
+    merge_shards,
+    resolve_revision,
+)
+
+
+def test_a_pinned_revision_is_used_without_asking_hugging_face(monkeypatch):
+    def refuse(name):
+        raise AssertionError("the network must not be asked when a revision is pinned")
+
+    monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(model_info=refuse))
+    assert resolve_revision("BAAI/bge-m3", "5617a9f6") == "5617a9f6"
+
+
+def test_without_a_pinned_revision_the_newest_one_is_used(monkeypatch):
+    monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(model_info=lambda name: SimpleNamespace(sha=f"newest-of-{name}")))
+    assert resolve_revision("BAAI/bge-m3", None) == "newest-of-BAAI/bge-m3"
 
 
 def make_chunk(i, text=None, tokens=10, index=0):

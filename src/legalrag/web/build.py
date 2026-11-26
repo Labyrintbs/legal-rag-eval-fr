@@ -13,7 +13,7 @@ from llama_index.llms.deepseek import DeepSeek
 from legalrag.answering import cache, limits, rag
 from legalrag.answering.logs import setup as setup_logs
 from legalrag.evaluation.questiongen import load_prompts
-from legalrag.index import db, embed
+from legalrag.index import db, embed, store
 from legalrag.web import examples, warm
 from legalrag.web.app import Settings, create_app
 
@@ -61,10 +61,12 @@ def production_engine() -> tuple[rag.AnswerEngine, Settings]:
     prompt = load_prompts(db.ROOT / "prompts" / "answer.yaml")["prompts"][PROMPT_ID]
     llm = DeepSeek(model=MODEL, api_key=os.environ["DEEPSEEK_API_KEY"], temperature=0, max_tokens=prompt["max_tokens"],
                    additional_kwargs={"extra_body": {"thinking": {"type": "disabled"}}})
-    embedder = LimitedEmbedder(embed.SentenceTransformerEmbedder(os.environ.get("EMBED_DEVICE", "cpu")))
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (RUN,)).fetchone()[0]
         data_version = os.environ.get("DATA_VERSION") or cache.data_version(conn, RUN)
+        # Questions are embedded with the revision of the stored vectors (EMBED_REVISION overrides it).
+        revision = os.environ.get("EMBED_REVISION") or store.embedding_revision(conn, run_id)
+    embedder = LimitedEmbedder(embed.SentenceTransformerEmbedder(os.environ.get("EMBED_DEVICE", "cpu"), revision=revision))
     engine = rag.AnswerEngine(
         retriever=rag.LegalRetriever(db.connect, run_id, embedder, "fr", article_rule=True), postprocessor=rag.NumberUnits(), llm=llm,
         prompt=prompt, model=MODEL, prompt_id=PROMPT_ID, gate=limits.Limits(db.connect),

@@ -139,6 +139,19 @@ def test_vectors_load_by_key_and_hash(conn, loaded, tmp_path):
     assert count(conn, "chunk_embeddings") == len(chunks)
 
 
+def test_the_revision_of_the_stored_vectors_is_found_and_must_be_one(conn, loaded, tmp_path):
+    run_id, chunks = loaded
+    with pytest.raises(ValueError, match="0 revisions"):
+        store.embedding_revision(conn, run_id)
+    path = tmp_path / "v.parquet"
+    write_vectors(path, chunks, unit_vectors(chunks))
+    store.load_embeddings(conn, run_id, path)
+    assert store.embedding_revision(conn, run_id) == "rev"
+    conn.execute("UPDATE chunk_embeddings SET model_revision = 'other' WHERE chunk_id = (SELECT min(chunk_id) FROM chunk_embeddings)")
+    with pytest.raises(ValueError, match="2 revisions"):
+        store.embedding_revision(conn, run_id)
+
+
 def test_vectors_made_from_other_text_are_refused_and_nothing_is_stored(conn, loaded, tmp_path):
     run_id, chunks = loaded
     hashes = [embed_text_hash(c.embed_text) for c in chunks]
