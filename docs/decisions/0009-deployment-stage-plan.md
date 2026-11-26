@@ -122,6 +122,37 @@ Each phase ends with a review gate; the next does not start before the user appr
 | 5. Soft launch | Domain and HTTPS; the link given to a few people; one week of real traffic; limits and cache hit rate reviewed; first real questions to the review queue | the running cost | the traffic numbers, the bill, any complaint; decision to announce |
 | 6. Production | Two stable weeks, link on the CV and in the README, screenshots in the README | the running cost | exit criteria of section 1 |
 
+## 5a. Phase 1 in detail: make it deployable (on the Mac, no cost)
+
+**Goal.** `docker compose up` on this Mac runs the app, the database and Caddy; the pages come through Caddy; `/search` answers with the real bge-m3 on a small database; `/ask` reaches the model call (with a fake key it ends in a model failure, which is the expected result); the production image builds in CI; the test suite is green. **Exit check** is the list of measured results at the end of step S5.
+
+**What the repo showed, and what each finding changes (2026-11-26)**
+
+| Finding | Effect |
+|---|---|
+| `uv.lock` pins `torch 2.14.1+cu126` (CUDA) for Linux | the image would carry several GB of GPU libraries: add a CPU extra (S1) |
+| The service asks Hugging Face for the latest model revision at startup (`model_info(...).sha`), while the stored vectors were made with revision `5617a9f6...` (`data/embeddings/bge-m3-main.run.json`) | query and document vectors could come from different revisions, and boot needs the network: pin the revision (S2) and run offline |
+| `prompts/`, `migrations/` and `alembic.ini` are found relative to the repo root (`db.ROOT`) | the image keeps the project layout under `/app` (S3) |
+| The model provider's address, model name and the thinking switch are fixed in code | settings, after decision D2 (S6) |
+| This Mac is arm64, the OVHcloud VPS is x86_64 | local builds are arm64 for testing; the production image is built for amd64 by GitHub Actions (S7) |
+| The bge-m3 weights (about 2.2 GB) are not in git | a named volume filled once, then `HF_HUB_OFFLINE=1` (S3, S4) |
+| Docker Desktop gives its VM 7.6 GiB and 8 CPUs here | enough for the test; the server's 8 GB is the real limit (measured in phase 2) |
+
+**Steps**, each its own commit with tests, run in this order. Each one ends with a short report to the user.
+
+- **S1. CPU torch for the image.** In `pyproject.toml` add an extra `embed-cpu` (`sentence-transformers`, `torch`), a conflict rule between `embed` and `embed-cpu`, and a source entry that sends `torch` to the PyTorch CPU index for `embed-cpu` on Linux. The existing `embed` extra, used on the Windows laptop and the Mac, stays unchanged. Check: `uv lock`, `uv sync --extra embed` still works here, the suite and CI stay green.
+- **S2. Pin the embedding model revision.** The revision of the stored vectors becomes a constant (overridable by an environment variable); `model_info` is no longer called when the revision is given. Test: no network call when pinned; the revision matches the run record.
+- **S3. Dockerfile and `.dockerignore`.** Two stages on `python:3.12-slim`: build with `uv sync --locked --no-dev --extra serve --extra embed-cpu`, copy the environment and the project files into a slim runtime stage; non-root user; `HF_HOME=/models`, `HF_HUB_OFFLINE=1`; a health check on `/health`; the command is `legalrag serve --host 0.0.0.0`. The data folder, tests, documents and scripts are not copied. Check: build, image size, `torch.version.cuda` is `None`, the container runs as non-root, `legalrag --help` works inside.
+- **S4. `compose.yaml` and `Caddyfile`.** Services `app`, `db` (pgvector 0.8.7-pg16, no published port) and `caddy` (the only published ports, 80 and 443). One internal network. Volumes for the database, the model and Caddy's certificates. An environment file for the secrets (never in git, `.env.example` lists the names). In Caddy: the site address from a variable (a plain `:80` for the Mac test), one header carrying the visitor's address set by Caddy itself, a 16 kB body limit, read timeouts, no access log with addresses. A documented one-time command downloads the weights into the volume.
+- **S5. Local stack test.** Load the CI fixture (985 chunks) into the compose database; start the stack; check with `curl`: the five pages and the static files through Caddy, `/health`, `/search` with the real model, a forged address header changing nothing, the limits, the kill switch, `/ask` with a fake key. Record the measured numbers: image size, memory of each container, start-up time, a search's latency. This is the phase's exit check.
+- **S6. Provider as settings (after D2).** Base URL, model name and the reasoning switch from environment variables; the defaults keep today's DeepSeek behaviour so nothing changes without a setting. Tests for the settings; a test call against the chosen provider once the user approves the spend.
+- **S7. CI builds the image.** A job builds the amd64 image on every push (no push to a registry yet) so a broken Dockerfile fails the build. The push to GitHub's registry, tagged by commit, comes in phase 2 with the deploy script.
+- **S8. Documents.** `OPERATIONS.md` skeleton (deploy, rollback, hourly `maintain`, kill switch, the rebuild drill, rotating keys), `docs/CODE_MAP.md` and the README updated, an entry in this file with the measured numbers.
+
+**Risks of this phase.** The CPU torch version for arm64 or amd64 is missing from the PyTorch index (then pin another version and say so); the 2.2 GB download is slow; the image is larger than expected (then trim); the Mac's Docker VM runs out of memory (then raise it in Docker Desktop's settings).
+
+**Not in this phase.** Buying or configuring the server, the domain, backups, the legal text, the real model test with money.
+
 ## 6. Budget (estimates; prices change, re-read on the day)
 
 | Item | Figure | Status |
