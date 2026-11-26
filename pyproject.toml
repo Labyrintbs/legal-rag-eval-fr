@@ -22,6 +22,8 @@ dependencies = [
 [project.optional-dependencies]
 # Embedding job only (GPU laptop); keeps the Mac install light.
 embed = ["sentence-transformers", "torch"]
+# The server image (no GPU): same packages, torch from the CPU index (see tool.uv.sources); not installed with `embed`.
+embed-cpu = ["sentence-transformers", "torch"]
 # The service (step 0d, decision 4 of docs/decisions/0006): LlamaIndex around our retrieval; pinned, its API changes between versions.
 # Step 0f adds the web layer (FastAPI, uvicorn); running it for real also needs the embed extra (bge-m3 loads in the process).
 serve = [
@@ -45,14 +47,24 @@ legalrag = "legalrag.cli:app"
 # torch 2.12 and later ship macOS wheels for macOS 14 only; 2.11 is the newest for macOS 11 and 12.
 [tool.uv]
 constraint-dependencies = ["torch<2.12; sys_platform == 'darwin'"]
+conflicts = [[{ extra = "embed" }, { extra = "embed-cpu" }]]
 
-# CUDA 12 wheel for Linux: the default CUDA 13 wheel needs a newer driver than the laptop's.
+# Linux: the CUDA 12 wheel for `embed` (the default CUDA 13 wheel needs a newer driver than the laptop's), the CPU wheel
+# for `embed-cpu` (the server image: the CUDA wheel would add several GB of GPU libraries).
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux'" }]
+torch = [
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux'", extra = "embed" },
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux'", extra = "embed-cpu" },
+]
 
 [[tool.uv.index]]
 name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [build-system]
