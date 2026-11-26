@@ -164,6 +164,18 @@ Each phase ends with a review gate; the next does not start before the user appr
 - **S7. CI builds the image.** A job builds the amd64 image on every push (no push to a registry yet) so a broken Dockerfile fails the build. The push to GitHub's registry, tagged by commit, comes in phase 2 with the deploy script.
 - **S8. Documents.** `OPERATIONS.md` skeleton (deploy, rollback, hourly `maintain`, kill switch, the rebuild drill, rotating keys), `docs/CODE_MAP.md` and the README updated, an entry in this file with the measured numbers.
 
+**Results of S3 to S5 (2026-11-26, on the Mac, arm64).**
+- Files: `compose.server.yaml` (not `compose.yaml`: the repo already has `docker-compose.yml`, the dev database, which a `compose.yaml` would silently shadow; use `docker compose -f compose.server.yaml`), `deploy/nginx.conf` (nginx 1.28 replaces Caddy, decision D4), names added to `.env.example`. Port 443 and certbot are not in yet (phase 2).
+- Image: 2.49 GB; `torch.version.cuda` is `None`; runs as uid 10001; `legalrag --help` works; no data, tests, docs or scripts inside. The nginx image is 92 MB.
+- Weights: one command downloads the pinned revision into the `models` volume (13 files, 2.1 GB, 25 s here); without them the app stops after 11 s with the Hugging Face offline error.
+- Start-up: the whole stack answers `/health` through nginx 17 s after `up -d` (weights already in the volume).
+- Memory after a few searches: app 1.03 GiB, db 55 MiB, nginx 7.6 MiB. Not measured: the peak during `/ask`, or the amd64 build.
+- Search latency through nginx on the fixture database: 1.1 s for the first request, 0.35 to 0.5 s after. The fixture holds 985 chunks; the full 12,136-chunk database is slower and is measured on the server.
+- Through nginx, all 6 pages and 5 static files return 200; unknown paths and `/docs` return 404. A forged `X-Real-IP` or `X-Forwarded-For` gives the same visitor code as no header. A 20 kB body gets 413, a 20 kB header 400, a request with both `Content-Length` and `Transfer-Encoding` 400, a stalled body is closed after 10 s.
+- `/ask` with a fake key: 502 with `llm_error`; with the kill switch off: 503 with `llm_disabled` and `/search` still 200; switched on again.
+- Test setup notes: the CI fixture carries the placeholder revision `fixture`, so the test sets `EMBED_REVISION` to the real revision (read from the dev database); on the server the variable stays empty. On the Mac every request comes from one Docker address, so this test shows the header is overwritten, not that two real visitors are told apart (phase 2, from outside).
+- Not tested: the `compose.server.yaml` file with a real DeepSeek key (S6); HTTPS; restart after a reboot; the amd64 image (S7).
+
 **Risks of this phase.** The CPU torch version for arm64 or amd64 is missing from the PyTorch index (then pin another version and say so); the 2.2 GB download is slow; the image is larger than expected (then trim); the Mac's Docker VM runs out of memory (then raise it in Docker Desktop's settings).
 
 **Not in this phase.** Buying or configuring the server, the domain, backups, the legal text, the real model test with money.
