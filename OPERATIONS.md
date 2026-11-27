@@ -20,6 +20,7 @@ Volumes: `pgdata` (the database) and `models` (the bge-m3 weights, 2.1 GB). Secr
 |---|---|
 | `POSTGRES_PASSWORD`, `TRACE_SECRET` | required. `TRACE_SECRET` keys the daily visitor code; keep it fixed, a new value breaks the continuity of those codes |
 | `LLM_API_KEY` (else `DEEPSEEK_API_KEY`), `LLM_BASE_URL`, `LLM_MODEL`, `LLM_THINKING_OFF` | the model provider; all empty means DeepSeek. The model needs a row in `llm.PRICES` (the spending caps count in it); the base URL must be https; the app stops at start otherwise |
+| Scaleway values | `LLM_BASE_URL=https://api.scaleway.ai/<project id>/v1`, `LLM_MODEL=deepseek-v4.1-flash-1017`, `LLM_THINKING_OFF='{"reasoning_effort": "none"}'` (tried 2026-11-27). The DeepSeek form `{"thinking": {"type": "disabled"}}` is accepted there but ignored: thinking stays on and its tokens are billed. A provider accepts unknown fields silently, so after any change check that `reasoning_tokens` is 0 in a reply, not only that the call succeeds |
 | `HTTP_PORT` | published port of the proxy (default 80; 8080 for a test on a Mac) |
 | `CODE_VERSION` | tags the image and the answer cache; a new value starts with an empty cache |
 | `EMBED_REVISION` | leave empty: the revision stored with the vectors is used. Set it only for a test database whose vectors carry a placeholder |
