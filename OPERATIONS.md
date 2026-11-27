@@ -24,7 +24,7 @@ Volumes: `pgdata` (the database) and `models` (the bge-m3 weights, 2.1 GB). Secr
 | `CODE_VERSION` | tags the image and the answer cache; a new value starts with an empty cache |
 | `EMBED_REVISION` | leave empty: the revision stored with the vectors is used. Set it only for a test database whose vectors carry a placeholder |
 
-The spending cap is `cost_per_day_usd` of `answering/limits.py` (0.10 USD a day for the whole service) and the per-visitor limits are in the same file. Costs are counted in USD; euro prices are converted at `llm.USD_PER` (a rounded-up snapshot, revisit when the provider's currency or the rate changes).
+The spending cap is `cost_per_day_usd` of `answering/limits.py` (0.10 USD a day for the whole service) and the per-visitor limits are in the same file. Costs are counted in USD; euro prices are converted at `llm.USD_PER` (1.20, a rounded-up snapshot of about 1.12 on 2026-11-26). Check the rate every few months and raise the number if the euro gets close to it, or when the provider's currency changes; a test fails if it is set below 1.12.
 
 ## First start (tested on a Mac, planned for the server)
 
