@@ -27,7 +27,7 @@ Volumes: `pgdata` (the database) and `models` (the bge-m3 weights, 2.1 GB). Secr
 
 The spending cap is `cost_per_day_usd` of `answering/limits.py` (0.10 USD a day for the whole service) and the per-visitor limits are in the same file. Costs are counted in USD; euro prices are converted at `llm.USD_PER` (1.20, a rounded-up snapshot of about 1.12 on 2026-11-26). Check the rate every few months and raise the number if the euro gets close to it, or when the provider's currency changes; a test fails if it is set below 1.12.
 
-Scaleway's billing alerts and monthly budget only notify (the console says they "do not freeze your consumption"), so the daily cap above is the brake for normal use, and the alerts are the warning for a leaked key. Keep an alert at a low level (for example 10% of the budget) as well as the higher ones.
+Scaleway's billing alerts and monthly budget only notify (the console says they "do not freeze your consumption"), so the daily cap above is the brake for normal use, and the alerts are the warning for a leaked key. Keep an alert at a low level (for example 10% of the budget) as well as the higher ones. A search of Scaleway's documentation on 2026-11-27 found no hard spending limit for the model API: only alerts (up to 10, by email, SMS or webhook), rate limits per minute that apply to the whole organization, and Cockpit for the token use of a project (up to an hour late). The only hard stop is outside Scaleway: a payment card with its own monthly limit. A leaked key is stopped by revoking it (IAM, API keys).
 
 ## First start (tested on a Mac, planned for the server)
 
