@@ -59,14 +59,14 @@ Tracking the spend (Scaleway). The app side: `legalrag service status` (today's 
 - `deploy/deploy.sh [REF]` fetches, checks out REF (default `origin/main`), builds the image tagged with the commit, starts the stack, waits up to 3 minutes for `/health` through the proxy, and checks that `llm_host` is one of `ALLOWED_LLM_HOSTS` (default `api.scaleway.ai`). `.deploy-state` keeps the current and the previous tag (git-ignored).
 - **The provider gate:** if `llm_host` is not allowed, the script stops the proxy and exits with code 2: the link must not be shared while the stack points to another provider (DeepSeek's own API is for tests with synthetic questions only; see the plan, D2).
 - A start that is not healthy goes back to the previous tag by itself (exit code 1). `deploy/deploy.sh rollback` starts the previous tag again, with no build; images are kept by tag. `up -d` swaps the containers with a few seconds of downtime, accepted.
-- Tested on 2026-11-27: the first deploy (health ok, provider allowed, "deployed"). The refusal of a disallowed provider and the rollback are tried in the section "The server itself" below.
+- Tested on the server on 2026-11-27: the first deploy (health ok, provider allowed, "deployed"); a disallowed provider (exit code 2, proxy stopped, state unchanged); a normal deploy of a second commit (state `new previous`); `rollback` (back to the first commit's image, state swapped); a deploy again. Not tried: a start that is not healthy (the automatic return to the previous tag).
 
 ## Day to day
 
 | Task | Command | State |
 |---|---|---|
-| Written answers off / on / status (kill switch; search keeps working) | `docker compose -f compose.server.yaml exec -T app legalrag service llm-off` (`llm-on`, `status`) | tested |
-| Hourly upkeep: erase the text of ordinary requests after 7 days, delete traces after 30, delete expired cache entries | `docker compose -f compose.server.yaml exec -T app legalrag maintain`, from a timer on the host | planned: `/privacy` is not true until this runs |
+| Written answers off / on / status (kill switch; search keeps working) | `docker compose -f compose.server.yaml exec -T app legalrag service llm-off` (`llm-on`, `status`) | tested on the Mac and on the server (503, `llm_disabled`, the five articles still shown, `/search` still 200) |
+| Hourly upkeep: erase the text of ordinary requests after 7 days, delete traces after 30, delete expired cache entries | `docker compose -f compose.server.yaml exec -T app legalrag maintain`; scheduled on the server by `/etc/cron.d/legalrag-maintain` (minute 17 of every hour, output to syslog under `legalrag-maintain`) | tested 2026-11-27: run by hand and as cron runs it (root, minimal environment); no heartbeat yet, so a failing run is not noticed (phase 3) |
 | Change the provider | edit the `LLM_*` lines of `.env`, `docker compose -f compose.server.yaml up -d app`, check `llm_host` in `/health` | settings tested; the switch itself not tried on a server |
 | Rotate the model key | replace it in `.env`, `up -d app` | not tried |
 | Rotate `TRACE_SECRET` | same; visitor codes then differ from the older ones | not tried |
@@ -87,14 +87,17 @@ Every failure keeps the five articles; what differs is the status, the wait and 
 
 The uptime check of phase 3 should alert on `"llm_failing": true` in `/health`. **There is no automatic fallback to another provider**: a silent switch to DeepSeek's own API would send visitors' questions to China, against `/privacy`. Switching is a deliberate change of the `LLM_*` lines.
 
-## Checks from outside (phase 2, from another machine)
+## Checks from outside (phase 2; done on the server on 2026-11-27 from the Mac)
 
-Done on a Mac through the proxy, where every request comes from one Docker address (so the first two prove the header is overwritten, not that two visitors are told apart):
+With the proxy private (`HTTP_PORT=127.0.0.1:8080`, the normal state): from the Mac only SSH answers; ports 80, 443, 5432, 8000, 8080 and 3000 do not (`nc -z -w4`), and `ss -ltn` on the server lists only sshd, the local resolvers and the proxy on 127.0.0.1:8080. Docker publishes ports around the firewall, so this had to be tested, not assumed: it holds because the compose file publishes only the proxy and binds it to localhost.
 
-- a forged `X-Real-IP` or `X-Forwarded-For` gives the same visitor code as none (tested);
-- a 20 kB body gets 413, a 20 kB header 400, a request with both `Content-Length` and `Transfer-Encoding` 400, a stalled body is closed after 10 s (tested);
-- `nc -vz SERVER 5432` and the app's port 8000 must fail from the outside; Docker publishes ports around the firewall, so test it, do not assume it (planned);
-- all pages and static files answer through the proxy; `/docs` and unknown paths answer 404 (tested).
+With the proxy opened to the internet for about two minutes (`HTTP_PORT=80`, then set back), tested from the Mac over the real network:
+
+- all pages and static files answer; `/docs` and unknown paths answer 404;
+- a plain search, one with a forged `X-Real-IP` and one with a forged `X-Forwarded-For` got the **same visitor code**, and that code differs from the one of the requests made on the server itself: nginx saw the Mac's real address and ignored what the visitor wrote;
+- a 20 kB body gets 413, a 20 kB header 400, a request with both `Content-Length` and `Transfer-Encoding` 400, a stalled body is closed after 10 s.
+
+Before the site is public: open it only by setting `HTTP_PORT=80` (and `up -d proxy`) after phases 3 and 4 are done and the user agrees.
 
 ## Measured on a Mac (arm64, Docker Desktop, 2026-11-26)
 
