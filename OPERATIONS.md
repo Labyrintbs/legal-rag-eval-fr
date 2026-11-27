@@ -73,6 +73,20 @@ Deploy: set `CODE_VERSION` to the commit, pull or build that image, `docker comp
 | Change `POSTGRES_PASSWORD` | editing `.env` is not enough for an existing volume (Postgres reads it only at the first start): change it in the database too | not tried |
 | Rebuild drill | `make fresh-rebuild` (scratch database, compared with the real one; run on a development machine) | exists |
 
+## When the model side fails (tested with fakes, and the 429 with real calls on 2026-11-27)
+
+Every failure keeps the five articles; what differs is the status, the wait and the signal for the operator. The client waits at most 30 s per attempt with one retry (`LLM_TIMEOUT`, `LLM_RETRIES` in `web/build.py`), so a failing call ends before nginx's 120 s; a test keeps it so.
+
+| Failure | Visitor gets | Recorded | Operator action |
+|---|---|---|---|
+| 429: project rate limit or a token budget (Scaleway answers "You exceeded your current project rate limit", with `x-ratelimit-reset-tokens`, no `Retry-After`) | 503 with `Retry-After` from the header (1 to 60 s), the page's "unavailable" wording | trace error `RateLimitError`; not counted as failing | none for a burst; if it repeats, look at traffic and the limits in the console |
+| 401 or 403: key revoked, expired, or its rights removed | 502, articles only | trace error (`AuthenticationError`, `PermissionDeniedError`); after 3 in a row `/health` shows `llm_failing: true` | create a new key, update `.env`, `up -d app` |
+| 404: the model name no longer exists | 502, articles only | `NotFoundError`; counts towards `llm_failing` | change `LLM_MODEL` (and its price row) |
+| Timeout, connection error, 5xx | 502, articles only (after one retry) | the error class; counts towards `llm_failing` | wait, check Scaleway's status; kill switch if it lasts |
+| The reply is not valid JSON or has no valid citation | `parse_error`, `invalid_citation` as before | as before | none |
+
+The uptime check of phase 3 should alert on `"llm_failing": true` in `/health`. **There is no automatic fallback to another provider**: a silent switch to DeepSeek's own API would send visitors' questions to China, against `/privacy`. Switching is a deliberate change of the `LLM_*` lines.
+
 ## Checks from outside (phase 2, from another machine)
 
 Done on a Mac through the proxy, where every request comes from one Docker address (so the first two prove the header is overwritten, not that two visitors are told apart):

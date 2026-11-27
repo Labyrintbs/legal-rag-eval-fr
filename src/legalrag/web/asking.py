@@ -262,4 +262,6 @@ def answer_with_key(engine: rag.AnswerEngine, connect, settings: Settings, quest
     reply = schemas.reply_of(result, request_id)
     if result.outcome in cache.CACHEABLE:
         store(connect, key, result.outcome, reply, pinned=warm)  # only the warm-up asks the example questions
-    return reply, 502 if result.outcome in UPSTREAM_FAILURES else result.status
+    if result.outcome in UPSTREAM_FAILURES:
+        return reply, 503 if result.status == 503 else 502  # 503: the provider is busy (a rate or budget refusal), with a wait
+    return reply, result.status

@@ -20,6 +20,8 @@ from legalrag.web.app import Settings, create_app
 
 EMBED_AT_ONCE = 2  # decision 1: questions embedded at the same time; the others wait
 EMBED_WAITING = 6  # questions that may queue behind them (about 3 s of waiting); the next ones get a 503
+LLM_TIMEOUT = 30.0  # seconds per attempt of a model call; tests/web/test_build.py keeps timeout and retries under the proxy's limit
+LLM_RETRIES = 1  # the client's own retry (429, 5xx, timeouts); the default of 3 with 60 s each outlasts the proxy
 PROMPT_ID = "answer.v3"
 TRANSLATE_PROMPT_ID = "translate.v1"
 TRANSLATE_ANSWER_PROMPT_ID = "translate_answer.v2"
@@ -61,7 +63,7 @@ def production_engine() -> tuple[rag.AnswerEngine, Settings]:
     prompt = load_prompts(db.ROOT / "prompts" / "answer.yaml")["prompts"][PROMPT_ID]
     # The LlamaIndex DeepSeek class is an OpenAI-compatible client with a DeepSeek default address; any provider works.
     chat_model = DeepSeek(model=provider.model, api_key=provider.api_key, api_base=provider.base_url, temperature=0,
-                          max_tokens=prompt["max_tokens"],
+                          max_tokens=prompt["max_tokens"], timeout=LLM_TIMEOUT, max_retries=LLM_RETRIES,
                           additional_kwargs={"extra_body": provider.thinking_off} if provider.thinking_off else {})
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (RUN,)).fetchone()[0]

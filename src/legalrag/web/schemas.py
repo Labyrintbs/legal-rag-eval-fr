@@ -128,6 +128,7 @@ class HealthReply(Reply):
     llm_enabled: bool | None = None  # whether written answers are on; unknown when the database is down
     cache_warm: Literal["off", "running", "done"] | None = None  # the cache warm-up at startup; "off" without a list of questions
     llm_host: str | None = None  # the model provider's host name, when the service knows it (a name, no secret)
+    llm_failing: bool | None = None  # the last calls to the model failed in a row (a key that stopped working, a provider down)
 
 
 class SearchReply(Reply):

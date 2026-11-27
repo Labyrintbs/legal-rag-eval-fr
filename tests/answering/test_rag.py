@@ -79,6 +79,50 @@ def test_cached_tokens_come_from_either_usage_form():
     assert answer.usage_of(None) == (None, None, None)
 
 
+class ProviderError(Exception):
+    """What the model client raises for an HTTP error: a status code and the response with its headers."""
+
+    def __init__(self, status_code, headers=None):
+        super().__init__(f"HTTP {status_code}")
+        self.status_code, self.response = status_code, SimpleNamespace(headers=headers or {})
+
+
+def test_a_provider_refusal_for_rate_is_a_busy_service_with_the_wait_it_names_and_keeps_the_articles():
+    result = ask([node()], FakeLLM(error=ProviderError(429, {"x-ratelimit-reset-tokens": "7s212ms"})))
+    assert (result.outcome, result.status, result.retry_after, result.error) == ("llm_error", 503, 8, "ProviderError")
+    assert result.hits
+
+
+@pytest.mark.parametrize("headers, wait", [
+    ({"x-ratelimit-reset-tokens": "1m3s"}, 60),  # never more than a minute
+    ({"x-ratelimit-reset-tokens": "198ms"}, 1),  # never less than a second
+    ({"retry-after": "7"}, 7),
+    ({"retry-after": "7", "x-ratelimit-reset-tokens": "30s"}, 7),  # Retry-After first
+    ({"retry-after": "Wed, 21 Oct 2026 07:28:00 GMT"}, None),  # a date is not read
+    ({}, None),
+])
+def test_the_wait_comes_from_retry_after_or_the_token_limit_reset(headers, wait):
+    assert rag.wait_of(ProviderError(429, headers)) == wait
+
+
+@pytest.mark.parametrize("error", [ProviderError(401), ProviderError(404), ProviderError(500), TimeoutError("slow")])
+def test_any_other_failure_of_the_model_is_a_502_without_a_wait(error):
+    result = ask([node()], FakeLLM(error=error))
+    assert (result.outcome, result.status, result.retry_after) == ("llm_error", 502, None)
+
+
+def test_a_run_of_failures_other_than_a_busy_provider_makes_the_model_side_failing_until_a_call_gets_an_answer():
+    pulse = rag.ModelPulse()
+    for _ in range(5):
+        ask([node()], FakeLLM(error=ProviderError(429)), pulse=pulse)
+    assert not pulse.failing  # a busy provider is not a failure
+    for _ in range(rag.FAILING_AFTER):
+        ask([node()], FakeLLM(error=ProviderError(401)), pulse=pulse)
+    assert pulse.failing and pulse.last_error == "ProviderError"
+    ask([node()], FakeLLM(GOOD), pulse=pulse)
+    assert not pulse.failing
+
+
 def test_a_weak_search_never_calls_the_model():
     llm = FakeLLM(error=AssertionError("must not be called"))
     result = ask([node(0.54)], llm)

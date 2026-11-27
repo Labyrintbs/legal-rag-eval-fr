@@ -388,15 +388,55 @@ def test_the_translation_has_its_own_limit_the_switch_and_the_budget(make, conn)
 
 def test_health_says_whether_written_answers_are_on(make, conn):
     client = make()
-    assert client.get("/health").json() == {"status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": None}
+    assert client.get("/health").json() == {
+        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": None, "llm_failing": False}
     limits.set_llm_enabled(conn, False)
-    assert client.get("/health").json() == {"status": "ok", "llm_enabled": False, "cache_warm": "off", "llm_host": None}
+    assert client.get("/health").json() == {
+        "status": "ok", "llm_enabled": False, "cache_warm": "off", "llm_host": None, "llm_failing": False}
 
 
 def test_health_names_the_model_provider_only_when_it_is_known(make):
     assert make(settings=asking.Settings(llm_host="api.example.eu")).get("/health").json() == {
-        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": "api.example.eu"}
+        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": "api.example.eu", "llm_failing": False}
     assert make().get("/health").json()["llm_host"] is None
+
+
+class ProviderError(Exception):
+    """What the model client raises for an HTTP error: a status code and the response with its headers."""
+
+    def __init__(self, status_code, headers=None):
+        super().__init__(f"HTTP {status_code}")
+        self.status_code, self.response = status_code, SimpleNamespace(headers=headers or {})
+
+
+class FlakyLLM(FakeLLM):
+    """Fails with the given errors one after the other, then answers."""
+
+    def __init__(self, *errors):
+        super().__init__()
+        self.errors = list(errors)
+
+    def chat(self, messages, **kwargs):
+        if self.errors:
+            self.calls += 1
+            raise self.errors.pop(0)
+        return super().chat(messages, **kwargs)
+
+
+def test_a_busy_provider_is_a_503_with_the_wait_it_names_and_the_articles(make):
+    client = make(FakeLLM(error=ProviderError(429, {"x-ratelimit-reset-tokens": "7s212ms"})))
+    reply = client.post("/ask", json={"question": "Quelle durée pour un cadre ?"})
+    assert reply.status_code == 503 and reply.headers["Retry-After"] == "8"
+    assert reply.json()["outcome"] == "llm_error" and reply.json()["articles"]
+
+
+def test_health_says_when_the_model_keeps_failing_and_one_good_answer_clears_it(make):
+    client = make(FlakyLLM(ProviderError(401), ProviderError(401), ProviderError(401)))
+    for i in range(3):
+        assert client.post("/ask", json={"question": f"Quelle durée pour le cas {i} ?"}).status_code == 502
+    assert client.get("/health").json()["llm_failing"] is True
+    assert client.post("/ask", json={"question": "Quelle durée pour un cadre ?"}).status_code == 200
+    assert client.get("/health").json()["llm_failing"] is False
 
 
 def database_down():
@@ -408,7 +448,7 @@ def test_health_is_a_503_when_the_database_is_down():
                               model="deepseek-flash", prompt_id="answer.v3")
     reply = TestClient(web.create_app(engine, database_down)).get("/health")
     assert reply.status_code == 503 and reply.json() == {
-        "status": "database_unavailable", "llm_enabled": None, "cache_warm": None, "llm_host": None}
+        "status": "database_unavailable", "llm_enabled": None, "cache_warm": None, "llm_host": None, "llm_failing": None}
 
 
 def test_a_cached_entry_made_for_another_version_of_the_reply_shape_is_a_miss(url, conn, make):

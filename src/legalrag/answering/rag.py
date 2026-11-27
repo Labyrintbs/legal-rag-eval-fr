@@ -5,9 +5,12 @@ LlamaIndex DeepSeek connector. The checks stay in plain code (`answer`, `search`
 trace needs.
 """
 
+import logging
+import math
 import re
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,15 +21,69 @@ from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.query_engine import CustomQueryEngine
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from legalrag import llm as costs
 from legalrag.answering import answer, articlenum, limits, search
 from legalrag.answering.units import Unit, split_units
 from legalrag.index.embed import MODEL, embed_queries
 
+log = logging.getLogger(__name__)
+
 MAX_TRANSLATED = 500  # the longest question the service accepts
 MARKS = re.compile(r"\[\d+\]")  # the citation numbers of an answer
+DURATION = re.compile(r"(\d+)(ms|m|s)")  # 1m3s, 7s212ms, 198ms: how the provider's rate-limit headers write a wait
+FAILING_AFTER = 3  # failures in a row, other than a busy provider, after which /health says the model side is failing
+
+
+def seconds_of(text: str) -> float:
+    return sum(int(n) * {"ms": 0.001, "s": 1, "m": 60}[unit] for n, unit in DURATION.findall(text))
+
+
+def wait_of(error: Exception) -> int | None:
+    """Seconds the provider asks to wait after a refusal: `Retry-After`, else the reset time of its token limit (Scaleway
+    sends only that one). At least 1 and at most 60, the longest wait the page words; none when no header says."""
+    headers = getattr(getattr(error, "response", None), "headers", None) or {}
+    for name, read in (("retry-after", float), ("x-ratelimit-reset-tokens", seconds_of)):
+        value = headers.get(name)
+        if value:
+            try:
+                seconds = read(value)
+            except ValueError:  # Retry-After may also be a date
+                continue
+            if seconds > 0:
+                return min(max(math.ceil(seconds), 1), 60)
+    return None
+
+
+def failure_of(error: Exception) -> tuple[int, int | None]:
+    """(HTTP status of the reply, seconds to wait) for a failed model call. A refusal for rate or budget (429) is a busy
+    service: 503 with a wait. Everything else (a key that no longer works, a timeout, a provider error) is the model side
+    failing: 502. Both keep the articles."""
+    if getattr(error, "status_code", None) == 429:
+        return 503, wait_of(error)
+    return 502, None
+
+
+@dataclass
+class ModelPulse:
+    """How the last calls to the model went, for /health: a run of failures (a revoked key, a provider that is down) is what an
+    uptime check should see. A busy provider (429) is not counted, and any call that gets an answer resets the count."""
+
+    consecutive_failures: int = 0
+    last_error: str | None = None
+
+    def failed(self, error: Exception) -> None:
+        if getattr(error, "status_code", None) != 429:
+            self.consecutive_failures += 1
+        self.last_error = type(error).__name__
+
+    def succeeded(self) -> None:
+        self.consecutive_failures = 0
+
+    @property
+    def failing(self) -> bool:
+        return self.consecutive_failures >= FAILING_AFTER
 
 
 class LegalRetriever(BaseRetriever):
@@ -92,6 +149,7 @@ class AnswerEngine(CustomQueryEngine):
     gate: Any = None  # a limits.Limits (rate limits and kill switch); none in development runs
     translate_prompt: dict | None = None  # the prompt that turns a visitor's question into French (`translate`)
     translate_answer_prompt: dict | None = None  # the prompt that turns the sentences of an answer into English
+    pulse: Any = Field(default_factory=ModelPulse)  # recent failures of the model calls, read by /health
 
     def custom_query(self, query_str: str) -> Response:
         return self.respond(query_str)
@@ -158,8 +216,13 @@ class AnswerEngine(CustomQueryEngine):
         try:
             reply = self.llm.chat(messages, response_format={"type": "json_object"})
         except Exception as error:  # noqa: BLE001 - any failure of the call (network, timeout, API) is an llm_error
+            status, wait = failure_of(error)
+            self.pulse.failed(error)
+            log.warning("model call failed: %s (status %s)", type(error).__name__, getattr(error, "status_code", None))
             return answer.Result("llm_error", "(no answer: the model could not be reached)", hits, error=type(error).__name__,
-                                 retrieval_ms=retrieval_ms, llm_ms=round((time.monotonic() - started) * 1000))
+                                 retrieval_ms=retrieval_ms, llm_ms=round((time.monotonic() - started) * 1000),
+                                 status=status, retry_after=wait)
+        self.pulse.succeeded()
         llm_ms = round((time.monotonic() - started) * 1000)
         tokens = answer.usage_of(getattr(reply.raw, "usage", None))
         cost = self.cost(tokens)
