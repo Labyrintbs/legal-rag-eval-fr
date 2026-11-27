@@ -39,7 +39,8 @@ the top, and `tests/test_llm.py` tests `llm.py`.
 | `Dockerfile`, `.dockerignore` | the server image: CPU torch, non-root user, no data, weights in a volume |
 | `compose.server.yaml` | the server stack (proxy, app, database); `docker-compose.yml` is the development database |
 | `deploy/nginx.conf` | the proxy: size and time limits, the visitor-address header, no access log |
-| `OPERATIONS.md` | how to run it: first start, settings, kill switch, upkeep, checks from outside |
+| `deploy/deploy.sh`, `deploy/backup.sh` | on the server: build, start, provider check, rollback; nightly encrypted backup of the non-personal tables and the settings, with a restore drill |
+| `OPERATIONS.md` | how to run it: first start, settings, kill switch, upkeep, backups, checks from outside |
 | `.github/workflows/ci.yml` | checks, quality gate, secret scan, audit, and the image build with its checks |
 
 ## Where the old files went (2026-11-10)
