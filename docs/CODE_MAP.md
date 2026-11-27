@@ -2,8 +2,8 @@
 
 The code is in folders by job. A module may import from its own folder and from the folders above it in this list, never
 from the ones below: `corpus` < `index` < `answering` < `experiments` < `evaluation` < `web` < `cli`. Shared helpers go to the
-lowest folder that needs them (`corpus/labels.py`, `corpus/text.py`, `index/embed.py`). `llm.py` (the DeepSeek client and the
-spend ledger) sits beside them and imports nothing from the folders.
+lowest folder that needs them (`corpus/labels.py`, `corpus/text.py`, `index/embed.py`). `llm.py` (the model client, the price
+table, the provider settings read from the environment, and the spend ledger) sits beside them and imports nothing from the folders.
 
 `tests/` and `scripts/` have the same folders. Put a new module where its job is; if no folder fits, say so before adding one.
 
@@ -31,6 +31,16 @@ the top, and `tests/test_llm.py` tests `llm.py`.
 | `answers/` | the answer pilots, judging, metrics and the hand-labelling sheets |
 | `data/` | data preparation and the Releases (`pack_*`, `fresh_rebuild`, fixtures, heading sentences) |
 | `benchmarks/` | the outside sanity runs (BSARD, Syntec) |
+
+## Deployment files (at the top, not code)
+
+| File | Holds |
+|---|---|
+| `Dockerfile`, `.dockerignore` | the server image: CPU torch, non-root user, no data, weights in a volume |
+| `compose.server.yaml` | the server stack (proxy, app, database); `docker-compose.yml` is the development database |
+| `deploy/nginx.conf` | the proxy: size and time limits, the visitor-address header, no access log |
+| `OPERATIONS.md` | how to run it: first start, settings, kill switch, upkeep, checks from outside |
+| `.github/workflows/ci.yml` | checks, quality gate, secret scan, audit, and the image build with its checks |
 
 ## Where the old files went (2026-11-10)
 
