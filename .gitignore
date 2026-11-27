@@ -6,3 +6,6 @@ __pycache__/
 .ruff_cache/
 *.parquet
 !tests/fixtures/*.parquet
+
+# state of deploy/deploy.sh on the server
+.deploy-state

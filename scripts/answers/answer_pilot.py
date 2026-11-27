@@ -7,11 +7,13 @@ refusals by question kind, tokens, cost and time. It does not say whether an ans
 import argparse
 import json
 import os
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
 from llama_index.llms.deepseek import DeepSeek
 
+from legalrag import llm as legalrag_llm
 from legalrag.answering import rag, search
 from legalrag.evaluation import gold
 from legalrag.evaluation.questiongen import load_prompts as qg_load_prompts
@@ -22,7 +24,10 @@ RUN = "default"
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--model", required=True, help="deepseek-flash or deepseek-v4-pro")
+    parser.add_argument("--model", help="deepseek-flash or deepseek-v4-pro (with --provider env: the model of LLM_MODEL)")
+    parser.add_argument("--provider", choices=("deepseek", "env"), default="deepseek",
+                        help="deepseek: DEEPSEEK_API_KEY as in the earlier pilots; env: the LLM_* settings of the service")
+    parser.add_argument("--pause", type=float, default=0.0, help="seconds between two questions: Scaleway limits tokens a minute")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--n", type=int, default=None, help="trial: only the first N questions of the half")
     parser.add_argument("--split", choices=("dev", "test"), default="dev", help="test is opened once, for the final numbers")
@@ -33,17 +38,28 @@ def main() -> None:
 
     prompt = qg_load_prompts(Path("prompts/answer.yaml"))["prompts"][args.prompt]
     questions = [q for q in gold.load_gold(Path("eval/gold.jsonl")) if q.split == args.split and q.lang == "fr"][: args.n]
-    llm = DeepSeek(model=args.model, api_key=os.environ["DEEPSEEK_API_KEY"], temperature=0,
-                   additional_kwargs={"extra_body": {"thinking": {"type": "disabled"}}}, max_tokens=prompt["max_tokens"])
+    if args.provider == "env":
+        provider = legalrag_llm.provider_from_env(os.environ)
+        args.model = provider.model
+        chat_model = DeepSeek(model=provider.model, api_key=provider.api_key, api_base=provider.base_url, temperature=0,
+                              max_tokens=prompt["max_tokens"], timeout=60.0, max_retries=1,
+                              additional_kwargs={"extra_body": provider.thinking_off} if provider.thinking_off else {})
+        print(f"provider {provider.host}, model {provider.model}")
+    else:
+        if not args.model:
+            parser.error("--model is required with --provider deepseek")
+        chat_model = DeepSeek(model=args.model, api_key=os.environ["DEEPSEEK_API_KEY"], temperature=0,
+                              additional_kwargs={"extra_body": {"thinking": {"type": "disabled"}}}, max_tokens=prompt["max_tokens"])
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (RUN,)).fetchone()[0]
     engine = rag.AnswerEngine(
         retriever=rag.LegalRetriever(db.connect, run_id, embed.SentenceTransformerEmbedder(args.device), "fr"),
-        postprocessor=rag.NumberUnits(), llm=llm, prompt=prompt, model=args.model, prompt_id=args.prompt,
+        postprocessor=rag.NumberUnits(), llm=chat_model, prompt=prompt, model=args.model, prompt_id=args.prompt,
         threshold=args.threshold, ledger_label=f"answer-pilot-{args.tag}")
 
     rows = []
     for q in questions:
+        time.sleep(args.pause)
         result = engine.query(q.question).metadata["result"]
         cited = sorted({c.label for _, cs in (result.resolved.claims if result.resolved else []) for c in cs})
         rows.append({"id": q.id, "kind": q.kind, "outcome": result.outcome, "text": result.text, "cited": cited,
