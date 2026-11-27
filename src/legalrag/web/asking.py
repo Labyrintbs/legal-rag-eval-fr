@@ -27,6 +27,7 @@ class Settings:
     search_per_minute: int = 30  # per client; /search costs no model call but uses the CPU (about 4 searches a second in all)
     code_version: str | None = None  # a deploy with another code version starts with an empty cache (decision 4)
     data_version: str | None = None
+    llm_host: str | None = None  # host name of the model provider, shown by /health so a deploy can check where requests go
 
 
 def cache_key(engine: rag.AnswerEngine, settings: Settings, question: str) -> str:

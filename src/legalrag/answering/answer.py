@@ -140,10 +140,14 @@ class Result:
 
 
 def usage_of(usage) -> tuple[int | None, int | None, int | None]:
-    """(tokens in, tokens out, cached tokens) from the usage block of a DeepSeek reply."""
+    """(tokens in, tokens out, cached tokens) from the usage block of a reply: DeepSeek's cache field, else the
+    OpenAI-style `prompt_tokens_details.cached_tokens`; none given means none cached (the cost is then not under-counted)."""
     if usage is None:
         return None, None, None
-    return usage.prompt_tokens, usage.completion_tokens, getattr(usage, "prompt_cache_hit_tokens", None)
+    cached = getattr(usage, "prompt_cache_hit_tokens", None)
+    if cached is None:
+        cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", None)
+    return usage.prompt_tokens, usage.completion_tokens, cached
 
 
 def to_trace(result: Result, request_id: str, lang: str, question: str, mode: str, model: str | None, prompt_id: str | None,

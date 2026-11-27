@@ -175,7 +175,7 @@ class AnswerEngine(CustomQueryEngine):
         return answer.Result(resolved.outcome, text, resolved=resolved, reason=resolved.reason, **common)
 
     def cost(self, tokens: tuple[int | None, int | None, int | None]) -> float | None:
-        if self.model not in costs.PEAK_PRICES or tokens[0] is None:
+        if self.model not in costs.PRICES or tokens[0] is None:
             return None
         cached = tokens[2] or 0
         return costs.cost_usd(self.model, cached, tokens[0] - cached, tokens[1] or 0, datetime.now(UTC))

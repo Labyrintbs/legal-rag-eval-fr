@@ -181,3 +181,50 @@ def test_balance_and_reconcile(tmp_path):
     assert result["calls"] == 2
     assert result["estimated_usd"] == pytest.approx(0.03)
     assert result["balance_drop"]["CNY"] == pytest.approx(0.17)
+
+
+def test_a_euro_price_is_counted_in_usd_at_the_stated_rate_and_is_flat_across_the_day():
+    flat = 0.12 + 0.60 + 1.80  # cached + input + output per 1M tokens, EUR
+    for when in (at(MONDAY, 2), at(SATURDAY, 2), at(MONDAY, 12)):
+        assert llm.cost_usd("deepseek-v4.1-flash-1017", 1_000_000, 1_000_000, 1_000_000, when) == (
+            pytest.approx(flat * llm.USD_PER["EUR"]))
+    assert llm.worst_case_cost("deepseek-v4.1-flash-1017", 1_000_000, 1_000_000) == pytest.approx((0.60 + 1.80) * llm.USD_PER["EUR"])
+    assert llm.USD_PER["EUR"] >= 1.12  # a euro is never counted below its market value: the caps must not under-count
+
+
+def test_a_model_without_a_price_is_refused_instead_of_costing_nothing():
+    with pytest.raises(ValueError, match="no price for model 'other-model'"):
+        llm.price_of("other-model")
+    with pytest.raises(ValueError, match="no price"):
+        llm.cost_usd("other-model", 1, 1, 1, at(MONDAY, 2))
+    with pytest.raises(ValueError, match="no price"):
+        llm.worst_case_cost("other-model", 1000, 500)
+
+
+def test_without_settings_the_provider_is_deepseek_as_before():
+    provider = llm.provider_from_env({"DEEPSEEK_API_KEY": "k"})
+    assert (provider.base_url, provider.model, provider.api_key) == ("https://api.deepseek.com", "deepseek-flash", "k")
+    assert provider.thinking_off == {"thinking": {"type": "disabled"}} and provider.host == "api.deepseek.com"
+    empty = {"DEEPSEEK_API_KEY": "k", "LLM_BASE_URL": "", "LLM_MODEL": "", "LLM_API_KEY": "", "LLM_THINKING_OFF": ""}
+    assert llm.provider_from_env(empty) == provider  # compose passes unset values as empty strings
+
+
+def test_the_settings_change_the_provider():
+    environ = {"LLM_API_KEY": "new", "DEEPSEEK_API_KEY": "old", "LLM_BASE_URL": "https://api.example.eu/v1/",
+               "LLM_MODEL": "deepseek-v4.1-flash-1017", "LLM_THINKING_OFF": '{"chat_template_kwargs": {"enable_thinking": false}}'}
+    provider = llm.provider_from_env(environ)
+    assert (provider.api_key, provider.base_url, provider.model, provider.host) == (
+        "new", "https://api.example.eu/v1", "deepseek-v4.1-flash-1017", "api.example.eu")
+    assert provider.thinking_off == {"chat_template_kwargs": {"enable_thinking": False}}
+    assert llm.provider_from_env(environ | {"LLM_THINKING_OFF": "{}"}).thinking_off == {}
+
+
+@pytest.mark.parametrize("environ, error", [
+    ({}, "is not set"),
+    ({"LLM_API_KEY": "k", "LLM_MODEL": "other-model"}, "no price"),
+    ({"LLM_API_KEY": "k", "LLM_BASE_URL": "http://api.example.eu"}, "https://"),
+    ({"LLM_API_KEY": "k", "LLM_THINKING_OFF": "[1]"}, "JSON object"),
+])
+def test_a_bad_setting_stops_the_start_with_a_clear_message(environ, error):
+    with pytest.raises((RuntimeError, ValueError, TypeError), match=error):
+        llm.provider_from_env(environ)

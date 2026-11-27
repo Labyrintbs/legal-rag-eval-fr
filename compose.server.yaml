@@ -24,7 +24,13 @@ services:
     image: legalrag:${CODE_VERSION:-dev}
     environment:
       DATABASE_URL: postgresql://legalrag:${POSTGRES_PASSWORD}@db:5432/legalrag
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?set DEEPSEEK_API_KEY in .env}
+      # The model provider (llm.provider_from_env): all empty means DeepSeek with DEEPSEEK_API_KEY. The app stops at start
+      # when there is no key, no price for the model or a base URL that is not https.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_THINKING_OFF: ${LLM_THINKING_OFF:-}
       TRACE_SECRET: ${TRACE_SECRET:?set TRACE_SECRET in .env}
       CLIENT_IP_HEADER: X-Real-IP  # the header nginx sets; the app is reachable only through nginx
       CODE_VERSION: ${CODE_VERSION:-dev}

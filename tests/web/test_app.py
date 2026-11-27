@@ -388,9 +388,15 @@ def test_the_translation_has_its_own_limit_the_switch_and_the_budget(make, conn)
 
 def test_health_says_whether_written_answers_are_on(make, conn):
     client = make()
-    assert client.get("/health").json() == {"status": "ok", "llm_enabled": True, "cache_warm": "off"}
+    assert client.get("/health").json() == {"status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": None}
     limits.set_llm_enabled(conn, False)
-    assert client.get("/health").json() == {"status": "ok", "llm_enabled": False, "cache_warm": "off"}
+    assert client.get("/health").json() == {"status": "ok", "llm_enabled": False, "cache_warm": "off", "llm_host": None}
+
+
+def test_health_names_the_model_provider_only_when_it_is_known(make):
+    assert make(settings=asking.Settings(llm_host="api.example.eu")).get("/health").json() == {
+        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": "api.example.eu"}
+    assert make().get("/health").json()["llm_host"] is None
 
 
 def database_down():
@@ -401,7 +407,8 @@ def test_health_is_a_503_when_the_database_is_down():
     engine = rag.AnswerEngine(retriever=FakeRetriever([node()]), postprocessor=rag.NumberUnits(), llm=FakeLLM(), prompt=PROMPT,
                               model="deepseek-flash", prompt_id="answer.v3")
     reply = TestClient(web.create_app(engine, database_down)).get("/health")
-    assert reply.status_code == 503 and reply.json() == {"status": "database_unavailable", "llm_enabled": None, "cache_warm": None}
+    assert reply.status_code == 503 and reply.json() == {
+        "status": "database_unavailable", "llm_enabled": None, "cache_warm": None, "llm_host": None}
 
 
 def test_a_cached_entry_made_for_another_version_of_the_reply_shape_is_a_miss(url, conn, make):

@@ -71,6 +71,14 @@ def test_a_good_reply_becomes_an_answer_with_the_stored_passage_and_the_cost_of_
     assert result.cost_usd == pytest.approx((1000 * 0.006 + 100 * 0.30 + 90 * 1.20) / 1e6 * peak)
 
 
+def test_cached_tokens_come_from_either_usage_form():
+    openai_style = SimpleNamespace(prompt_tokens=1100, completion_tokens=90, prompt_tokens_details=SimpleNamespace(cached_tokens=800))
+    assert answer.usage_of(openai_style) == (1100, 90, 800)
+    assert answer.usage_of(SimpleNamespace(prompt_tokens=1100, completion_tokens=90, prompt_tokens_details=None)) == (1100, 90, None)
+    assert answer.usage_of(SimpleNamespace(prompt_tokens=5, completion_tokens=1, prompt_cache_hit_tokens=3)) == (5, 1, 3)
+    assert answer.usage_of(None) == (None, None, None)
+
+
 def test_a_weak_search_never_calls_the_model():
     llm = FakeLLM(error=AssertionError("must not be called"))
     result = ask([node(0.54)], llm)

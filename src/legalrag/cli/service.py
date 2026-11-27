@@ -188,7 +188,8 @@ def serve_cmd(
     port: Annotated[int, typer.Option(help="Port to listen on")] = 8000,
 ) -> None:
     """Start the web service: one process, since bge-m3 is loaded in it (needs the embed and serve extras,
-    DEEPSEEK_API_KEY and TRACE_SECRET; CLIENT_IP_HEADER names the header of the proxy that carries the visitor's address)."""
+    a model key (LLM_API_KEY or DEEPSEEK_API_KEY; LLM_BASE_URL, LLM_MODEL and LLM_THINKING_OFF choose another provider) and
+    TRACE_SECRET; CLIENT_IP_HEADER names the header of the proxy that carries the visitor's address)."""
     import uvicorn  # the serve extra
 
     # access_log off: uvicorn's own access log prints the visitor's raw address, which the privacy notice says is not kept

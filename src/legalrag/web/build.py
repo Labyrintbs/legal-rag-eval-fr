@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from llama_index.llms.deepseek import DeepSeek
 
+from legalrag import llm
 from legalrag.answering import cache, limits, rag
 from legalrag.answering.logs import setup as setup_logs
 from legalrag.evaluation.questiongen import load_prompts
@@ -19,7 +20,6 @@ from legalrag.web.app import Settings, create_app
 
 EMBED_AT_ONCE = 2  # decision 1: questions embedded at the same time; the others wait
 EMBED_WAITING = 6  # questions that may queue behind them (about 3 s of waiting); the next ones get a 503
-MODEL = "deepseek-flash"  # decision of 0d: thinking off
 PROMPT_ID = "answer.v3"
 TRANSLATE_PROMPT_ID = "translate.v1"
 TRANSLATE_ANSWER_PROMPT_ID = "translate_answer.v2"
@@ -55,12 +55,14 @@ class LimitedEmbedder:
 def production_engine() -> tuple[rag.AnswerEngine, Settings]:
     """The answer engine and the settings of the service; also used by `legalrag cache warm`, so that both give the
     same cache keys. DATA_VERSION overrides the data version that is otherwise computed from the stored corpus."""
-    for name in ("DEEPSEEK_API_KEY", "TRACE_SECRET"):
-        if not os.environ.get(name):
-            raise RuntimeError(f"{name} is not set")
+    if not os.environ.get("TRACE_SECRET"):
+        raise RuntimeError("TRACE_SECRET is not set")
+    provider = llm.provider_from_env(os.environ)
     prompt = load_prompts(db.ROOT / "prompts" / "answer.yaml")["prompts"][PROMPT_ID]
-    llm = DeepSeek(model=MODEL, api_key=os.environ["DEEPSEEK_API_KEY"], temperature=0, max_tokens=prompt["max_tokens"],
-                   additional_kwargs={"extra_body": {"thinking": {"type": "disabled"}}})
+    # The LlamaIndex DeepSeek class is an OpenAI-compatible client with a DeepSeek default address; any provider works.
+    chat_model = DeepSeek(model=provider.model, api_key=provider.api_key, api_base=provider.base_url, temperature=0,
+                          max_tokens=prompt["max_tokens"],
+                          additional_kwargs={"extra_body": provider.thinking_off} if provider.thinking_off else {})
     with db.connect() as conn:
         run_id = conn.execute("SELECT id FROM chunking_runs WHERE name = %s", (RUN,)).fetchone()[0]
         data_version = os.environ.get("DATA_VERSION") or cache.data_version(conn, RUN)
@@ -68,12 +70,12 @@ def production_engine() -> tuple[rag.AnswerEngine, Settings]:
         revision = os.environ.get("EMBED_REVISION") or store.embedding_revision(conn, run_id)
     embedder = LimitedEmbedder(embed.SentenceTransformerEmbedder(os.environ.get("EMBED_DEVICE", "cpu"), revision=revision))
     engine = rag.AnswerEngine(
-        retriever=rag.LegalRetriever(db.connect, run_id, embedder, "fr", article_rule=True), postprocessor=rag.NumberUnits(), llm=llm,
-        prompt=prompt, model=MODEL, prompt_id=PROMPT_ID, gate=limits.Limits(db.connect),
+        retriever=rag.LegalRetriever(db.connect, run_id, embedder, "fr", article_rule=True), postprocessor=rag.NumberUnits(),
+        llm=chat_model, prompt=prompt, model=provider.model, prompt_id=PROMPT_ID, gate=limits.Limits(db.connect),
         translate_prompt=load_prompts(db.ROOT / "prompts" / "translate.yaml")["prompts"][TRANSLATE_PROMPT_ID],
         translate_answer_prompt=load_prompts(db.ROOT / "prompts" / "translate_answer.yaml")["prompts"][TRANSLATE_ANSWER_PROMPT_ID])
     settings = Settings(client_ip_header=os.environ.get("CLIENT_IP_HEADER") or None,
-                        code_version=os.environ.get("CODE_VERSION") or "dev", data_version=data_version)
+                        code_version=os.environ.get("CODE_VERSION") or "dev", data_version=data_version, llm_host=provider.host)
     return engine, settings
 
 
