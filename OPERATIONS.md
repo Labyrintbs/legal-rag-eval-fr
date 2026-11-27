@@ -39,27 +39,27 @@ Scaleway billing facts, from a web search of its documentation on 2026-11-27 (it
 
 Tracking the spend (Scaleway). The app side: `legalrag service status` (today's cost against the cap) and `legalrag traces summary` (cost of the answers). The Scaleway side: Billing, tab Consumption (by model), and Cockpit for the project (up to an hour late). Check weekly and after any measurement run. While the free first 1,000,000 tokens last, Scaleway's consumption shows 0 euros: compare token counts (Cockpit against the app's token counts) instead of amounts. Normal: Scaleway's figure is near the app's estimate plus up to 20% VAT, and at most about 3 euros a month at the daily cap. Abnormal: more than twice the estimate, or more than 1 euro in a week when nothing was measured, or an alert at 50%. Then: revoke the application's key (IAM), empty the `LLM_*` settings so the service uses DeepSeek again (with the clear notice on the page, decision D2), and only then decide whether to close the account (closing is blocked while consumption is unpaid). The user pays with a card holding a small balance, which is a hard stop from the card side: the month's invoice (plus VAT) must be covered by the end of the month, or the account is suspended after ten days.
 
-## First start (tested on a Mac, planned for the server)
+## First start (tested on the server, 2026-11-27)
 
-1. Put `.env` next to `compose.server.yaml` with the names of `.env.example`.
-2. Download the weights once into the `models` volume (tested: 13 files, 2.1 GB, about 25 s). The revision is the one stored with the vectors:
+1. On the server: `git clone https://github.com/Labyrintbs/legal-rag-eval-fr.git legal-rag`, then create `.env` in it (mode 600). The passwords are generated on the server (`openssl rand -hex 16` for `POSTGRES_PASSWORD`, `openssl rand -hex 24` for `TRACE_SECRET`), `HTTP_PORT=127.0.0.1:8080` keeps the proxy private (reachable only through an SSH tunnel until the public step), `CODE_VERSION` is the short commit, and the `LLM_*` lines are copied from the laptop's `.env` over SSH without printing them (`grep '^LLM_' .env | ssh SERVER 'cat >> legal-rag/.env'`).
+2. Build: `sudo docker compose -f compose.server.yaml build app` (tested: 154 s, image 2.62 GB for amd64).
+3. Download the weights once into the `models` volume (tested: 13 files, 2.1 GB, 14 s). The revision is the one stored with the vectors:
    ```
-   docker compose -f compose.server.yaml run --rm -e HF_HUB_OFFLINE=0 -e EMBED_REVISION=<revision> app python -c "
+   sudo docker compose -f compose.server.yaml run --rm -e HF_HUB_OFFLINE=0 -e EMBED_REVISION=<revision> app python -c "
    import os
    from huggingface_hub import snapshot_download
    snapshot_download('BAAI/bge-m3', revision=os.environ['EMBED_REVISION'], ignore_patterns=['*.onnx*', 'onnx/*', '*.msgpack', '*.h5', 'imgs/*', 'colbert_linear.pt', 'sparse_linear.pt'])"
    ```
-   The revision: `SELECT DISTINCT model_revision FROM chunk_embeddings WHERE model = 'BAAI/bge-m3'` in the database that holds the vectors. Without the weights the app stops after about 11 s with the Hugging Face offline error.
-3. `docker compose -f compose.server.yaml run --rm app legalrag migrate`, then load the data (below), then `docker compose -f compose.server.yaml up -d`.
-4. `curl http://HOST/health` answers `{"status":"ok", ... "llm_host": "<provider host>"}` (tested: 17 s after `up -d` with the weights present).
+   The revision: `SELECT DISTINCT model_revision FROM chunk_embeddings WHERE model = 'BAAI/bge-m3'` in a database that holds the vectors. Without the weights the app stops after about 11 s with the Hugging Face offline error.
+4. Load the data with the documented commands, run from the laptop through an SSH tunnel (the image holds no raw data; this keeps the tested path of the README). On the server, publish the database on its localhost only, through a temporary override file kept outside the repository: `printf 'services:\n  db:\n    ports:\n      - "127.0.0.1:5432:5432"\n' > /tmp/db-local.yaml` and `sudo docker compose -f compose.server.yaml -f /tmp/db-local.yaml up -d db`. On the laptop: `ssh -f -N -L 15432:127.0.0.1:5432 SERVER`, then with `DATABASE_URL=postgresql://legalrag:<password>@127.0.0.1:15432/legalrag` run `legalrag migrate`, `legalrag load-chunks` (36 s), `legalrag load-embeddings` (11 s, builds the index) and `legalrag db-check` (tested: all 11 checks pass, the same numbers as the laptop). Then close the tunnel, delete the override and run the deploy, which recreates the database without the port.
+5. `deploy/deploy.sh` (below). `curl http://127.0.0.1:8080/health` on the server answers `{"status":"ok", ... "llm_host": "api.scaleway.ai", "llm_failing": false}`.
 
-**Data (open, decided in phase 2).** The plan (D5) rebuilds from the Release assets: `migrate`, `load-chunks`, `load-embeddings` of the `default` run only, `db-check`. The image holds no raw data, so how those commands reach the server is not settled: a one-off container with the raw files mounted, the same commands run from a laptop through an SSH tunnel, or a dump and restore.
+## Deploy and rollback (`deploy/deploy.sh`, run on the server in the repository folder)
 
-## Deploy and rollback (planned, phase 2)
-
-Deploy: set `CODE_VERSION` to the commit, pull or build that image, `docker compose -f compose.server.yaml up -d`, wait for `/health`, keep the previous tag. Rollback: the same with the previous commit's tag (about ten seconds). `up -d` swaps the containers with a few seconds of downtime, accepted.
-
-**Gate before the link is shared with anyone:** `llm_host` in `/health` must be the provider named on `/privacy` (Scaleway, Paris). DeepSeek's own API is for tests with synthetic questions only. The deploy script checks it; until it exists, check by hand: `curl -s http://HOST/health`.
+- `deploy/deploy.sh [REF]` fetches, checks out REF (default `origin/main`), builds the image tagged with the commit, starts the stack, waits up to 3 minutes for `/health` through the proxy, and checks that `llm_host` is one of `ALLOWED_LLM_HOSTS` (default `api.scaleway.ai`). `.deploy-state` keeps the current and the previous tag (git-ignored).
+- **The provider gate:** if `llm_host` is not allowed, the script stops the proxy and exits with code 2: the link must not be shared while the stack points to another provider (DeepSeek's own API is for tests with synthetic questions only; see the plan, D2).
+- A start that is not healthy goes back to the previous tag by itself (exit code 1). `deploy/deploy.sh rollback` starts the previous tag again, with no build; images are kept by tag. `up -d` swaps the containers with a few seconds of downtime, accepted.
+- Tested on 2026-11-27: the first deploy (health ok, provider allowed, "deployed"). The refusal of a disallowed provider and the rollback are tried in the section "The server itself" below.
 
 ## Day to day
 
@@ -98,8 +98,14 @@ Done on a Mac through the proxy, where every request comes from one Docker addre
 
 ## Measured on a Mac (arm64, Docker Desktop, 2026-11-26)
 
-Image 2.49 GB (nginx 92 MB); memory after a few searches: app 1.03 GiB, db 55 MiB, proxy 7.6 MiB; first search 1.1 s, then 0.35 to 0.5 s on a 985-chunk test database. Not measured: the peak during `/ask`, the amd64 image beyond CI's build, the full 12,136-chunk database, the real 8 GB server.
+Image 2.49 GB (nginx 92 MB); memory after a few searches: app 1.03 GiB, db 55 MiB, proxy 7.6 MiB; first search 1.1 s, then 0.35 to 0.5 s on a 985-chunk test database.
+
+## Measured on the server (OVHcloud VPS, 4 vCPU, 7.6 GiB, amd64, the full 12,136-chunk database, 2026-11-27)
+
+Image 2.62 GB, built on the server in 154 s. Memory: at rest app 959 MiB, db 43 MiB, proxy 4.6 MiB (about 1.0 GiB of 7.6 GiB); after 6 searches and 5 answers app 994 MiB, db 121 MiB. `/search`: 1.0 s for the first request, then 0.28 to 0.35 s. `/ask` on Scaleway, total time: 3.1, 1.5, 2.3, 2.9 and 1.0 s (five different questions; 3 answered, 2 refused by the model). The top 5 articles and their scores for two test questions are identical to those on the Mac (arm64), so the arm64 and amd64 builds search the same. Start-up to healthy: under 20 s with the weights in the volume. Not measured: a sustained load (the client limit is 5 answers a minute per visitor).
 
 ## The server itself (trial, phase 2)
 
 Ubuntu 24.04 on an OVHcloud VPS: SSH with a sudo user (root login off), UFW allowing 22, 80 and 443 only, fail2ban on the `sshd` jail, unattended security updates, Docker from Docker's apt repository. The user chose to keep SSH password login on; the reasoning and the date are in decision D12 of `docs/decisions/0009-deployment-stage-plan.md`. Backups (D7), monitoring and heartbeats (D8) and the privacy text (phase 4) are not done yet.
+
+State on 2026-11-27: the repository is cloned in the home folder of the sudo user, the stack runs with the proxy on the server's localhost only (`127.0.0.1:8080`), so it is not reachable from the internet; from outside, only SSH (port 22) answers, and ports 80, 443, 5432, 8000, 8080 and 3000 do not (checked with `nc` from another machine, and with `ss -ltn` on the server: the only listeners are sshd, the local resolvers and the proxy on 127.0.0.1:8080). To look at the pages from the laptop, use a tunnel: `ssh -L 18080:127.0.0.1:8080 SERVER`, then `http://127.0.0.1:18080/`.
