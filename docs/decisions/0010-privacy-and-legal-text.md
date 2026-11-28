@@ -14,7 +14,7 @@ Nothing here is applied to `privacy.html`, `texts_en.js` or the answer card unti
 
 ## 2. What I need from the owner before the text is final
 
-1. **The country of the VPS's data centre**, from the control panel (the VPS overview). The host is **not** named (owner's decision, 2026-11-28; see 3.2).
+1. **Settled: the VPS is in the United Kingdom** (the owner's statement, 2026-11-28; the plan had assumed French data centres, which was wrong: see `0009`, D11). The host is **not** named (owner's decision; see 3.2). The UK is outside the EU, so the page must say so and name the transfer basis (3.2, 4).
 2. **Decided:** the author's name and the contact link stay on the page: GDPR art. 13 asks for the controller's identity and contact details **(read)**, so the anonymity route of LCEN art. 1-1 II does not fit a service that processes visitors' questions.
 3. **Approve or edit the French text below** (the English text follows it word for word in meaning).
 
@@ -30,8 +30,10 @@ Sources: Specific Conditions of 2026-09-21, art. 2.4, and the Generative APIs FA
 
 ### 3.2 New section "Hébergement" (decision of the owner, 2026-11-28: the host is not named)
 
-FR: *Éditeur : Hongming Fang, personne physique, à titre non professionnel et sans but lucratif. Le service est hébergé chez un prestataire technique, dont les serveurs sont situés en [pays : à compléter]. Il voit les connexions (adresses réseau) ; il ne reçoit pas le contenu des questions en clair si le site est servi en HTTPS.*
-EN: *Publisher: Hongming Fang, a private person, non-professionally and without profit. The service is hosted by a technical provider whose servers are located in [country: to fill in]. It sees the connections (network addresses); it does not receive the content of the questions in clear if the site is served over HTTPS.*
+FR: *Éditeur : Hongming Fang, personne physique, à titre non professionnel et sans but lucratif. Le service est hébergé chez un prestataire technique, dont les serveurs sont situés au Royaume-Uni, c'est-à-dire hors de l'Union européenne. Le Royaume-Uni bénéficie d'une décision d'adéquation de la Commission européenne, qui reconnaît que les données y sont protégées de façon équivalente ; cette décision a été renouvelée jusqu'au 27 décembre 2031. L'hébergeur voit les connexions (adresses réseau) ; il ne reçoit pas le contenu des questions en clair si le site est servi en HTTPS.*
+EN: *Publisher: Hongming Fang, a private person, non-professionally and without profit. The service is hosted by a technical provider whose servers are located in the United Kingdom, that is outside the European Union. The United Kingdom has an adequacy decision of the European Commission, which recognises that data is protected there in an equivalent way; it was renewed until 27 December 2031. The host sees the connections (network addresses); it does not receive the content of the questions in clear if the site is served over HTTPS.*
+
+Transfer basis: GDPR art. 13(1)(f) asks the notice to state "the existence or absence of an adequacy decision" for a transfer outside the EU **(read)**. The Commission renewed its two UK adequacy decisions on 19 December 2025 until 27 December 2031 (Implementing Decision (EU) 2025/2574), with a review after four years **(secondary sources: law firms and trade press, found by search; the decision text itself was not read: to check before launch)**. The decision covers transfers from the EU to the UK only, which is the direction here (a French publisher and EU visitors to a server in the UK); the model's servers stay in Paris.
 
 Why the host is not named: LCEN art. 1-1 **(read)** asks a professional editor to show its own identity and the host's; a non-professional editor *may* show only the host's name and address to stay anonymous (art. 1-1 II). A named, non-professional, non-commercial editor (this case) is not clearly required to show the host as well; this is the author's reading and **not legal advice (unverified)**. The risk: a portfolio used to look for work could be read as professional, and the rule would then apply (art. 1-2: one year in prison and 75,000 euros); adding the host's name and address is a one-line change if that ever matters. GDPR art. 13 asks only for the "recipients or categories of recipients" **(read)**, so "a technical provider" is enough. The sentence on HTTPS is true only after HTTPS is on (phase 5). No separate "mentions légales" page is required **(read)**.
 
@@ -61,7 +63,7 @@ The exemption in art. 30(5) does not apply to processing that is "not occasional
 | People | visitors of the service |
 | Data | question, answer, optional vote and comment, date, result of the search; a daily-changing hash of the network address; cached answer (without the question) |
 | Recipients (processors) | Scaleway SAS (model; contract and DPA of 2024-06-01 read); OVHcloud (hosting, copy of the disk); Healthchecks.io receives pings with no visitor data and is therefore not a recipient of personal data |
-| Transfers | none outside the EU intended: Scaleway's DPA says services are in the EU by default and requires prior information and the Standard Contractual Clauses for any other place; no sub-processor outside the EU is on Scaleway's list **(read)**; the host's data centre: to confirm |
+| Transfers | **to the United Kingdom** (the VPS with the database, the traces and the host's disk copy), on the basis of the EU adequacy decision for the UK (see 3.2); the model side stays in the EU: Scaleway's DPA says services are in the EU by default and requires prior information and the Standard Contractual Clauses for any other place, and no sub-processor outside the EU is on Scaleway's list **(read)** |
 | Retention | the table of the page: 7 days for ordinary text, 30 for failures, voted or commented requests and one request in 20; cache 7 days at most; the disk copy of the host replaced daily |
 | Security | no account, no cookie; the address is stored only as a hash with a secret and the day; masking filter for identifiers; request size and rate limits; only the web proxy is published by the stack, and while the site is private only SSH answers from outside (tested 2026-11-27); secrets in a file readable by its owner only; backups encrypted before upload and without visitor data; separate keys for the model and the backup; hourly erase job with a heartbeat; kill switch |
 
@@ -79,7 +81,7 @@ The exemption in art. 30(5) does not apply to processing that is "not occasional
 
 ## 7. Open points and what is unverified
 
-- The country of the VPS's data centre (section 2). OVH's legal details were not read; they are not needed while the host is not named.
+- The UK adequacy decision: renewal known from secondary sources only; read the Commission's decision or press release before launch. If a later review withdrew it, the transfer would need another basis (standard contractual clauses with the host) or a move of the server to the EU. OVH's legal details were not read; they are not needed while the host is not named.
 - AI Act: the Official Journal text and art. 113 were not read; the Omnibus text was not read; provider or deployer status undecided.
 - DPIA: the 2018 list was read; a later update was not checked; the EDPB threshold is unverified.
 - CNIL information page of 2019 and the record page of 2018: current wording not re-checked.
