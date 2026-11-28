@@ -48,7 +48,7 @@ DNS is hosted at the registrar. Short TTL (300 s) while setting up, raised later
 - Code changes with the editor tools, tests added for behaviour changes, commit messages short and without any tool attribution, push after every commit.
 
 ## Open questions for the owner
-1. The exact spelling of the domain and the subdomain label of this project (recommended: `hongmingfang.fr` and `droit`).
+1. ~~The exact spelling and the subdomain label~~ Chosen 2026-11-28: `hongmingfang.fr` and `droit.hongmingfang.fr` for the demo (registration at OVH in progress: check the demo's plan, D11, for the state).
 2. Hosting and tooling of the site (GitHub Pages plus a static generator is recommended).
 3. Languages (French only, or French and English).
 4. Which projects to show first, and the CV file.
