@@ -7,7 +7,7 @@ Nothing here is applied to `privacy.html`, `texts_en.js` or the answer card unti
 | Sentence of the page | Why it is wrong now | Fix |
 |---|---|---|
 | "votre question est envoyée à un fournisseur de modèle d'IA (DeepSeek). Ses serveurs peuvent se trouver hors de l'Union européenne" | The model runs at Scaleway (France, Paris); DeepSeek the company does not receive the question | section 3.1 |
-| "hébergé chez un prestataire technique, qui voit les connexions" | The host is not named; LCEN art. 1-1 II asks for its name and address | section 3.2 |
+| "hébergé chez un prestataire technique, qui voit les connexions" | True but incomplete: it does not say where the servers are (the host stays unnamed by the owner's decision) | section 3.2 |
 | The retention table has no line for the host's disk copy | OVH copies the whole server disk every day (one restore point, replaced daily); it holds the traces still present | section 3.3 |
 | The page nowhere says the answer is written by an AI | AI Act art. 50(1): people must be told they interact with an AI system unless it is obvious | section 3.4 |
 | The page nowhere says the model is a preview version | Scaleway: a preview model may change or go with one month of notice | section 3.1 |
