@@ -14,8 +14,8 @@ Nothing here is applied to `privacy.html`, `texts_en.js` or the answer card unti
 
 ## 2. What I need from the owner before the text is final
 
-1. **The host's name and address, and the data centre of the VPS.** I could not read OVHcloud's legal notice (the pages I tried returned 404). Take the legal name and address from the OVH contract or invoice (it must be the entity that bills the VPS), and the location of the data centre from the control panel (the VPS overview).
-2. **Confirm the route for anonymity.** The page already names the author; that is allowed. LCEN art. 1-1 II **(read)** lets a non-professional editor show only the host's name and address, if the editor's identity was given to the host (the OVH account holds it). Keep the name on the page, or remove it and keep the contact link: owner's choice.
+1. **The country of the VPS's data centre**, from the control panel (the VPS overview). The host is **not** named (owner's decision, 2026-11-28; see 3.2).
+2. **Decided:** the author's name and the contact link stay on the page: GDPR art. 13 asks for the controller's identity and contact details **(read)**, so the anonymity route of LCEN art. 1-1 II does not fit a service that processes visitors' questions.
 3. **Approve or edit the French text below** (the English text follows it word for word in meaning).
 
 ## 3. Proposed text (changed or new blocks only)
@@ -28,12 +28,12 @@ EN: *To write the answer, your question is sent to Scaleway, a French company, w
 
 Sources: Specific Conditions of 2026-09-21, art. 2.4, and the Generative APIs FAQ and lifecycle pages **(read, in `0009`, D2)**. The first sentence's "Scaleway receives nothing else than the text of the question" is true of the code: the request holds the prompt, the five articles and the question; it must stay true (a test would be added with the change).
 
-### 3.2 New section "Hébergement et mentions légales"
+### 3.2 New section "Hébergement" (decision of the owner, 2026-11-28: the host is not named)
 
-FR: *Éditeur : Hongming Fang, personne physique, à titre non professionnel. Hébergeur du service : [nom, adresse de l'hébergeur : à compléter], serveurs situés [lieu : à compléter]. L'hébergeur voit les connexions (adresses réseau) ; il ne reçoit pas le contenu des questions en clair si le site est servi en HTTPS.*
-EN: *Publisher: Hongming Fang, a private person, non-professionally. Host of the service: [name and address of the host: to fill in], servers located [place: to fill in]. The host sees the connections (network addresses); it does not receive the content of the questions in clear if the site is served over HTTPS.*
+FR: *Éditeur : Hongming Fang, personne physique, à titre non professionnel et sans but lucratif. Le service est hébergé chez un prestataire technique, dont les serveurs sont situés en [pays : à compléter]. Il voit les connexions (adresses réseau) ; il ne reçoit pas le contenu des questions en clair si le site est servi en HTTPS.*
+EN: *Publisher: Hongming Fang, a private person, non-professionally and without profit. The service is hosted by a technical provider whose servers are located in [country: to fill in]. It sees the connections (network addresses); it does not receive the content of the questions in clear if the site is served over HTTPS.*
 
-Note: the last sentence is true only after HTTPS is on (phase 5); until then the site is private. LCEN art. 1-2 **(read)**: not respecting art. 1-1 I and II is punished by one year in prison and 75,000 euros, so this section is a duty and not an option. No separate "mentions légales" page is required **(read)**; a section of `/privacy` is enough, and the footer already links to it.
+Why the host is not named: LCEN art. 1-1 **(read)** asks a professional editor to show its own identity and the host's; a non-professional editor *may* show only the host's name and address to stay anonymous (art. 1-1 II). A named, non-professional, non-commercial editor (this case) is not clearly required to show the host as well; this is the author's reading and **not legal advice (unverified)**. The risk: a portfolio used to look for work could be read as professional, and the rule would then apply (art. 1-2: one year in prison and 75,000 euros); adding the host's name and address is a one-line change if that ever matters. GDPR art. 13 asks only for the "recipients or categories of recipients" **(read)**, so "a technical provider" is enough. The sentence on HTTPS is true only after HTTPS is on (phase 5). No separate "mentions légales" page is required **(read)**.
 
 ### 3.3 Two new rows in the retention table
 
@@ -79,7 +79,7 @@ The exemption in art. 30(5) does not apply to processing that is "not occasional
 
 ## 7. Open points and what is unverified
 
-- OVH's legal name, address and phone, and the data centre: not read (section 2).
+- The country of the VPS's data centre (section 2). OVH's legal details were not read; they are not needed while the host is not named.
 - AI Act: the Official Journal text and art. 113 were not read; the Omnibus text was not read; provider or deployer status undecided.
 - DPIA: the 2018 list was read; a later update was not checked; the EDPB threshold is unverified.
 - CNIL information page of 2019 and the record page of 2018: current wording not re-checked.
