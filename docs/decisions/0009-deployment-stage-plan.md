@@ -167,6 +167,38 @@ Each phase ends with a review gate; the next does not start before the user appr
 | 5. Soft launch | Domain and HTTPS; the link given to a few people; one week of real traffic; limits and cache hit rate reviewed; first real questions to the review queue | the running cost | the traffic numbers, the bill, any complaint; decision to announce |
 | 6. Production | Two stable weeks, link on the CV and in the README, screenshots in the README | the running cost | exit criteria of section 1 |
 
+## 5b. Phase 5 in detail: soft launch (drafted 2026-11-28, for the owner's approval)
+
+**Goal.** The service answers at a stable HTTPS address, a handful of people use it for about a week, and the owner decides from numbers whether to announce. **Starting state:** the stack runs privately on the UK VPS (`HTTP_PORT=127.0.0.1:8080`); nginx is the proxy (D4); fail2ban and unattended upgrades are active; UFW allows 22, 80, 443 (IPv4 and IPv6); SSH password login is on (the owner's choice, D12); root login off; no certbot, no domain.
+
+**P5-0. Gate before anything is opened** (all must be ticked):
+1. The Commission's own text of the UK adequacy decision read (so far from secondary sources); the "no cookie" claim checked against CNIL guidance.
+2. The backup pruning looked at after a few nightly runs (`deploy/backup.sh snapshots`: one copy per day per kind); the Healthchecks "up" mail seen.
+3. A load test on the server: memory and speed with about 10 visitors at once for a few minutes (the service queues at most `at_once` model calls); peak memory known before the public sees it (peak under load was never measured).
+4. `deploy/deploy.sh` tried with a start that is not healthy (the automatic return).
+5. SSH: decide again between password login (fail2ban, 6 tries) and keys only, because the proxy will make the address known. Recommended: keys only; the owner decides.
+
+**P5-1. Domain (owner decides; I bring live prices).** Choose the ending (.fr, .eu), the name (descriptive, no "avocat"), the registrar (OVH is the lead: one account, steady renewal; Gandi's renewal is high; check the renewal price at checkout), registrar 2FA, DNSSEC, `.fr` personal data anonymised by default (AFNIC). Records: `A` (IPv4) and `AAAA` (the VPS has a global IPv6 address) to the VPS, TTL 300 s during the launch. Cost about 10 to 15 euros a year (unverified). Test: both records resolve from outside.
+
+**P5-2. HTTPS with certbot in Docker (D4, option A).** nginx listens on 80 and 443; a certbot container uses the HTTP-01 challenge (a webroot volume shared with nginx, `/.well-known/acme-challenge/`); certificates live in a volume mounted read-only in nginx; port 80 redirects to 443; TLS 1.2 and 1.3 only; HSTS starts short (minutes), then a week, then months, once all works; renewal by a daily `certbot renew` with a reload hook, **with a Healthchecks ping** (a third check) so a silent renewal failure is noticed, plus an SSL-expiry monitor at the outside check. First try with Let's Encrypt's staging server (no rate-limit risk; limits quoted from memory, unverified), then the real one. **While the certificate is being obtained, nginx runs in a "closed" mode** (answers only the challenge, 503 elsewhere) so the app is not exposed before the tests. Alternative if port 80 should stay shut: DNS-01 through the registrar's API (needs an API secret). Caddy would do all this by itself but D4 chose nginx on purpose.
+
+**P5-3. Open the door.** `HTTP_PORT` published on 80 and 443 in `.env`, deploy, then repeat the phase 2 outside tests against the domain: forged `X-Real-IP` and `X-Forwarded-For` ignored, 413 for a big body, 400 for a big header, stalled body closed, ports 5432, 8000, 8080, 3000 closed; TLS grade check; redirect and headers (`curl -I`); IPv6 as well as IPv4. **During the soft launch the site asks search engines not to index it** (`X-Robots-Tag: noindex` and a `robots.txt` that disallows all), removed at the announcement. Rollback: `HTTP_PORT=127.0.0.1:8080`, deploy, remove the DNS records.
+
+**P5-4. Outside monitoring (UptimeRobot, free: 50 monitors, 5-minute HTTP checks, SSL and domain expiry monitors).** One monitor on `https://<domain>/health` that requires `"status":"ok"`, `"llm_failing":false` and `"llm_other_model":null` (a keyword check on each); one for the certificate expiry and one for the domain expiry; alerts to the owner's e-mail. Test by a forced failure (the kill switch does not change `/health` status; stop the proxy for a few minutes) and see the mail arrive. Also redo "kill switch used from outside, on purpose" through the domain (exit criterion 4).
+
+**P5-5. Money before the first visit.** Scaleway: billing alert at a low amount, the free million tokens left (Consumption tab), the daily and monthly token budgets (1M a day, 5M a month) and the project rate limit (50,000 a minute) still set; the card's balance; `legalrag service status` (the daily cap of the service is 0.10 USD: about 55 to 75 uncached answers a day, which is enough for a handful of people; raise it only from numbers). The per-visitor limits (5 answers a minute, 30 a day, 30 cached a minute, 5 translations, 10 votes, 30 searches) stay as they are and are reviewed at the end of the week.
+
+**P5-6. The soft launch week.**
+- **Audience:** 5 to 15 people the owner picks (HR or legal readers, friends); a short message with the link, what the service is and is not, how to give feedback (the vote and comment buttons, the contact mail), and the privacy page.
+- **Daily routine (3 minutes):** the two heartbeat checks and the outside monitor are green; `legalrag service status`; `legalrag traces summary` (questions, answered share, refusals, errors, cost); Scaleway Consumption.
+- **Mid-week:** `legalrag traces failures` and `traces votes`: read the failures, with personal data removed by hand before anything is exported to the review queue (`traces export`).
+- **If something goes wrong:** the failure table of `OPERATIONS.md` (kill switch, rollback, key revocation); the breach procedure of `0010` for any personal-data incident.
+
+**P5-7. The gate: what the owner sees.** A table of the week: questions per day and distinct visitors; answered, refused and error shares; model time and total time (median and 95th percentile); cost per answer and the total against the Scaleway bill; cache hit rate; counts of 429 and 503; `llm_failing` and `llm_other_model` events; heartbeat or monitor alerts; votes, comments and messages; certificate state. Then the decision: announce (phase 6), fix first, or close.
+
+**Needs from the owner:** P5-0 item 5 (SSH); the domain choice and purchase; accounts at the registrar and UptimeRobot; the audience list and the message; an explicit "open" at the start of P5-3.
+**Time and cost:** the domain (about 10 to 15 euros a year); the running cost (server about 10 euros a month, model within the free tier at first); an evening for DNS and HTTPS, plus the week.
+
 ## 5a. Phase 1 in detail: make it deployable (on the Mac, no cost)
 
 **Goal.** `docker compose up` on this Mac runs the app, the database and Caddy; the pages come through Caddy; `/search` answers with the real bge-m3 on a small database; `/ask` reaches the model call (with a fake key it ends in a model failure, which is the expected result); the production image builds in CI; the test suite is green. **Exit check** is the list of measured results at the end of step S5.
