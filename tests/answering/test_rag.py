@@ -35,15 +35,15 @@ class FakeRetriever(BaseRetriever):
 
 
 class FakeLLM:
-    def __init__(self, reply=None, error=None, usage=(1100, 90, 1000)):
-        self.reply, self.error, self.calls = reply, error, []
+    def __init__(self, reply=None, error=None, usage=(1100, 90, 1000), served=None):
+        self.reply, self.error, self.served, self.calls = reply, error, served, []
         self.usage = SimpleNamespace(prompt_tokens=usage[0], completion_tokens=usage[1], prompt_cache_hit_tokens=usage[2])
 
     def chat(self, messages, **kwargs):
         self.calls.append((messages, kwargs))
         if self.error:
             raise self.error
-        return SimpleNamespace(message=SimpleNamespace(content=self.reply), raw=SimpleNamespace(usage=self.usage))
+        return SimpleNamespace(message=SimpleNamespace(content=self.reply), raw=SimpleNamespace(usage=self.usage, model=self.served))
 
 
 def engine(nodes, llm, **changes):
@@ -121,6 +121,25 @@ def test_a_run_of_failures_other_than_a_busy_provider_makes_the_model_side_faili
     assert pulse.failing and pulse.last_error == "ProviderError"
     ask([node()], FakeLLM(GOOD), pulse=pulse)
     assert not pulse.failing
+
+
+def test_a_reply_naming_another_model_than_the_one_asked_for_is_kept_until_a_restart_and_warned_once(caplog):
+    pulse = rag.ModelPulse()
+    ask([node()], FakeLLM(GOOD, served="deepseek-flash"), pulse=pulse)
+    assert pulse.other_model is None
+    with caplog.at_level("WARNING", logger=rag.log.name):
+        ask([node()], FakeLLM(GOOD, served="replacement-1"), pulse=pulse)
+        ask([node()], FakeLLM(GOOD, served="replacement-1"), pulse=pulse)
+    assert pulse.other_model == "replacement-1"
+    assert [r.getMessage() for r in caplog.records] == ["the provider answered with model 'replacement-1', not the 'deepseek-flash' that was asked for"]
+    ask([node()], FakeLLM(GOOD, served="deepseek-flash"), pulse=pulse)
+    assert pulse.other_model == "replacement-1"  # not cleared by a later reply that matches: someone must look
+
+
+def test_a_reply_without_a_model_name_is_not_judged():
+    pulse = rag.ModelPulse()
+    ask([node()], FakeLLM(GOOD, served=None), pulse=pulse)
+    assert pulse.other_model is None
 
 
 def test_a_weak_search_never_calls_the_model():

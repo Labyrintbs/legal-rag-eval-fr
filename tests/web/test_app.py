@@ -45,15 +45,15 @@ class FakeRetriever(BaseRetriever):
 
 
 class FakeLLM:
-    def __init__(self, reply=GOOD, error=None):
-        self.reply, self.error, self.calls = reply, error, 0
+    def __init__(self, reply=GOOD, error=None, served=None):
+        self.reply, self.error, self.served, self.calls = reply, error, served, 0
 
     def chat(self, messages, **kwargs):
         self.calls += 1
         if self.error:
             raise self.error
         usage = SimpleNamespace(prompt_tokens=1100, completion_tokens=90, prompt_cache_hit_tokens=1000)
-        return SimpleNamespace(message=SimpleNamespace(content=self.reply), raw=SimpleNamespace(usage=usage))
+        return SimpleNamespace(message=SimpleNamespace(content=self.reply), raw=SimpleNamespace(usage=usage, model=self.served))
 
 
 class ScriptedLLM(FakeLLM):
@@ -389,15 +389,16 @@ def test_the_translation_has_its_own_limit_the_switch_and_the_budget(make, conn)
 def test_health_says_whether_written_answers_are_on(make, conn):
     client = make()
     assert client.get("/health").json() == {
-        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": None, "llm_failing": False}
+        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": None, "llm_failing": False, "llm_other_model": None}
     limits.set_llm_enabled(conn, False)
     assert client.get("/health").json() == {
-        "status": "ok", "llm_enabled": False, "cache_warm": "off", "llm_host": None, "llm_failing": False}
+        "status": "ok", "llm_enabled": False, "cache_warm": "off", "llm_host": None, "llm_failing": False, "llm_other_model": None}
 
 
 def test_health_names_the_model_provider_only_when_it_is_known(make):
     assert make(settings=asking.Settings(llm_host="api.example.eu")).get("/health").json() == {
-        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": "api.example.eu", "llm_failing": False}
+        "status": "ok", "llm_enabled": True, "cache_warm": "off", "llm_host": "api.example.eu", "llm_failing": False,
+        "llm_other_model": None}
     assert make().get("/health").json()["llm_host"] is None
 
 
@@ -439,6 +440,15 @@ def test_health_says_when_the_model_keeps_failing_and_one_good_answer_clears_it(
     assert client.get("/health").json()["llm_failing"] is False
 
 
+def test_health_names_another_model_once_a_reply_carries_a_name_that_was_not_asked_for(make):
+    same = make(FakeLLM(served="deepseek-flash"))
+    assert same.post("/ask", json={"question": "Quelle durée pour un cadre ?"}).status_code == 200
+    assert same.get("/health").json()["llm_other_model"] is None
+    other = make(FakeLLM(served="replacement-1"))
+    assert other.post("/ask", json={"question": "Quelle durée pour un ouvrier ?"}).status_code == 200  # another question: not from the cache
+    assert other.get("/health").json()["llm_other_model"] == "replacement-1"
+
+
 def database_down():
     raise psycopg.OperationalError("the database is down")
 
@@ -448,7 +458,8 @@ def test_health_is_a_503_when_the_database_is_down():
                               model="deepseek-flash", prompt_id="answer.v3")
     reply = TestClient(web.create_app(engine, database_down)).get("/health")
     assert reply.status_code == 503 and reply.json() == {
-        "status": "database_unavailable", "llm_enabled": None, "cache_warm": None, "llm_host": None, "llm_failing": None}
+        "status": "database_unavailable", "llm_enabled": None, "cache_warm": None, "llm_host": None, "llm_failing": None,
+        "llm_other_model": None}
 
 
 def test_a_cached_entry_made_for_another_version_of_the_reply_shape_is_a_miss(url, conn, make):

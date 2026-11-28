@@ -104,8 +104,10 @@ Every failure keeps the five articles; what differs is the status, the wait and 
 | 404: the model name no longer exists | 502, articles only | `NotFoundError`; counts towards `llm_failing` | change `LLM_MODEL` (and its price row) |
 | Timeout, connection error, 5xx | 502, articles only (after one retry) | the error class; counts towards `llm_failing` | wait, check Scaleway's status; kill switch if it lasts |
 | The reply is not valid JSON or has no valid citation | `parse_error`, `invalid_citation` as before | as before | none |
+| A reply names another model than the one asked for (a Preview model replaced under the same request) | a normal answer | one warning in the app log ("the provider answered with model X, not Y that was asked for"); `/health` shows `llm_other_model: "X"` until the app restarts | check the Scaleway lifecycle page and the console; the measured quality may no longer apply: re-run the dev-question measure (`answer_pilot.py --provider env`), then either change `LLM_MODEL` and its price row, or restart the app to clear the signal |
 
-The uptime check of phase 3 should alert on `"llm_failing": true` in `/health`. **There is no automatic fallback to another provider**: a silent switch to DeepSeek's own API would send visitors' questions to China, against `/privacy`. Switching is a deliberate change of the `LLM_*` lines.
+The uptime check should alert on `"llm_failing": true` and on `"llm_other_model"` being anything but `null` in `/health` (phase 5; until then look at `/health` after a deploy and when the hourly upkeep reports nothing wrong, or read the app log).
+Checked 2026-11-28 with one tiny call each: Scaleway returns the requested name (`deepseek-v4.1-flash-1017`) and DeepSeek returns `deepseek-flash`, so a different name is a real signal. A reply with no name is not judged. **There is no automatic fallback to another provider**: a silent switch to DeepSeek's own API would send visitors' questions to China, against `/privacy`. Switching is a deliberate change of the `LLM_*` lines.
 
 ## Checks from outside (phase 2; done on the server on 2026-11-27 from the Mac)
 

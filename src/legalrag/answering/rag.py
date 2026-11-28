@@ -72,14 +72,22 @@ class ModelPulse:
 
     consecutive_failures: int = 0
     last_error: str | None = None
+    other_model: str | None = None  # the model name of the last reply that was not the one asked for; kept until a restart
 
     def failed(self, error: Exception) -> None:
         if getattr(error, "status_code", None) != 429:
             self.consecutive_failures += 1
         self.last_error = type(error).__name__
 
-    def succeeded(self) -> None:
+    def succeeded(self, asked: str | None = None, served: object = None) -> bool:
+        """True when this reply names another model than the one asked for and the name is new: a provider may answer a removed
+        model with a replacement under the same request (the measured quality then no longer applies). A reply without a name is not judged."""
         self.consecutive_failures = 0
+        if not isinstance(served, str) or served == asked:
+            return False
+        new = served != self.other_model
+        self.other_model = served
+        return new
 
     @property
     def failing(self) -> bool:
@@ -222,7 +230,9 @@ class AnswerEngine(CustomQueryEngine):
             return answer.Result("llm_error", "(no answer: the model could not be reached)", hits, error=type(error).__name__,
                                  retrieval_ms=retrieval_ms, llm_ms=round((time.monotonic() - started) * 1000),
                                  status=status, retry_after=wait)
-        self.pulse.succeeded()
+        served = getattr(reply.raw, "model", None)
+        if self.pulse.succeeded(self.model, served):
+            log.warning("the provider answered with model %r, not the %r that was asked for", served, self.model)
         llm_ms = round((time.monotonic() - started) * 1000)
         tokens = answer.usage_of(getattr(reply.raw, "usage", None))
         cost = self.cost(tokens)

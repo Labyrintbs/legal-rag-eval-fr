@@ -183,7 +183,7 @@ def create_app(engine: rag.AnswerEngine, connect, settings: Settings | None = No
             response.status_code = 503
             return schemas.HealthReply(status="database_unavailable")
         return schemas.HealthReply(status="ok", llm_enabled=enabled, cache_warm=warm_status.state, llm_host=settings.llm_host,
-                                   llm_failing=engine.pulse.failing)
+                                   llm_failing=engine.pulse.failing, llm_other_model=engine.pulse.other_model)
 
     @app.post("/search", response_model=schemas.SearchReply)
     def search_route(body: schemas.AskRequest, request: Request) -> schemas.SearchReply:

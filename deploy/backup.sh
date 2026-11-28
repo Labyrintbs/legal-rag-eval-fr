@@ -3,6 +3,7 @@
 # Run on the server in the repository folder:
 #   deploy/backup.sh            dump, back up, keep 7 daily and 4 weekly copies
 #   deploy/backup.sh restore    restore the latest dump into a scratch database, compare counts, run db-check, drop the scratch database
+#   deploy/backup.sh snapshots  list the copies in the bucket (one line each: id, time, kind)
 # It re-runs itself with sudo; cron runs it as root. BACKUP_PING_URL (optional) is called on success and at /fail on failure.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -61,5 +62,6 @@ restore_check() {
 case "${1:-backup}" in
     backup) ping_url /start; if backup; then ping_url ""; else ping_url /fail; exit 1; fi ;;
     restore) restore_check ;;
-    *) echo "usage: deploy/backup.sh [backup|restore]" >&2; exit 2 ;;
+    snapshots) restic snapshots --compact ;;
+    *) echo "usage: deploy/backup.sh [backup|restore|snapshots]" >&2; exit 2 ;;
 esac
