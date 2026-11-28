@@ -64,7 +64,7 @@ const EN = {
   pv_t2a: "Request left without an answer or in error, request rated (👍 or 👎) or commented, and one request in 20 drawn at random to judge quality: the same data, with the vote and the comment", pv_t2b: "30 days",
   pv_t5a: "Your history, in your browser (the service does not receive it)", pv_t5b: "Until the tab is closed, or until you erase it if you keep it on the device",
   pv_after: "Once the text is erased, only figures without text remain: the result, the articles found, the duration and the cost.",
-  pv_t3a: "Answer kept in memory to go faster (without the question)", pv_t3b: "7 days at most",
+  pv_t3a: "Answer kept in memory to go faster (without the question)", pv_t3b: "7 days at most, except the answers to the home page's example questions (our own questions, kept without limit)",
   pv_t4a: "File of questions exported for review (the author's own use)", pv_t4b: "Deleted after the review",
   pv_t6a: "Copy of the server's disk made each day by the host: it holds what the service keeps at that moment", pv_t6b: "Replaced each day (at most one day beyond the durations above)",  pv_filter: "Before anything is sent, an automatic filter masks some identifiers in your question (e-mail address, telephone number, IBAN, bank card, social security number, and a date of birth when it is introduced by \"born\" or \"date of birth\"). It does not detect names, postal addresses, identity document, number plate or company numbers, or other ways of writing these data: it reduces the risk, it does not remove it.",
   pv_recv_h: "Who receives your question",
