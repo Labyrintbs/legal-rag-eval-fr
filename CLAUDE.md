@@ -4,6 +4,8 @@ French legal RAG (Code du travail + GDPR) with measured evaluation. The repo is 
 
 To continue Loop 3 on the Windows laptop, read `docs/handoff/loop3_windows_embedding.md` first. Every data-processing or chunking change is logged with its measured effect in `EXPERIMENT.md`.
 
+To build the owner's personal website (a separate repository; one personal domain, this demo on a subdomain), read `docs/handoff/personal_website_context.md` first.
+
 ## How to work with the user
 - Evidence, not defaults: search for real sources or measure on real data before proposing. Cite sources. Mark claims that come from memory as unverified.
 - For any design choice give 2 to 4 options with trade-offs and a recommendation. One decision at a time, in dependency order. Expect each assumption to be challenged.
