@@ -35,7 +35,7 @@ const T = {
     scope: "Ce service ne contient que le Code du travail et le RGPD (pas les conventions collectives, pas la jurisprudence).",
     next: "Pour un cas précis, consultez un avocat, l'inspection du travail ou Légifrance.", why: "Raison donnée par le service :",
     found_weak: "Les {n} articles les plus proches (peu pertinents ici)", answer: "Réponse", where: "Où dans la loi ?",
-    stored: "réponse déjà préparée", cited: "Passages cités", found: "Les {n} articles les plus proches de votre question",
+    stored: "réponse déjà préparée", ai_note: "Cette réponse est rédigée par une intelligence artificielle à partir des articles ci-dessous ; elle peut comporter des erreurs, vérifiez les articles cités.", cited: "Passages cités", found: "Les {n} articles les plus proches de votre question",
     found_hint: "La réponse est écrite à partir de ces articles seulement, du plus proche au moins proche.",
     read: "Lire l'article", on: "sur", useful: "Cette réponse est-elle utile ?", thanks: "Merci, votre avis est enregistré.",
     kind: "Qu'est-ce qui ne va pas ? (facultatif)", wrong_answer: "La réponse est fausse", wrong_citation: "Une citation ne correspond pas",
@@ -74,7 +74,7 @@ const T = {
     scope: "This service contains only the French labour code and the GDPR (no collective agreements, no case law).",
     next: "For a specific case, consult a lawyer, the labour inspectorate or Légifrance.", why: "Reason given by the service (in French):",
     found_weak: "The {n} closest articles (not very relevant here; in French)", answer: "Answer (in French)", where: "Where in the law? (in French)",
-    stored: "ready-made answer", cited: "Cited passages (in French)", found: "The {n} articles closest to your question (in French)",
+    stored: "ready-made answer", ai_note: "This answer is written by an artificial intelligence from the articles below; it may contain errors, check the cited articles.", cited: "Cited passages (in French)", found: "The {n} articles closest to your question (in French)",
     found_hint: "The answer is written from these articles only, from the closest to the least close.",
     read: "Read the article", on: "on", useful: "Was this answer useful?", thanks: "Thank you, your opinion is saved.",
     kind: "What is wrong? (optional)", wrong_answer: "The answer is wrong", wrong_citation: "A citation does not match",
@@ -276,8 +276,9 @@ function answerCard(reply, history = false) {
   }
   const label = make("h2", { class: "label", text: t("answer") });
   if (reply.cached && !history) label.append(make("span", { class: "badge", text: t("stored") })); // days later it would mean nothing
-  if (history) return make("div", { class: "answer" }, label, claims, englishBlock(reply), sources); // no vote, no list of articles
-  return make("div", { class: "answer" }, label, claims, englishBlock(reply), sources, foundArticles(reply.articles) || "", voteBox(reply.request_id));
+  const aiNote = make("p", { class: "count", text: t("ai_note") }); // AI Act art. 50(1): say that an AI wrote it (docs/decisions/0010)
+  if (history) return make("div", { class: "answer" }, label, aiNote, claims, englishBlock(reply), sources); // no vote, no list of articles
+  return make("div", { class: "answer" }, label, aiNote, claims, englishBlock(reply), sources, foundArticles(reply.articles) || "", voteBox(reply.request_id));
 }
 
 function problemCard(message, reply, history = false) {

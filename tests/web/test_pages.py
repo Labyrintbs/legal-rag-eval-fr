@@ -161,6 +161,20 @@ def test_every_french_text_of_the_pages_has_an_english_one():
         assert keys and not keys - english, (page, keys - english)
 
 
+def test_the_privacy_page_names_the_model_provider_and_the_country_of_the_server_in_both_languages():
+    french, english = (STATIC / "privacy.html").read_text(), (STATIC / "texts_en.js").read_text()
+    for needle in ("Scaleway", "Royaume-Uni", "décision d'adéquation", "version préliminaire"):
+        assert needle in french, needle
+    for needle in ("Scaleway", "United Kingdom", "adequacy decision", "preview version"):
+        assert needle in english, needle
+    assert "(DeepSeek)" not in french and "(DeepSeek)" not in english  # the model's company no longer receives the question
+
+
+def test_a_written_answer_says_that_an_ai_wrote_it():
+    source = (STATIC / "app.js").read_text()
+    assert source.count('ai_note: "') == 2 and source.count('text: t("ai_note")') == 1  # one text per language, shown on every answer card
+
+
 def message_keys(text: str) -> set[str]:
     """The keys of a table of messages: a name at the start of a line or after a comma, not a word before a colon in a text."""
     return set(re.findall(r'(?:^\s+|", )(\w+): "', text, re.MULTILINE))

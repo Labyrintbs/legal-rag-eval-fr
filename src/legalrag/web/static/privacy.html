@@ -42,7 +42,7 @@
     <p data-i18n="pv_why">Pour faire fonctionner le service, limiter les abus et la dépense, et l'améliorer. Base légale : l'intérêt légitime de l'auteur à fournir et à protéger ce service de démonstration (article 6, paragraphe 1, point f, du RGPD).</p>
 
     <h2 data-i18n="pv_not_h">Ce que le service ne fait pas</h2>
-    <p data-i18n="pv_not">Pas de mesure d'audience, pas de publicité, pas de profilage, et aucune décision automatisée qui vous concerne : le service donne des informations, il ne décide rien à votre sujet.</p>
+    <p data-i18n="pv_not">Pas de mesure d'audience, pas de publicité, pas de profilage, et aucune décision automatisée qui vous concerne.</p>
 
     <h2 data-i18n="pv_long_h">Pendant combien de temps</h2>
     <div class="scroll"><table>
@@ -52,15 +52,18 @@
         <tr><td data-i18n="pv_t2a">Requête restée sans réponse ou en erreur, requête notée (👍 ou 👎) ou commentée, et une requête sur 20 tirée au hasard pour juger la qualité : les mêmes données, avec le vote et le commentaire</td><td data-i18n="pv_t2b">30 jours</td></tr>
         <tr><td data-i18n="pv_t3a">Réponse gardée en mémoire pour aller plus vite (sans la question)</td><td data-i18n="pv_t3b">7 jours au plus</td></tr>
         <tr><td data-i18n="pv_t4a">Fichier de questions exportées pour relecture (usage de l'auteur)</td><td data-i18n="pv_t4b">Supprimé après la relecture</td></tr>
+        <tr><td data-i18n="pv_t6a">Copie du disque du serveur faite chaque jour par l'hébergeur : elle contient ce que le service garde à ce moment-là</td><td data-i18n="pv_t6b">Remplacée chaque jour (au plus un jour de plus que les durées ci-dessus)</td></tr>
         <tr><td data-i18n="pv_t5a">Votre historique, dans votre navigateur (le service ne le reçoit pas)</td><td data-i18n="pv_t5b">Jusqu'à la fermeture de l'onglet, ou jusqu'à ce que vous l'effaciez si vous le gardez sur l'appareil</td></tr>
       </tbody>
     </table></div>
     <p data-i18n="pv_after">Quand le texte est effacé, il ne reste que des chiffres sans texte : le résultat, les articles trouvés, la durée et le coût.</p>
 
     <h2 data-i18n="pv_recv_h">Qui reçoit votre question</h2>
-    <p data-i18n="pv_recv">Pour écrire la réponse, votre question est envoyée à un fournisseur de modèle d'IA (DeepSeek). Ses serveurs peuvent se trouver hors de l'Union européenne, et nous ne contrôlons pas ce qu'il fait ensuite des données : n'écrivez donc aucune information personnelle. Le service est aussi hébergé chez un prestataire technique, qui voit les connexions.</p>
+    <p data-i18n="pv_recv">Pour écrire la réponse, votre question est envoyée à Scaleway, une société française, qui fait fonctionner un modèle d'IA (DeepSeek V4.1 Flash) sur ses propres serveurs, actuellement à Paris. Votre question n'est donc pas envoyée à DeepSeek, et Scaleway ne reçoit pas votre adresse réseau. Selon son contrat, Scaleway ne conserve ni la question ni la réponse après le traitement et ne s'en sert pas pour entraîner un modèle ; une seule exception : en cas d'activité anormale ou malveillante, le contenu d'une requête peut être conservé temporairement. Scaleway peut ajouter d'autres lieux, toujours en Europe. Le modèle est une version préliminaire (« preview ») : il peut être modifié ou retiré avec un mois de préavis.</p>
     <p data-i18n="pv_filter">Avant tout envoi, un filtre automatique masque certains identifiants dans votre question (adresse e-mail, téléphone, IBAN, carte bancaire, numéro de sécurité sociale, date de naissance quand elle est annoncée par « né le » ou « date de naissance »). Il ne repère pas les noms, les adresses postales, les numéros de pièce d'identité, de plaque d'immatriculation ou d'entreprise, ni les autres façons d'écrire ces données : il réduit le risque, il ne le supprime pas.</p>
-    <!-- At deployment: name the hosting provider here, and the model provider if it changes (EU-hosted). -->
+
+    <h2 data-i18n="pv_host_h">Hébergement</h2>
+    <p data-i18n="pv_host">Le service est hébergé chez un prestataire technique, dont les serveurs sont situés au Royaume-Uni, c'est-à-dire hors de l'Union européenne. Le Royaume-Uni bénéficie d'une décision d'adéquation de la Commission européenne, qui reconnaît que les données y sont protégées de façon équivalente ; cette décision a été renouvelée jusqu'au 27 décembre 2031.</p>
 
     <h2 data-i18n="pv_improve_h">Amélioration du service</h2>
     <p data-i18n="pv_improve">Des questions peuvent servir à améliorer les tests du service, après qu'une personne en a retiré toute donnée personnelle.</p>
